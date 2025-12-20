@@ -1,0 +1,13 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[user]
+	name = Tushar Saharan
+	email = tusharsaharan18@gmail.com
+[remote "origin"]
+	url = https://github.com/tusharsaharan/job-recommender-web.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
