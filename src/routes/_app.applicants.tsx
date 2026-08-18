@@ -6,7 +6,6 @@ import {
   GraduationCap,
   MessageSquare,
   UserRound,
-  Video,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -147,7 +146,7 @@ function ApplicantsPage() {
           <p className="marker-num">Recruiting pipeline</p>
           <h1 className="font-display mt-4 text-[clamp(2.7rem,5.4vw,5.5rem)] text-ink">Applicants, in context.</h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/68">
-            Review the evidence, choose a status, schedule live technical interviews, and message candidates directly.
+            Review the evidence, manage candidate pipeline status, and message candidates directly.
           </p>
         </div>
         <Link to="/post-job" className="pill-mint gap-2">
@@ -319,37 +318,6 @@ function ApplicantRow({
             <option value="shortlisted">Shortlisted</option>
             <option value="rejected">Rejected</option>
           </select>
-
-          {status === "shortlisted" && (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const res = await apiCall<{ session: any }>(
-                    "/interviews/schedule",
-                    "POST",
-                    {
-                      applicationId: application._id,
-                      title: `Technical Interview: ${application.job?.title || "Engineering"}`,
-                      scheduledStart: new Date(Date.now() + 3600000).toISOString(),
-                      allowedLanguages: ["python", "javascript", "typescript", "cpp", "java"],
-                    },
-                    token
-                  );
-                  toast.success("Interview room generated!");
-                  if (res.session?.roomKey) {
-                    navigate({ to: "/interview/$roomKey", params: { roomKey: res.session.roomKey } });
-                  }
-                } catch (err: any) {
-                  toast.error(err.message || "Failed scheduling interview");
-                }
-              }}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#2A9D7B] px-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#238266]"
-            >
-              <Video className="h-4 w-4" />
-              Launch Interview
-            </button>
-          )}
 
           <button
             type="button"

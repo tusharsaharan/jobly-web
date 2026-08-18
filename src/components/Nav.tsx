@@ -149,13 +149,11 @@ export function AppNav() {
     { to: "/jobs", label: "Jobs" },
     { to: "/resume", label: "Resume" },
     { to: "/applications", label: "Applications" },
-    { to: "/interviews", label: "Interviews" },
   ];
   const recruiterLinks: NavLink[] = [
     { to: "/dashboard", label: "Overview" },
     { to: "/post-job", label: "Post a role" },
     { to: "/applicants", label: "Applicants" },
-    { to: "/interviews", label: "Interviews" },
   ];
   const links = user?.role === "recruiter" ? recruiterLinks : seekerLinks;
 

@@ -16,14 +16,9 @@ import { Route as AppResumeRouteImport } from './routes/_app.resume'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppPostJobRouteImport } from './routes/_app.post-job'
 import { Route as AppJobsRouteImport } from './routes/_app.jobs'
-import { Route as AppInterviewsRouteImport } from './routes/_app.interviews'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppApplicationsRouteImport } from './routes/_app.applications'
 import { Route as AppApplicantsRouteImport } from './routes/_app.applicants'
-import { Route as AppInterviewRoomKeyRouteImport } from './routes/_app.interview.$roomKey'
-import { Route as AppInterviewRoomKeyReplayRouteImport } from './routes/_app.interview.$roomKey.replay'
-import { Route as AppInterviewRoomKeyFeedbackRouteImport } from './routes/_app.interview.$roomKey.feedback'
-import { Route as AppInterviewRoomKeyEvaluationRouteImport } from './routes/_app.interview.$roomKey.evaluation'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -59,11 +54,6 @@ const AppJobsRoute = AppJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => AppRoute,
 } as any)
-const AppInterviewsRoute = AppInterviewsRouteImport.update({
-  id: '/interviews',
-  path: '/interviews',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -79,29 +69,6 @@ const AppApplicantsRoute = AppApplicantsRouteImport.update({
   path: '/applicants',
   getParentRoute: () => AppRoute,
 } as any)
-const AppInterviewRoomKeyRoute = AppInterviewRoomKeyRouteImport.update({
-  id: '/interview/$roomKey',
-  path: '/interview/$roomKey',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppInterviewRoomKeyReplayRoute =
-  AppInterviewRoomKeyReplayRouteImport.update({
-    id: '/replay',
-    path: '/replay',
-    getParentRoute: () => AppInterviewRoomKeyRoute,
-  } as any)
-const AppInterviewRoomKeyFeedbackRoute =
-  AppInterviewRoomKeyFeedbackRouteImport.update({
-    id: '/feedback',
-    path: '/feedback',
-    getParentRoute: () => AppInterviewRoomKeyRoute,
-  } as any)
-const AppInterviewRoomKeyEvaluationRoute =
-  AppInterviewRoomKeyEvaluationRouteImport.update({
-    id: '/evaluation',
-    path: '/evaluation',
-    getParentRoute: () => AppInterviewRoomKeyRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,15 +76,10 @@ export interface FileRoutesByFullPath {
   '/applicants': typeof AppApplicantsRoute
   '/applications': typeof AppApplicationsRoute
   '/dashboard': typeof AppDashboardRoute
-  '/interviews': typeof AppInterviewsRoute
   '/jobs': typeof AppJobsRoute
   '/post-job': typeof AppPostJobRoute
   '/profile': typeof AppProfileRoute
   '/resume': typeof AppResumeRoute
-  '/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
-  '/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
-  '/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
-  '/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,15 +87,10 @@ export interface FileRoutesByTo {
   '/applicants': typeof AppApplicantsRoute
   '/applications': typeof AppApplicationsRoute
   '/dashboard': typeof AppDashboardRoute
-  '/interviews': typeof AppInterviewsRoute
   '/jobs': typeof AppJobsRoute
   '/post-job': typeof AppPostJobRoute
   '/profile': typeof AppProfileRoute
   '/resume': typeof AppResumeRoute
-  '/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
-  '/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
-  '/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
-  '/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,15 +100,10 @@ export interface FileRoutesById {
   '/_app/applicants': typeof AppApplicantsRoute
   '/_app/applications': typeof AppApplicationsRoute
   '/_app/dashboard': typeof AppDashboardRoute
-  '/_app/interviews': typeof AppInterviewsRoute
   '/_app/jobs': typeof AppJobsRoute
   '/_app/post-job': typeof AppPostJobRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/resume': typeof AppResumeRoute
-  '/_app/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
-  '/_app/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
-  '/_app/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
-  '/_app/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,15 +113,10 @@ export interface FileRouteTypes {
     | '/applicants'
     | '/applications'
     | '/dashboard'
-    | '/interviews'
     | '/jobs'
     | '/post-job'
     | '/profile'
     | '/resume'
-    | '/interview/$roomKey'
-    | '/interview/$roomKey/evaluation'
-    | '/interview/$roomKey/feedback'
-    | '/interview/$roomKey/replay'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,15 +124,10 @@ export interface FileRouteTypes {
     | '/applicants'
     | '/applications'
     | '/dashboard'
-    | '/interviews'
     | '/jobs'
     | '/post-job'
     | '/profile'
     | '/resume'
-    | '/interview/$roomKey'
-    | '/interview/$roomKey/evaluation'
-    | '/interview/$roomKey/feedback'
-    | '/interview/$roomKey/replay'
   id:
     | '__root__'
     | '/'
@@ -194,15 +136,10 @@ export interface FileRouteTypes {
     | '/_app/applicants'
     | '/_app/applications'
     | '/_app/dashboard'
-    | '/_app/interviews'
     | '/_app/jobs'
     | '/_app/post-job'
     | '/_app/profile'
     | '/_app/resume'
-    | '/_app/interview/$roomKey'
-    | '/_app/interview/$roomKey/evaluation'
-    | '/_app/interview/$roomKey/feedback'
-    | '/_app/interview/$roomKey/replay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -262,13 +199,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJobsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/interviews': {
-      id: '/_app/interviews'
-      path: '/interviews'
-      fullPath: '/interviews'
-      preLoaderRoute: typeof AppInterviewsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -290,74 +220,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApplicantsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/interview/$roomKey': {
-      id: '/_app/interview/$roomKey'
-      path: '/interview/$roomKey'
-      fullPath: '/interview/$roomKey'
-      preLoaderRoute: typeof AppInterviewRoomKeyRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/interview/$roomKey/replay': {
-      id: '/_app/interview/$roomKey/replay'
-      path: '/replay'
-      fullPath: '/interview/$roomKey/replay'
-      preLoaderRoute: typeof AppInterviewRoomKeyReplayRouteImport
-      parentRoute: typeof AppInterviewRoomKeyRoute
-    }
-    '/_app/interview/$roomKey/feedback': {
-      id: '/_app/interview/$roomKey/feedback'
-      path: '/feedback'
-      fullPath: '/interview/$roomKey/feedback'
-      preLoaderRoute: typeof AppInterviewRoomKeyFeedbackRouteImport
-      parentRoute: typeof AppInterviewRoomKeyRoute
-    }
-    '/_app/interview/$roomKey/evaluation': {
-      id: '/_app/interview/$roomKey/evaluation'
-      path: '/evaluation'
-      fullPath: '/interview/$roomKey/evaluation'
-      preLoaderRoute: typeof AppInterviewRoomKeyEvaluationRouteImport
-      parentRoute: typeof AppInterviewRoomKeyRoute
-    }
   }
 }
-
-interface AppInterviewRoomKeyRouteChildren {
-  AppInterviewRoomKeyEvaluationRoute: typeof AppInterviewRoomKeyEvaluationRoute
-  AppInterviewRoomKeyFeedbackRoute: typeof AppInterviewRoomKeyFeedbackRoute
-  AppInterviewRoomKeyReplayRoute: typeof AppInterviewRoomKeyReplayRoute
-}
-
-const AppInterviewRoomKeyRouteChildren: AppInterviewRoomKeyRouteChildren = {
-  AppInterviewRoomKeyEvaluationRoute: AppInterviewRoomKeyEvaluationRoute,
-  AppInterviewRoomKeyFeedbackRoute: AppInterviewRoomKeyFeedbackRoute,
-  AppInterviewRoomKeyReplayRoute: AppInterviewRoomKeyReplayRoute,
-}
-
-const AppInterviewRoomKeyRouteWithChildren =
-  AppInterviewRoomKeyRoute._addFileChildren(AppInterviewRoomKeyRouteChildren)
 
 interface AppRouteChildren {
   AppApplicantsRoute: typeof AppApplicantsRoute
   AppApplicationsRoute: typeof AppApplicationsRoute
   AppDashboardRoute: typeof AppDashboardRoute
-  AppInterviewsRoute: typeof AppInterviewsRoute
   AppJobsRoute: typeof AppJobsRoute
   AppPostJobRoute: typeof AppPostJobRoute
   AppProfileRoute: typeof AppProfileRoute
   AppResumeRoute: typeof AppResumeRoute
-  AppInterviewRoomKeyRoute: typeof AppInterviewRoomKeyRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppApplicantsRoute: AppApplicantsRoute,
   AppApplicationsRoute: AppApplicationsRoute,
   AppDashboardRoute: AppDashboardRoute,
-  AppInterviewsRoute: AppInterviewsRoute,
   AppJobsRoute: AppJobsRoute,
   AppPostJobRoute: AppPostJobRoute,
   AppProfileRoute: AppProfileRoute,
   AppResumeRoute: AppResumeRoute,
-  AppInterviewRoomKeyRoute: AppInterviewRoomKeyRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

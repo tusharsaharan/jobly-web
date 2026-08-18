@@ -65,9 +65,9 @@ test.describe("Recruiter E2E workflow", () => {
 
       // Messaging
       await page.click("article button:has-text('Message')");
-      await page.fill("textarea", "Thanks for applying! We'd love to schedule a interview.");
+      await page.fill("textarea", "Thanks for applying! We'd love to connect regarding next steps.");
       await page.click("button[type='submit']");
-      await expect(page.locator("text=schedule a interview")).toBeVisible();
+      await expect(page.locator("text=regarding next steps")).toBeVisible();
       // Empty message submission (should be disabled or ignored)
       await page.fill("textarea", "");
       const isSubmitDisabled = await page.locator("button[type='submit']").isDisabled();

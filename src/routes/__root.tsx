@@ -16,7 +16,6 @@ import { AuthProvider } from "@/lib/auth";
 import { Cursor } from "@/components/cursor/Cursor";
 import { Footer } from "@/components/Footer";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream px-4">
@@ -68,14 +67,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "JobMatch — Find roles your resume already wins" },
+      { title: "Jobly — Find roles your resume already wins" },
       {
         name: "description",
         content:
           "An editorial job-matching workspace. Upload your resume, see your match score, and apply in one move.",
       },
-      { name: "author", content: "JobMatch" },
-      { property: "og:title", content: "JobMatch — Roles your resume already wins" },
+      { name: "author", content: "Jobly" },
+      { property: "og:title", content: "Jobly — Roles your resume already wins" },
       {
         property: "og:description",
         content: "An editorial job-matching workspace for seekers and recruiters.",

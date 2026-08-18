@@ -85,7 +85,7 @@ const WORKSPACE_TILES = [
   "Candidate notes",
   "Shortlist",
   "Work samples",
-  "Interview team",
+  "Hiring team",
 ] as const;
 
 const INTRO_STAGES = ["Welcome", "A clearer way forward"] as const;

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, MessageSquare, Video } from "lucide-react";
+import { CalendarDays, MessageSquare } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ApplicationConversation } from "@/components/ApplicationConversation";
@@ -58,7 +58,7 @@ function ApplicationsPage() {
           <p className="marker-num">Application history</p>
           <h1 className="font-display mt-4 text-[clamp(2.7rem,5.4vw,5.5rem)] text-ink">Your applications, in motion.</h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/68">
-            Track a role from submitted to decision, access live technical interview rooms, and converse with recruiters.
+            Track a role from submitted to decision, review ATS match feedback, and converse with recruiters.
           </p>
         </div>
       </header>
@@ -99,33 +99,6 @@ function ApplicationsPage() {
 
                 <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                   <StatusLabel status={application.status} />
-
-                  {application.status === "shortlisted" && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const res = await apiCall<{ session: any }>(
-                            `/interviews/application/${application._id}`,
-                            "GET",
-                            null,
-                            token
-                          );
-                          if (res.session?.roomKey) {
-                            navigate({ to: "/interview/$roomKey", params: { roomKey: res.session.roomKey } });
-                          } else {
-                            toast.info("Your interview room will be active shortly.");
-                          }
-                        } catch (err: any) {
-                          toast.info("Interview room is being configured by the recruiter.");
-                        }
-                      }}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[#2A9D7B] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#238266]"
-                    >
-                      <Video className="h-4 w-4" />
-                      Join Interview Room
-                    </button>
-                  )}
 
                   <button
                     type="button"
