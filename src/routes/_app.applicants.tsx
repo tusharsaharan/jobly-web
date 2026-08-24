@@ -5,12 +5,14 @@ import {
   CalendarDays,
   GraduationCap,
   MessageSquare,
+  Search,
   UserRound,
+  Video,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ApplicationConversation } from "@/components/ApplicationConversation";
-import { AtsBreakdown, AtsScoreRing } from "@/components/ui/AtsScoreRing";
+import { AtsBreakdown, AtsScoreRing, getScoreGreenShade } from "@/components/ui/AtsScoreRing";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
 
@@ -44,6 +46,12 @@ interface Applicant {
     skills?: string[];
   };
   status: "applied" | "shortlisted" | "rejected" | string;
+  searchMetadata?: {
+    rrfScore?: number;
+    bm25Score?: number;
+    vectorScore?: number;
+    matchedTokens?: string[];
+  };
 }
 
 interface PostedJob {
@@ -62,6 +70,7 @@ function ApplicantsPage() {
   const [postedJobs, setPostedJobs] = useState<PostedJob[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [jobFilter, setJobFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
@@ -105,9 +114,15 @@ function ApplicantsPage() {
   }, [applications, postedJobs]);
 
   const visibleApplications = useMemo(() => {
-    const filtered = jobFilter === "all"
-      ? applications
-      : applications.filter((application) => application.job?._id === jobFilter);
+    const term = searchQuery.trim().toLowerCase();
+    const filtered = applications.filter((app) => {
+      const matchesJob = jobFilter === "all" || app.job?._id === jobFilter;
+      if (!matchesJob) return false;
+      if (!term) return true;
+
+      const candidateText = `${app.seeker?.name || ""} ${app.seeker?.email || ""} ${app.job?.title || ""} ${(app.seeker?.skills || []).join(" ")} ${app.seeker?.college || ""} ${app.seeker?.degree || ""} ${(app.seeker?.achievements || []).join(" ")} ${(app.seeker?.experience || []).map((e) => `${e.title || ""} ${e.company || ""}`).join(" ")}`.toLowerCase();
+      return candidateText.includes(term);
+    });
 
     return [...filtered].sort((left, right) => {
       if (sortMode === "relevance") {
@@ -117,7 +132,7 @@ function ApplicantsPage() {
       return (statusOrder[left.status as keyof typeof statusOrder] ?? 3) - (statusOrder[right.status as keyof typeof statusOrder] ?? 3)
         || dateValue(right) - dateValue(left);
     });
-  }, [applications, jobFilter, sortMode]);
+  }, [applications, jobFilter, sortMode, searchQuery]);
 
   const pipeline = useMemo(() => ({
     applied: applications.filter((application) => application.status === "applied").length,
@@ -146,7 +161,7 @@ function ApplicantsPage() {
           <p className="marker-num">Recruiting pipeline</p>
           <h1 className="font-display mt-4 text-[clamp(2.7rem,5.4vw,5.5rem)] text-ink">Applicants, in context.</h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/68">
-            Review the evidence, manage candidate pipeline status, and message candidates directly.
+            Review the evidence, choose a status, schedule live technical interviews, and message candidates directly.
           </p>
         </div>
         <Link to="/post-job" className="pill-mint gap-2">
@@ -162,7 +177,21 @@ function ApplicantsPage() {
       </section>
 
       <section className="surface-subtle mt-8 p-4 sm:p-5" aria-label="Applicant filters">
-        <div className="grid gap-5 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-5 lg:grid-cols-[minmax(200px,0.7fr)_minmax(200px,1fr)_minmax(0,1fr)_auto] lg:items-end">
+          <label className="block">
+            <span className="marker-num">Search Candidates</span>
+            <div className="control-surface mt-2 flex min-h-11 items-center gap-2 px-3">
+              <Search className="h-4 w-4 text-ink/40" />
+              <input
+                type="text"
+                placeholder="Name, skills, college..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent text-sm placeholder:text-ink/40 focus:outline-none"
+              />
+            </div>
+          </label>
+
           <label className="block">
             <span className="marker-num">Role</span>
             <select
@@ -294,7 +323,12 @@ function ApplicantRow({
             <>
               <AtsScoreRing score={application.atsScore} size={52} />
               <div className="lg:hidden">
-                <p className="text-sm font-semibold text-ink">{Math.round(application.atsScore)}% fit</p>
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: getScoreGreenShade(application.atsScore) }}
+                >
+                  {Math.round(application.atsScore)}% fit
+                </p>
                 <p className="text-xs text-ink/55">ATS relevance</p>
               </div>
             </>
@@ -319,6 +353,37 @@ function ApplicantRow({
             <option value="rejected">Rejected</option>
           </select>
 
+          {status === "shortlisted" && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const res = await apiCall<{ session: any }>(
+                    "/interviews/schedule",
+                    "POST",
+                    {
+                      applicationId: application._id,
+                      title: `Technical Interview: ${application.job?.title || "Engineering"}`,
+                      scheduledStart: new Date(Date.now() + 3600000).toISOString(),
+                      allowedLanguages: ["python", "javascript", "typescript", "cpp", "java"],
+                    },
+                    token
+                  );
+                  toast.success("Interview room generated!");
+                  if (res.session?.roomKey) {
+                    navigate({ to: "/interview/$roomKey", params: { roomKey: res.session.roomKey } });
+                  }
+                } catch (err: any) {
+                  toast.error(err.message || "Failed scheduling interview");
+                }
+              }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#2A9D7B] px-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#238266]"
+            >
+              <Video className="h-4 w-4" />
+              Launch Interview
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onProfile}
@@ -332,10 +397,14 @@ function ApplicantRow({
             type="button"
             onClick={onConversation}
             aria-expanded={conversationOpen}
-            className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-ink transition-colors hover:bg-panel"
+            className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition-all ${
+              conversationOpen
+                ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                : "border border-border text-ink hover:border-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+            }`}
           >
             <MessageSquare className="h-4 w-4" aria-hidden="true" />
-            {conversationOpen ? "Close message" : "Message"}
+            {conversationOpen ? "Hide Chat" : "Message"}
           </button>
         </div>
       </div>

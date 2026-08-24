@@ -85,7 +85,7 @@ const WORKSPACE_TILES = [
   "Candidate notes",
   "Shortlist",
   "Work samples",
-  "Hiring team",
+  "Interview team",
 ] as const;
 
 const INTRO_STAGES = ["Welcome", "A clearer way forward"] as const;
@@ -153,13 +153,13 @@ function IntroSequence() {
               style={{ opacity: veilOpacity }}
             />
             <motion.div
-              className="absolute inset-0 z-10 flex items-center justify-center"
+              className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto"
               style={{ opacity: heroOpacity, y: heroY }}
             >
               <HeroMessage />
             </motion.div>
             <motion.div
-              className="absolute left-1/2 top-1/2 z-20 h-[74vh] w-[min(66vw,780px)] -translate-x-1/2 -translate-y-1/2"
+              className="absolute left-1/2 top-1/2 z-20 h-[74vh] w-[min(66vw,780px)] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{
                 opacity: stageOpacity,
                 scale: stageScale,
@@ -180,7 +180,7 @@ function IntroSequence() {
                 <div className="absolute inset-0 bg-[#1f2724]/45" />
               </motion.figure>
               <motion.figure
-                className="absolute inset-0 z-30 overflow-hidden bg-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)]"
+                className="absolute inset-0 z-30 overflow-hidden bg-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] pointer-events-auto"
                 style={{
                   rotateX: reduce ? 0 : mainRotateX,
                   rotateY: reduce ? 0 : mainRotateY,
@@ -198,15 +198,15 @@ function IntroSequence() {
                     A more thoughtful place to turn experience into opportunity, whether you are
                     looking for a role or building a team.
                   </p>
-                  <div className="mt-9 flex items-center justify-center gap-4">
-                    <Link to="/auth" className="pill-mint text-sm gap-2">
+                  <div className="mt-12 sm:mt-14 flex flex-col items-center justify-center gap-7 sm:gap-8 relative z-50">
+                    <Link to="/auth" className="pill-mint text-sm gap-2 cursor-pointer relative z-50 pointer-events-auto">
                       Get started
                       <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
                     <a
                       href="#statement"
                       aria-label="Explore Jobly"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10 cursor-pointer relative z-50 pointer-events-auto"
                     >
                       <ArrowDown className="h-4 w-4" aria-hidden="true" />
                     </a>
@@ -239,7 +239,7 @@ function IntroSequence() {
 
 function HeroMessage() {
   return (
-    <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-20 pt-28 text-center sm:px-10">
+    <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-20 pt-28 text-center sm:px-10 z-30">
       <motion.p
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
@@ -269,16 +269,16 @@ function HeroMessage() {
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.28 }}
-        className="mt-9 flex flex-wrap items-center justify-center gap-4"
+        className="mt-12 sm:mt-14 flex flex-col items-center justify-center gap-7 sm:gap-8 relative z-50"
       >
-        <Link to="/auth" className="pill-mint-lg gap-2">
+        <Link to="/auth" className="pill-mint-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
           Get started
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
         <a
           href="#statement"
           aria-label="Explore Jobly"
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10"
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10 cursor-pointer relative z-50 pointer-events-auto"
         >
           <ArrowDown className="h-5 w-5" aria-hidden="true" />
         </a>

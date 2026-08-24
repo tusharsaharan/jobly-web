@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, UserRound, X } from "lucide-react";
+import { LogOut, Menu, UserRound, X, MessageSquare } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 
@@ -129,14 +129,9 @@ export function PublicNav({ dark = false }: { dark?: boolean }) {
     <TopNav
       dark={dark}
       right={
-        <>
-          <Link to={user ? "/profile" : "/auth"} className="nav-text hidden text-sm font-semibold hover:opacity-70 sm:inline">
-            {user ? "Account" : "Log in"}
-          </Link>
-          <Link to={user ? "/dashboard" : "/auth"} className="pill-mint text-sm">
-            {user ? "Dashboard" : "Get started"}
-          </Link>
-        </>
+        <Link to={user ? "/dashboard" : "/auth"} className="pill-mint text-sm">
+          {user ? "Dashboard" : "Log in"}
+        </Link>
       }
     />
   );
@@ -147,13 +142,16 @@ export function AppNav() {
   const seekerLinks: NavLink[] = [
     { to: "/dashboard", label: "Overview" },
     { to: "/jobs", label: "Jobs" },
+    { to: "/learn", label: "Learn" },
     { to: "/resume", label: "Resume" },
     { to: "/applications", label: "Applications" },
+    { to: "/interviews", label: "Interviews" },
   ];
   const recruiterLinks: NavLink[] = [
     { to: "/dashboard", label: "Overview" },
     { to: "/post-job", label: "Post a role" },
     { to: "/applicants", label: "Applicants" },
+    { to: "/interviews", label: "Interviews" },
   ];
   const links = user?.role === "recruiter" ? recruiterLinks : seekerLinks;
 

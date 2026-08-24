@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, MessageSquare } from "lucide-react";
+import { CalendarDays, MessageSquare, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ApplicationConversation } from "@/components/ApplicationConversation";
-import { AtsScoreRing } from "@/components/ui/AtsScoreRing";
+
+import { AtsScoreRing, getScoreGreenShade } from "@/components/ui/AtsScoreRing";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
 
@@ -58,7 +58,7 @@ function ApplicationsPage() {
           <p className="marker-num">Application history</p>
           <h1 className="font-display mt-4 text-[clamp(2.7rem,5.4vw,5.5rem)] text-ink">Your applications, in motion.</h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink/68">
-            Track a role from submitted to decision, review ATS match feedback, and converse with recruiters.
+            Track a role from submitted to decision, access live technical interview rooms, and converse with recruiters.
           </p>
         </div>
       </header>
@@ -93,33 +93,55 @@ function ApplicationsPage() {
                 {typeof application.atsScore === "number" ? (
                   <div className="flex items-center gap-3 sm:flex-col sm:gap-1">
                     <AtsScoreRing score={application.atsScore} size={46} />
-                    <p className="text-xs font-semibold text-ink/55">{Math.round(application.atsScore)}% fit</p>
+                    <p
+                      className="text-xs font-semibold"
+                      style={{ color: getScoreGreenShade(application.atsScore) }}
+                    >
+                      {Math.round(application.atsScore)}% fit
+                    </p>
                   </div>
                 ) : <p className="text-sm text-ink/55">Score pending</p>}
 
                 <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                   <StatusLabel status={application.status} />
 
-                  <button
-                    type="button"
-                    onClick={() => setConversationId((id) => id === application._id ? null : application._id)}
-                    aria-expanded={conversationOpen}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-semibold text-ink transition-colors hover:bg-panel"
+                  {application.status === "shortlisted" && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await apiCall<{ session: any }>(
+                            `/interviews/application/${application._id}`,
+                            "GET",
+                            null,
+                            token
+                          );
+                          if (res.session?.roomKey) {
+                            navigate({ to: "/interview/$roomKey", params: { roomKey: res.session.roomKey } });
+                          } else {
+                            toast.info("Your interview room will be active shortly.");
+                          }
+                        } catch (err: any) {
+                          toast.info("Interview room is being configured by the recruiter.");
+                        }
+                      }}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[#2A9D7B] px-3 text-sm font-semibold text-white transition-colors hover:bg-[#238266]"
+                    >
+                      <Video className="h-4 w-4" />
+                      Join Interview Room
+                    </button>
+                  )}
+
+                  <Link
+                    to="/messages"
+                    search={{ applicationId: application._id }}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-md px-3.5 text-sm font-semibold transition-colors border border-border text-ink hover:border-[#2A9D7B] hover:bg-[#E9FBF2] hover:text-[#1E7058]"
                   >
                     <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                    {conversationOpen ? "Close message" : "Message"}
-                  </button>
+                    Message
+                  </Link>
                 </div>
               </div>
-
-              {conversationOpen && token ? (
-                <ApplicationConversation
-                  applicationId={application._id}
-                  counterpartName={recruiterName}
-                  currentUserId={user?._id ?? user?.id}
-                  token={token}
-                />
-              ) : null}
             </article>
           );
         })}

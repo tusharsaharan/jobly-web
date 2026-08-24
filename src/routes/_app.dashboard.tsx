@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, BrainCircuit, Code2, Database, Gamepad2, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
@@ -302,6 +302,82 @@ function CandidateOverview({
               : "Your resume unlocks role matching, score explanations, and a clearer application history."}
           </p>
         </section>
+      </section>
+
+      {/* Seeker Skill Elevation & Live Multiplayer Arenas */}
+      <section className="mt-10 border-t border-border pt-10" aria-labelledby="skill-elevation-heading">
+        <div>
+          <p className="marker-num">Skill development & live competitions</p>
+          <h2 id="skill-elevation-heading" className="font-display mt-2 text-3xl text-ink">Interview Preparation & Battle Arenas</h2>
+          <p className="mt-2 text-sm text-ink/65">
+            Strengthen your core engineering fundamentals, track Codeforces ratings, and battle peers in real-time.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
+          {/* Section 1: Study Hub & System Design Oracle */}
+          <div className="surface flex flex-col justify-between p-6 transition-all hover:border-ink/30">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-ink/70">
+                Curriculum
+              </div>
+              <h3 className="font-display mt-3 text-xl font-bold text-ink">Study Hub & DSA</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">
+                Personalized interview weakness remediation, structured DSA checklist, and Codeforces rating tracker.
+              </p>
+            </div>
+            <Link
+              to="/learn"
+              search={{ tab: "DSA" }}
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-ink/65"
+            >
+              Open Study Hub
+              <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
+            </Link>
+          </div>
+
+          {/* Section 2: Live Kahoot-Style Quiz Battles */}
+          <div className="surface flex flex-col justify-between p-6 transition-all hover:border-ink/30">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-ink/70">
+                Assessment
+              </div>
+              <h3 className="font-display mt-3 text-xl font-bold text-ink">Live Quiz Battles</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">
+                Multiplayer Kahoot-style real-time technical quiz lobbies with speed multipliers and live leaderboards.
+              </p>
+            </div>
+            <Link
+              to="/learn"
+              search={{ tab: "ARENA" }}
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-ink/65"
+            >
+              Enter Quiz Arena
+              <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
+            </Link>
+          </div>
+
+          {/* Section 3: Competitive Programming (CP) Arena */}
+          <div className="surface flex flex-col justify-between p-6 transition-all hover:border-ink/30">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-ink/70">
+                Competition
+              </div>
+              <h3 className="font-display mt-3 text-xl font-bold text-ink">CP Battle Arena</h3>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">
+                Head-to-head competitive coding battles with instant sandbox judging, test cases, and real-time scoreboards.
+              </p>
+            </div>
+            <Link
+              to="/learn"
+              search={{ tab: "ARENA" }}
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-ink hover:text-ink/65"
+            >
+              Launch CP Match
+              <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
+            </Link>
+          </div>
+        </div>
       </section>
     </main>
   );

@@ -12,13 +12,23 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FocusSessionIdRouteImport } from './routes/focus.$sessionId'
+import { Route as CompeteLobbyIdRouteImport } from './routes/compete.$lobbyId'
 import { Route as AppResumeRouteImport } from './routes/_app.resume'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppPostJobRouteImport } from './routes/_app.post-job'
+import { Route as AppMessagesRouteImport } from './routes/_app.messages'
+import { Route as AppLearnRouteImport } from './routes/_app.learn'
 import { Route as AppJobsRouteImport } from './routes/_app.jobs'
+import { Route as AppInterviewsRouteImport } from './routes/_app.interviews'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppCompeteRouteImport } from './routes/_app.compete'
 import { Route as AppApplicationsRouteImport } from './routes/_app.applications'
 import { Route as AppApplicantsRouteImport } from './routes/_app.applicants'
+import { Route as AppInterviewRoomKeyRouteImport } from './routes/_app.interview.$roomKey'
+import { Route as AppInterviewRoomKeyReplayRouteImport } from './routes/_app.interview.$roomKey.replay'
+import { Route as AppInterviewRoomKeyFeedbackRouteImport } from './routes/_app.interview.$roomKey.feedback'
+import { Route as AppInterviewRoomKeyEvaluationRouteImport } from './routes/_app.interview.$roomKey.evaluation'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -32,6 +42,16 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FocusSessionIdRoute = FocusSessionIdRouteImport.update({
+  id: '/focus/$sessionId',
+  path: '/focus/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompeteLobbyIdRoute = CompeteLobbyIdRouteImport.update({
+  id: '/compete/$lobbyId',
+  path: '/compete/$lobbyId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppResumeRoute = AppResumeRouteImport.update({
@@ -49,14 +69,34 @@ const AppPostJobRoute = AppPostJobRouteImport.update({
   path: '/post-job',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMessagesRoute = AppMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLearnRoute = AppLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppJobsRoute = AppJobsRouteImport.update({
   id: '/jobs',
   path: '/jobs',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInterviewsRoute = AppInterviewsRouteImport.update({
+  id: '/interviews',
+  path: '/interviews',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompeteRoute = AppCompeteRouteImport.update({
+  id: '/compete',
+  path: '/compete',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApplicationsRoute = AppApplicationsRouteImport.update({
@@ -69,28 +109,71 @@ const AppApplicantsRoute = AppApplicantsRouteImport.update({
   path: '/applicants',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInterviewRoomKeyRoute = AppInterviewRoomKeyRouteImport.update({
+  id: '/interview/$roomKey',
+  path: '/interview/$roomKey',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInterviewRoomKeyReplayRoute =
+  AppInterviewRoomKeyReplayRouteImport.update({
+    id: '/replay',
+    path: '/replay',
+    getParentRoute: () => AppInterviewRoomKeyRoute,
+  } as any)
+const AppInterviewRoomKeyFeedbackRoute =
+  AppInterviewRoomKeyFeedbackRouteImport.update({
+    id: '/feedback',
+    path: '/feedback',
+    getParentRoute: () => AppInterviewRoomKeyRoute,
+  } as any)
+const AppInterviewRoomKeyEvaluationRoute =
+  AppInterviewRoomKeyEvaluationRouteImport.update({
+    id: '/evaluation',
+    path: '/evaluation',
+    getParentRoute: () => AppInterviewRoomKeyRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/applicants': typeof AppApplicantsRoute
   '/applications': typeof AppApplicationsRoute
+  '/compete': typeof AppCompeteRoute
   '/dashboard': typeof AppDashboardRoute
+  '/interviews': typeof AppInterviewsRoute
   '/jobs': typeof AppJobsRoute
+  '/learn': typeof AppLearnRoute
+  '/messages': typeof AppMessagesRoute
   '/post-job': typeof AppPostJobRoute
   '/profile': typeof AppProfileRoute
   '/resume': typeof AppResumeRoute
+  '/compete/$lobbyId': typeof CompeteLobbyIdRoute
+  '/focus/$sessionId': typeof FocusSessionIdRoute
+  '/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
+  '/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
+  '/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
+  '/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/applicants': typeof AppApplicantsRoute
   '/applications': typeof AppApplicationsRoute
+  '/compete': typeof AppCompeteRoute
   '/dashboard': typeof AppDashboardRoute
+  '/interviews': typeof AppInterviewsRoute
   '/jobs': typeof AppJobsRoute
+  '/learn': typeof AppLearnRoute
+  '/messages': typeof AppMessagesRoute
   '/post-job': typeof AppPostJobRoute
   '/profile': typeof AppProfileRoute
   '/resume': typeof AppResumeRoute
+  '/compete/$lobbyId': typeof CompeteLobbyIdRoute
+  '/focus/$sessionId': typeof FocusSessionIdRoute
+  '/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
+  '/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
+  '/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
+  '/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -99,11 +182,21 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_app/applicants': typeof AppApplicantsRoute
   '/_app/applications': typeof AppApplicationsRoute
+  '/_app/compete': typeof AppCompeteRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/interviews': typeof AppInterviewsRoute
   '/_app/jobs': typeof AppJobsRoute
+  '/_app/learn': typeof AppLearnRoute
+  '/_app/messages': typeof AppMessagesRoute
   '/_app/post-job': typeof AppPostJobRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/resume': typeof AppResumeRoute
+  '/compete/$lobbyId': typeof CompeteLobbyIdRoute
+  '/focus/$sessionId': typeof FocusSessionIdRoute
+  '/_app/interview/$roomKey': typeof AppInterviewRoomKeyRouteWithChildren
+  '/_app/interview/$roomKey/evaluation': typeof AppInterviewRoomKeyEvaluationRoute
+  '/_app/interview/$roomKey/feedback': typeof AppInterviewRoomKeyFeedbackRoute
+  '/_app/interview/$roomKey/replay': typeof AppInterviewRoomKeyReplayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -112,22 +205,42 @@ export interface FileRouteTypes {
     | '/auth'
     | '/applicants'
     | '/applications'
+    | '/compete'
     | '/dashboard'
+    | '/interviews'
     | '/jobs'
+    | '/learn'
+    | '/messages'
     | '/post-job'
     | '/profile'
     | '/resume'
+    | '/compete/$lobbyId'
+    | '/focus/$sessionId'
+    | '/interview/$roomKey'
+    | '/interview/$roomKey/evaluation'
+    | '/interview/$roomKey/feedback'
+    | '/interview/$roomKey/replay'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/applicants'
     | '/applications'
+    | '/compete'
     | '/dashboard'
+    | '/interviews'
     | '/jobs'
+    | '/learn'
+    | '/messages'
     | '/post-job'
     | '/profile'
     | '/resume'
+    | '/compete/$lobbyId'
+    | '/focus/$sessionId'
+    | '/interview/$roomKey'
+    | '/interview/$roomKey/evaluation'
+    | '/interview/$roomKey/feedback'
+    | '/interview/$roomKey/replay'
   id:
     | '__root__'
     | '/'
@@ -135,17 +248,29 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_app/applicants'
     | '/_app/applications'
+    | '/_app/compete'
     | '/_app/dashboard'
+    | '/_app/interviews'
     | '/_app/jobs'
+    | '/_app/learn'
+    | '/_app/messages'
     | '/_app/post-job'
     | '/_app/profile'
     | '/_app/resume'
+    | '/compete/$lobbyId'
+    | '/focus/$sessionId'
+    | '/_app/interview/$roomKey'
+    | '/_app/interview/$roomKey/evaluation'
+    | '/_app/interview/$roomKey/feedback'
+    | '/_app/interview/$roomKey/replay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CompeteLobbyIdRoute: typeof CompeteLobbyIdRoute
+  FocusSessionIdRoute: typeof FocusSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -171,6 +296,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/focus/$sessionId': {
+      id: '/focus/$sessionId'
+      path: '/focus/$sessionId'
+      fullPath: '/focus/$sessionId'
+      preLoaderRoute: typeof FocusSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compete/$lobbyId': {
+      id: '/compete/$lobbyId'
+      path: '/compete/$lobbyId'
+      fullPath: '/compete/$lobbyId'
+      preLoaderRoute: typeof CompeteLobbyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/resume': {
       id: '/_app/resume'
       path: '/resume'
@@ -192,6 +331,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPostJobRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/messages': {
+      id: '/_app/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AppMessagesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/learn': {
+      id: '/_app/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof AppLearnRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/jobs': {
       id: '/_app/jobs'
       path: '/jobs'
@@ -199,11 +352,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJobsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/interviews': {
+      id: '/_app/interviews'
+      path: '/interviews'
+      fullPath: '/interviews'
+      preLoaderRoute: typeof AppInterviewsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/compete': {
+      id: '/_app/compete'
+      path: '/compete'
+      fullPath: '/compete'
+      preLoaderRoute: typeof AppCompeteRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/applications': {
@@ -220,27 +387,80 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppApplicantsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/interview/$roomKey': {
+      id: '/_app/interview/$roomKey'
+      path: '/interview/$roomKey'
+      fullPath: '/interview/$roomKey'
+      preLoaderRoute: typeof AppInterviewRoomKeyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/interview/$roomKey/replay': {
+      id: '/_app/interview/$roomKey/replay'
+      path: '/replay'
+      fullPath: '/interview/$roomKey/replay'
+      preLoaderRoute: typeof AppInterviewRoomKeyReplayRouteImport
+      parentRoute: typeof AppInterviewRoomKeyRoute
+    }
+    '/_app/interview/$roomKey/feedback': {
+      id: '/_app/interview/$roomKey/feedback'
+      path: '/feedback'
+      fullPath: '/interview/$roomKey/feedback'
+      preLoaderRoute: typeof AppInterviewRoomKeyFeedbackRouteImport
+      parentRoute: typeof AppInterviewRoomKeyRoute
+    }
+    '/_app/interview/$roomKey/evaluation': {
+      id: '/_app/interview/$roomKey/evaluation'
+      path: '/evaluation'
+      fullPath: '/interview/$roomKey/evaluation'
+      preLoaderRoute: typeof AppInterviewRoomKeyEvaluationRouteImport
+      parentRoute: typeof AppInterviewRoomKeyRoute
+    }
   }
 }
+
+interface AppInterviewRoomKeyRouteChildren {
+  AppInterviewRoomKeyEvaluationRoute: typeof AppInterviewRoomKeyEvaluationRoute
+  AppInterviewRoomKeyFeedbackRoute: typeof AppInterviewRoomKeyFeedbackRoute
+  AppInterviewRoomKeyReplayRoute: typeof AppInterviewRoomKeyReplayRoute
+}
+
+const AppInterviewRoomKeyRouteChildren: AppInterviewRoomKeyRouteChildren = {
+  AppInterviewRoomKeyEvaluationRoute: AppInterviewRoomKeyEvaluationRoute,
+  AppInterviewRoomKeyFeedbackRoute: AppInterviewRoomKeyFeedbackRoute,
+  AppInterviewRoomKeyReplayRoute: AppInterviewRoomKeyReplayRoute,
+}
+
+const AppInterviewRoomKeyRouteWithChildren =
+  AppInterviewRoomKeyRoute._addFileChildren(AppInterviewRoomKeyRouteChildren)
 
 interface AppRouteChildren {
   AppApplicantsRoute: typeof AppApplicantsRoute
   AppApplicationsRoute: typeof AppApplicationsRoute
+  AppCompeteRoute: typeof AppCompeteRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppInterviewsRoute: typeof AppInterviewsRoute
   AppJobsRoute: typeof AppJobsRoute
+  AppLearnRoute: typeof AppLearnRoute
+  AppMessagesRoute: typeof AppMessagesRoute
   AppPostJobRoute: typeof AppPostJobRoute
   AppProfileRoute: typeof AppProfileRoute
   AppResumeRoute: typeof AppResumeRoute
+  AppInterviewRoomKeyRoute: typeof AppInterviewRoomKeyRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppApplicantsRoute: AppApplicantsRoute,
   AppApplicationsRoute: AppApplicationsRoute,
+  AppCompeteRoute: AppCompeteRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppInterviewsRoute: AppInterviewsRoute,
   AppJobsRoute: AppJobsRoute,
+  AppLearnRoute: AppLearnRoute,
+  AppMessagesRoute: AppMessagesRoute,
   AppPostJobRoute: AppPostJobRoute,
   AppProfileRoute: AppProfileRoute,
   AppResumeRoute: AppResumeRoute,
+  AppInterviewRoomKeyRoute: AppInterviewRoomKeyRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -249,6 +469,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
+  CompeteLobbyIdRoute: CompeteLobbyIdRoute,
+  FocusSessionIdRoute: FocusSessionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

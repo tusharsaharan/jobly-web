@@ -11,7 +11,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run dev -- --port 8080",
+    command: "npx concurrently \"npm --prefix ../jobly-api run dev\" \"npm run dev -- --port 8080\"",
     url: "http://localhost:8080",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

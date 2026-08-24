@@ -15,6 +15,13 @@ import { reportError } from "../lib/error-reporting";
 import { AuthProvider } from "@/lib/auth";
 import { Cursor } from "@/components/cursor/Cursor";
 import { Footer } from "@/components/Footer";
+import { FocusModeProvider, useFocusMode } from "@/contexts/FocusModeContext";
+
+function ToasterWrapper() {
+  const { isFocusMode } = useFocusMode();
+  if (isFocusMode) return null; // Suppress notifications in focus mode
+  return <Toaster theme="dark" position="bottom-right" richColors />;
+}
 
 function NotFoundComponent() {
   return (
@@ -125,16 +132,18 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <div className="relative min-h-screen bg-cream text-ink">
-          <div className="flex min-h-screen flex-col">
-            <div className="flex-1">
-              <Outlet />
+        <FocusModeProvider>
+          <div className="relative min-h-screen bg-cream text-ink">
+            <div className="flex min-h-screen flex-col">
+              <div className="flex-1">
+                <Outlet />
+              </div>
+              {!isAuthPage && <Footer />}
             </div>
-            {!isAuthPage && <Footer />}
+            <ToasterWrapper />
+            <Cursor />
           </div>
-          <Toaster position="bottom-right" />
-          <Cursor />
-        </div>
+        </FocusModeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

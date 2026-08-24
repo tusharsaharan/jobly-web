@@ -1,8 +1,9 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { AppNav } from "@/components/Nav";
 import { useAuth } from "@/lib/auth";
+import { isImmersiveInterviewRoute } from "@/lib/interview-route";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { user, ready } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isInterviewRoom = isImmersiveInterviewRoute(pathname);
 
   useEffect(() => {
     if (ready && !user) navigate({ to: "/auth" });
@@ -18,15 +21,23 @@ function AppLayout() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-cream">
-        <div className="h-2 w-24 overflow-hidden rounded-full bg-ink/10">
-          <div className="h-full w-1/2 animate-marquee bg-lime" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
+        <div className="h-2 w-24 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-1/2 animate-marquee bg-[#2A9D7B]" />
         </div>
       </div>
     );
   }
 
   if (!user) return null;
+
+  if (isInterviewRoom) {
+    return (
+      <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-[#0A0A0A] text-white">
+        <Outlet />
+      </div>
+    );
+  }
 
   return (
     <div className="grain min-h-screen bg-cream text-ink">
