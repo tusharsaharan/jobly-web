@@ -1,164 +1,158 @@
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,50:161b22,100:1f6feb&height=220&section=header&text=Jobly%20%E2%80%A2%20Web%20Studio&fontSize=55&fontColor=58a6ff&fontAlignY=35&animation=twinkling&desc=TanStack%20Start%20%7C%20React%2019%20%7C%203D%20Visuals%20%7C%20Live%20Interview%20IDE&descSize=16&descAlignY=55&descAlign=50" width="100%" alt="Jobly Web Header" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0e1411,50:183a32,100:2a9d7b&height=220&section=header&text=Jobly%20%E2%80%A2%20Web%20Studio&fontSize=50&fontColor=7ee0c5&fontAlignY=35&animation=twinkling&desc=TanStack%20Start%20%7C%20React%2019%20%7C%20Three.js%203D%20%7C%20Framer%20Motion%20%7C%20Live%20Interview%20IDE&descSize=15&descAlignY=55&descAlign=50" width="100%" alt="Jobly Web Studio Header" />
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=JetBrains+Mono&size=20&pause=1000&color=58A6FF&center=true&vCenter=true&multiline=true&repeat=true&width=800&height=100&lines=%F0%9F%8E%AF+TanStack+Start+%2B+React+19+%2B+TypeScript+%2B+Vite;%F0%9F%92%BB+Monaco+Editor+%2B+Yjs+CRDT+%2B+Excalidraw+Whiteboard;%F0%9F%93%B9+LiveKit+WebRTC+Conferencing+%2B+Interactive+Terminal;%F0%9F%94%A5+React+Three+Fiber+3D+Visuals+%E2%80%A2+E2E+Playwright+Tested" alt="Typing SVG" />
+  <img src="https://readme-typing-svg.herokuapp.com?font=JetBrains+Mono&size=18&pause=1000&color=2A9D7B&center=true&vCenter=true&multiline=true&repeat=true&width=800&height=100&lines=TanStack+Start+%2B+React+19+%2B+TypeScript+%2B+Vite;React+Three+Fiber+3D+Visuals+%2B+Framer+Motion+Physics;Monaco+Editor+%2B+Yjs+CRDT+%2B+Excalidraw+Whiteboard;LiveKit+WebRTC+Conferencing+%2B+Sandboxed+Execution" alt="Typing Showcase" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/tusharsaharan/job-recommender-web/stargazers"><img src="https://img.shields.io/github/stars/tusharsaharan/job-recommender-web?style=for-the-badge&logo=github&color=f4dbd6&logoColor=D9E0EE&labelColor=302D41" alt="Stars" /></a>
-  <a href="https://github.com/tusharsaharan/job-recommender-web/network/members"><img src="https://img.shields.io/github/forks/tusharsaharan/job-recommender-web?style=for-the-badge&logo=git&color=a6da95&logoColor=D9E0EE&labelColor=302D41" alt="Forks" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=D9E0EE&labelColor=302D41" alt="TypeScript" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/E2E-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=D9E0EE&labelColor=302D41" alt="E2E" /></a>
+  <a href="https://github.com/tusharsaharan/jobly-web"><img src="https://img.shields.io/badge/Architecture-3D%20Spatial%20%2B%20SSR-2A9D7B?style=for-the-badge&logo=threedotjs&logoColor=white&labelColor=183A32" alt="3D Architecture" /></a>
+  <a href="https://github.com/tusharsaharan/jobly-web"><img src="https://img.shields.io/badge/Animation-Framer%20Motion%2012-1E7058?style=for-the-badge&logo=framer&logoColor=white&labelColor=183A32" alt="Framer Motion" /></a>
+  <a href="https://github.com/tusharsaharan/jobly-web"><img src="https://img.shields.io/badge/Language-TypeScript%20Strict-2A9D7B?style=for-the-badge&logo=typescript&logoColor=white&labelColor=183A32" alt="TypeScript" /></a>
+  <a href="https://github.com/tusharsaharan/jobly-web"><img src="https://img.shields.io/badge/Testing-Playwright%20E2E-183A32?style=for-the-badge&logo=playwright&logoColor=white&labelColor=0F2E22" alt="Playwright" /></a>
 </p>
 
 ---
 
-## 🧬 About
+## Technical Overview
 
-> **Jobly Web** is the modern frontend for the **Jobly Platform** — an enterprise AI recruitment, deterministic ATS scoring, and live collaborative technical interview environment. Built with **TanStack Start** and **React 19**, it integrates high-performance **3D visuals** via React Three Fiber, fluid **Framer Motion** physics, and a full-featured collaborative IDE with **Monaco Editor**, **Yjs CRDT synchronization**, **LiveKit WebRTC**, and **Excalidraw**.
-
----
-
-## ⚡ Tech Stack
-
-<p align="center">
-  <img src="https://img.shields.io/badge/TanStack_Start-FF4154?style=flat-square&logo=reactquery&logoColor=white" alt="TanStack Start" />
-  <img src="https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 19" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_v4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind" />
-  <img src="https://img.shields.io/badge/React_Three_Fiber-000000?style=flat-square&logo=threedotjs&logoColor=white" alt="R3F" />
-  <img src="https://img.shields.io/badge/Monaco_Editor-1E1E1E?style=flat-square&logo=visualstudiocode&logoColor=white" alt="Monaco" />
-  <img src="https://img.shields.io/badge/Yjs_CRDT-010101?style=flat-square&logo=yjs&logoColor=white" alt="Yjs" />
-  <img src="https://img.shields.io/badge/LiveKit_WebRTC-20C997?style=flat-square&logo=webrtc&logoColor=white" alt="LiveKit" />
-  <img src="https://img.shields.io/badge/Excalidraw-6965DB?style=flat-square&logo=excalidraw&logoColor=white" alt="Excalidraw" />
-  <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=flat-square&logo=framer&logoColor=white" alt="Framer Motion" />
-</p>
-
----
-
-## 🏗️ Architecture & Component Flow
+**Jobly Web** is an enterprise frontend engineering platform built with **TanStack Start**, **React 19**, and **TypeScript**. It features a real-time collaborative technical interview workspace, deterministic ATS evaluation radars, a Three.js 3D spatial visualization engine, and a LinkedIn-grade encrypted messaging hub.
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                             BROWSER APPLICATION                             │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-            ┌──────────────────────────┼──────────────────────────┐
-            ▼                          ▼                          ▼
-   [TanStack Router (SSR)]   [React Three Fiber (3D)]   [Framer Motion Engine]
-            │                          │                          │
-            ▼                          ▼                          ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              APPLICATION VIEWS                              │
-│  - Candidate Portal: /resume (PDF Upload & Radar), /jobs (ATS Matching)     │
-│  - Recruiter Portal: /post-job (AI Gen), /applicants (Kanban & Scoring)    │
-│  - Live Studio:     /interview/:roomKey (Monaco + LiveKit + Whiteboard)     │
-│  - Replay & Review:  /interview/:roomKey/replay & /feedback                  │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-            ┌──────────────────────────┼──────────────────────────┐
-            ▼                          ▼                          ▼
-   [TanStack Query Cache]     [Yjs CRDT WebSocket]      [LiveKit WebRTC SFU]
-            │                          │                          │
-            └──────────────────────────┼──────────────────────────┘
-                                       ▼
-                         [Jobly API Backend Server]
++-------------------------------------------------------------------------------+
+|                               JOBLY WEB STUDIO                                |
++-------------------------------------------------------------------------------+
+|  [3D Spatial Viewport]        [Framer Motion Engine]    [TanStack Start SSR]  |
+|  - Three.js / R3F Canvas     - Layout Spring Physics   - Full-Route Preload   |
+|  - WebGL Spatial Mesh        - Shared Element LayoutId - Type-Safe Navigation |
++-------------------------------------------------------------------------------+
+|  [Collaborative IDE]          [Enterprise Messenger]    [AI Learning Lab]     |
+|  - Monaco + Yjs CRDT         - Real-Time Socket.IO     - pgvector RAG Tutor   |
+|  - Sandboxed PTY Stream      - Smart Reply Clustering  - System Design Canvas |
++-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## ✨ Features & Route Map
+## 3D Spatial Visuals & Animation Architecture
 
-<table>
-  <tr>
-    <td width="50%">
-      <b>🤖 AI Resume & ATS Scanner (<code>/resume</code>)</b><br />
-      Drag-and-drop PDF upload with instant parsing into structured skills, experience bullets, and an interactive 7-category ATS health radar.
-    </td>
-    <td width="50%">
-      <b>💼 Job Marketplace & Match Feed (<code>/jobs</code>)</b><br />
-      Semantic job search with real-time ATS match scoring badges, salary filters, and instant application submission.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <b>💻 Live Collaborative Interview Studio (<code>/interview/:roomKey</code>)</b><br />
-      Multi-pane interface with Monaco Editor (Yjs sync), LiveKit WebRTC video grid, isolated code execution runner, and Excalidraw whiteboard.
-    </td>
-    <td width="50%">
-      <b>📊 Candidate Pipeline & Funnels (<code>/applicants</code>)</b><br />
-      Recruiter candidate management with ATS score sorting, stage transitions, and instant technical interview scheduling.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <b>⏱️ Time-Travel Session Replay (<code>/interview/:roomKey/replay</code>)</b><br />
-      Step-by-step playback scrubber replaying candidate keystrokes, terminal outputs, and transcript milestones.
-    </td>
-    <td width="50%">
-      <b>📋 Multi-Criteria Scorecard (<code>/interview/:roomKey/feedback</code>)</b><br />
-      Bar Raiser AI rubric evaluation with category ratings, strength summaries, and final hiring recommendations.
-    </td>
-  </tr>
-</table>
+Jobly Web combines **Three.js** / **React Three Fiber** and **Framer Motion** for state-of-the-art visual design:
+
+### 1. Three.js Spatial Rendering Engine
+* **React Three Fiber (R3F) & Drei**: Declarative 3D scene graphs with hardware-accelerated WebGL shaders.
+* **Procedural Interactive Canvases**: Dynamic perspective particle systems, 3D talent radar rings, and ambient geometric backdrops.
+* **Memory & Frame-Rate Optimization**: Offscreen canvas management, dynamic Level of Detail (LOD), and requestAnimationFrame throttling during intensive coding sessions.
+
+### 2. Framer Motion Fluid Animation Engine
+* **Shared Element Transitions**: `layoutId` physics for instant, seamless state changes across tabs, filters, and modal transitions.
+* **Spring-Physics Feed Entrance**: Staggered `AnimatePresence` animations for incoming chat messages, live code checkpoint diffs, and radar metrics.
+* **Micro-Interaction System**: Haptic-style scale damping (`whileHover`, `whileTap`) on all controls, buttons, and smart reply suggestions.
 
 ---
 
-## 🚀 Quick Start
+## Core System Modules
 
-```bash
-# Install dependencies
-npm install
+### Collaborative Technical Interview OS (`/interview/:roomKey`)
+* **Monaco IDE + Yjs CRDT**: Sub-millisecond peer-to-peer code synchronization with remote cursor tracking, syntax highlighting, and multi-file project trees.
+* **LiveKit WebRTC Conferencing**: Low-latency video, audio, screen sharing, and speaking level detection.
+* **Excalidraw Whiteboard**: Synchronized vector whiteboard for high-level system architecture sketches.
+* **Containerized Execution Panel**: Multi-language code execution with real-time stdout/stderr streaming.
 
-# Start local development server
-npm run dev
+### Deterministic Replay Engine (`/interview/:roomKey/replay`)
+* **Line-Level Diff Morphing**: Computes deterministic line diffs between snapshot checkpoints and plays them back sequentially without per-character polling artifacts.
+* **Timeline Scrubber**: Interactive timeline supporting instant seek, speed control (0.5x to 4x), and checkpoint milestones.
 
-# Run Vitest unit tests
-npm run test:unit
+### Real-Time Encrypted Messenger (`/messages`)
+* **Full-Viewport Workspace**: Dedicated workspace with page-scroll locking and independent stream scrolling.
+* **Contextual Smart Reply Engine**: LinkedIn-style candidate and recruiter predictive responses.
+* **Live Socket.IO Sync**: Real-time message reception, typing indicators, and read receipts.
 
-# Run Playwright end-to-end test suite
-npm run test:e2e
-
-# Build production bundle
-npm run build
-```
+### ATS Ingestion & Talent Portal (`/resume`, `/applications`)
+* **Deterministic Match Scoring**: Percentage-based ATS score rings with continuous green color interpolation.
+* **Category Health Breakdown**: Radar diagnostics across skills, experience, education, presentation, and keyword density.
 
 ---
 
-## 📂 Directory Layout
+## Technology Stack
+
+| Domain | Technology | Implementation |
+| :--- | :--- | :--- |
+| **Framework** | TanStack Start + React 19 | Full-stack type-safe SSR and file-based routing |
+| **3D Graphics** | Three.js + React Three Fiber + Drei | WebGL spatial shaders and procedural scene graphs |
+| **Animation** | Framer Motion 12 | Spring physics, layout animations, and gesture tracking |
+| **Code Workspace**| Monaco Editor + Yjs CRDT | Real-time multi-file collaborative IDE |
+| **Whiteboard** | Excalidraw | Vector architecture canvas with collaborative syncing |
+| **WebRTC Media** | LiveKit Components React | Ultra low-latency multi-party video conferencing |
+| **Styling** | Tailwind CSS v4 + Vanilla Tokens | Jobly signature white-to-green palette |
+| **State & Cache** | TanStack Query v5 + Context | Optimistic mutations and server-state caching |
+| **Testing** | Playwright E2E | Cross-browser automated regression suites |
+
+---
+
+## Project Structure
 
 ```
 jobly-web/
-├── src/
-│   ├── routes/              # TanStack Start file-based routing
-│   │   ├── index.tsx        # Landing page with 3D hero canvas
-│   │   ├── auth.tsx         # Unified authentication portal
-│   │   ├── _app.tsx         # Authenticated app shell (Nav & Sidebar)
-│   │   ├── _app.dashboard.tsx
-│   │   ├── _app.resume.tsx
-│   │   ├── _app.jobs.tsx
-│   │   ├── _app.post-job.tsx
-│   │   ├── _app.applicants.tsx
-│   │   ├── _app.applications.tsx
-│   │   ├── _app.interviews.tsx
-│   │   └── _app.interview.$roomKey.tsx
-│   ├── components/
-│   │   ├── interview/       # Monaco IDE, LiveKit Media, Terminal, Whiteboard, AI Copilot
-│   │   ├── dashboard/       # Metric cards, ATS score rings, analytics charts
-│   │   ├── fx/              # 3D canvas, particles, Hero orb
-│   │   └── ui/              # Accessible shadcn/ui primitives
-│   ├── hooks/               # Custom hooks for Yjs, LiveKit, Terminal, Auth
-│   ├── lib/                 # API client, contracts & constants
-│   └── styles.css           # Tailwind CSS v4 & custom design tokens
-├── e2e/                     # Playwright E2E browser tests
-├── tests/                   # Vitest unit test suite
-└── package.json
+|-- src/
+|   |-- components/
+|   |   |-- compete/            # Competitive arena and quiz interfaces
+|   |   |-- interview/
+|   |   |   |-- ai/             # AI interviewer telemetry and Signal HUD
+|   |   |   |-- evaluation/     # Bar Raiser scorecard forms
+|   |   |   |-- ide/            # Monaco editor, file explorer, execution panel
+|   |   |   |-- media/          # LiveKit WebRTC video grid and prejoin lobby
+|   |   |   |-- terminal/       # Sandboxed terminal streaming interface
+|   |   |   |-- timeline/       # Unified chronological interview timeline
+|   |   |   +-- whiteboard/     # Excalidraw vector collaboration canvas
+|   |   |-- study/              # RAG tutor, LLD/HLD sheets, Codeforces widgets
+|   |   +-- ui/                 # ATS score rings, badges, modal dialogs
+|   |-- routes/
+|   |   |-- _app.applications.tsx   # Candidate application pipeline
+|   |   |-- _app.interview.$roomKey.tsx # Main Technical Interview Room
+|   |   |-- _app.interview.$roomKey.replay.tsx # Session Replay Engine
+|   |   |-- _app.messages.tsx       # Full-screen Real-Time Messenger
+|   |   +-- _app.learn.tsx          # AI Study Hub and Problem Sets
+|   +-- styles.css                  # Custom design system tokens
++-- package.json
 ```
 
 ---
 
-## 📜 License
+## Getting Started
 
-Distributed under the **MIT License**. Built with ❤️ by **[Tushar Saharan](https://github.com/tusharsaharan)**.
+### Prerequisites
+* Node.js `>= 20.0.0`
+* npm `>= 10.0.0`
+
+### Installation & Development
+
+```bash
+# Clone repository
+git clone https://github.com/tusharsaharan/jobly-web.git
+cd jobly-web
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run production build
+npm run build
+
+# Run Playwright E2E test suites
+npx playwright test
+```
+
+---
+
+## Color System & Guidelines
+
+Jobly Web enforces a cohesive white-to-green design spectrum:
+
+* **Backgrounds**: `#FFFFFF` (Pure White), `#FAFCFB` (Mint Mist), `#0A0A0A` (Dark Studio)
+* **Light Accents**: `#E9FBF2` (Mint Soft), `#8DDCBE` (Sage Tint)
+* **Primary Green**: `#2A9D7B` (Jobly Green), `#238266` (Deep Emerald)
+* **Dark Surfaces**: `#1E7058` (Forest Deep), `#183A32` (Pine Base)
+* **Typography**: `#2F302D` (Ink Neutral), `#71717A` (Muted Gray), `#FFFFFF` (High Contrast White)
