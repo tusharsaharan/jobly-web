@@ -4,6 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
+import { CandidatePoolMeter } from "@/components/jobs/CandidatePoolMeter";
+import { RequirementFlags } from "@/components/jobs/RequirementFlags";
+import { HealthScoreGauge } from "@/components/jobs/HealthScoreGauge";
+import { PredictiveInsightsPanel } from "@/components/jobs/PredictiveInsightsPanel";
+import { DeiRewriteModal } from "@/components/jobs/DeiRewriteModal";
+import { FieldCoachingTooltip } from "@/components/jobs/FieldCoachingTooltip";
+import { VoiceToJD } from "@/components/jobs/VoiceToJD";
+import { MarketComparePanel } from "@/components/jobs/MarketComparePanel";
+import { RequirementBlocksDrawer } from "@/components/jobs/RequirementBlocksDrawer";
+import { CollaborativeJDEditor } from "@/components/jobs/CollaborativeJDEditor";
+import { CandidateQuestionsPreview } from "@/components/jobs/CandidateQuestionsPreview";
+import { Layers } from "lucide-react";
 
 export const Route = createFileRoute("/_app/post-job")({
   head: () => ({
@@ -22,6 +34,14 @@ type AtsRequirementsForm = {
   requiredDegree: string;
 };
 
+type SalaryRangeForm = {
+  min: string;
+  max: string;
+  currency: string;
+  period: "annual" | "monthly" | "hourly";
+  visible: boolean;
+};
+
 type JobForm = {
   title: string;
   company: string;
@@ -30,6 +50,7 @@ type JobForm = {
   description: string;
   skills: string;
   atsRequirements: AtsRequirementsForm;
+  salaryRange: SalaryRangeForm;
 };
 
 type FormErrors = Partial<Record<"title" | "company" | "location" | "type" | "description" | "skills" | "minCgpa" | "minExperienceYears" | "requiredDegree", string>>;
@@ -52,6 +73,13 @@ const emptyForm: JobForm = {
     targetCollegeTier: "any",
     minExperienceYears: "",
     requiredDegree: "",
+  },
+  salaryRange: {
+    min: "",
+    max: "",
+    currency: "USD",
+    period: "annual",
+    visible: true,
   },
 };
 
@@ -76,6 +104,13 @@ function toPayload(form: JobForm) {
       targetCollegeTier: form.atsRequirements.targetCollegeTier,
       minExperienceYears: optionalNumber(form.atsRequirements.minExperienceYears),
       requiredDegree: form.atsRequirements.requiredDegree,
+    },
+    salaryRange: {
+      min: optionalNumber(form.salaryRange.min),
+      max: optionalNumber(form.salaryRange.max),
+      currency: form.salaryRange.currency || "USD",
+      period: form.salaryRange.period || "annual",
+      visible: form.salaryRange.visible,
     },
   };
 }
@@ -114,8 +149,11 @@ function validateForm(form: JobForm): FormErrors {
 
 function asForm(job: any): JobForm {
   const requirements = job?.atsRequirements ?? {};
+  const salary = job?.salaryRange ?? {};
   const cgpa = Number(requirements.minCgpa);
   const experience = Number(requirements.minExperienceYears);
+  const salaryMin = Number(salary.min);
+  const salaryMax = Number(salary.max);
   return {
     title: typeof job?.title === "string" ? job.title : "",
     company: typeof job?.company === "string" ? job.company : "",
@@ -129,6 +167,13 @@ function asForm(job: any): JobForm {
       minExperienceYears: Number.isFinite(experience) && experience > 0 ? String(experience) : "",
       requiredDegree: typeof requirements.requiredDegree === "string" ? requirements.requiredDegree : "",
     },
+    salaryRange: {
+      min: Number.isFinite(salaryMin) && salaryMin > 0 ? String(salaryMin) : "",
+      max: Number.isFinite(salaryMax) && salaryMax > 0 ? String(salaryMax) : "",
+      currency: typeof salary.currency === "string" ? salary.currency : "USD",
+      period: ["annual", "monthly", "hourly"].includes(salary.period) ? salary.period : "annual",
+      visible: typeof salary.visible === "boolean" ? salary.visible : true,
+    },
   };
 }
 
@@ -141,6 +186,9 @@ function PostJobPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [isDeiModalOpen, setIsDeiModalOpen] = useState(false);
+  const [isBlocksDrawerOpen, setIsBlocksDrawerOpen] = useState(false);
+  const [selectedTextForBlock, setSelectedTextForBlock] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -222,14 +270,22 @@ function PostJobPage() {
         </div>
 
         <section aria-label="Recruiter assistant" className="surface p-5 sm:p-6">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-mint text-ink">
-              <Sparkles className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="font-semibold text-ink">Recruiter assistant</p>
-              <p className="mt-1 text-sm text-ink/60">Describe a role or ask for a change to the current draft.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-mint text-ink">
+                <Sparkles className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">Recruiter assistant</p>
+                <p className="mt-1 text-sm text-ink/60">Describe a role or ask for a change to the current draft.</p>
+              </div>
             </div>
+            <VoiceToJD 
+              onTranscriptComplete={(text) => {
+                setChatInput((prev) => (prev ? `${prev} ${text}` : text));
+              }}
+              disabled={disabled}
+            />
           </div>
 
           <div aria-live="polite" className="mt-5 max-h-64 min-h-28 space-y-3 overflow-y-auto rounded-md border border-border bg-panel/40 p-4">
@@ -275,18 +331,51 @@ function PostJobPage() {
         </section>
       </section>
 
-      <div className="mt-10 flex items-center justify-between gap-4">
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="marker-num">Role details</p>
-          <p className="mt-2 text-sm text-ink/60">Every field stays editable after the assistant updates the draft.</p>
+          <p className="marker-num">Live Metrics &amp; Market Alignment</p>
+          <p className="mt-1 text-xs text-ink/60">Real-time candidate reach, predictive hiring timelines, and quality score.</p>
         </div>
+        <MarketComparePanel payload={toPayload(form)} />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <CandidatePoolMeter 
+          skills={normalizeSkills(form.skills)}
+          minCgpa={optionalNumber(form.atsRequirements.minCgpa)}
+          targetCollegeTier={form.atsRequirements.targetCollegeTier}
+        />
+        <HealthScoreGauge payload={toPayload(form)} />
+        <PredictiveInsightsPanel payload={toPayload(form)} />
       </div>
 
       <form onSubmit={submit} noValidate className="mt-10 space-y-6">
-        <Field label="Title" value={form.title} onChange={(value) => updateForm({ ...form, title: value }, "title")} placeholder="Senior Product Engineer" disabled={disabled} required error={errors.title} maxLength={160} />
+        <RequirementFlags payload={toPayload(form)} />
+        
+        <Field 
+          label="Title" 
+          value={form.title} 
+          onChange={(value) => updateForm({ ...form, title: value }, "title")} 
+          placeholder="Senior Product Engineer" 
+          disabled={disabled} 
+          required 
+          error={errors.title} 
+          maxLength={160} 
+          coachingField="title"
+        />
         <Field label="Company (optional)" value={form.company} onChange={(value) => updateForm({ ...form, company: value }, "company")} placeholder="Your organization" disabled={disabled} error={errors.company} maxLength={160} />
+        
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Location (optional)" value={form.location} onChange={(value) => updateForm({ ...form, location: value }, "location")} placeholder="Remote, hybrid, or city" disabled={disabled} error={errors.location} maxLength={160} />
+          <Field 
+            label="Location (optional)" 
+            value={form.location} 
+            onChange={(value) => updateForm({ ...form, location: value }, "location")} 
+            placeholder="Remote, hybrid, or city" 
+            disabled={disabled} 
+            error={errors.location} 
+            maxLength={160} 
+            coachingField="location"
+          />
           <label className="block">
             <span className="marker-num">Employment type (optional)</span>
             <select value={form.type} onChange={(event) => updateForm({ ...form, type: event.target.value }, "type")} disabled={disabled} aria-invalid={Boolean(errors.type)} className="control-surface mt-2 w-full px-4 py-3.5 text-base focus:border-ink focus:outline-none disabled:opacity-50">
@@ -299,22 +388,130 @@ function PostJobPage() {
             {errors.type && <p className="mt-2 text-sm text-destructive" role="alert">{errors.type}</p>}
           </label>
         </div>
-        <label className="block">
-          <span className="marker-num">Description <span className="text-destructive">*</span></span>
-          <textarea
+
+        {/* Salary Range Section */}
+        <section aria-labelledby="salary-heading" className="rounded-xl border border-border/70 bg-panel/30 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center">
+              <span className="font-semibold text-ink text-sm">Compensation &amp; Salary Range</span>
+              <FieldCoachingTooltip fieldKey="salary" />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-ink/70">
+              <input
+                type="checkbox"
+                checked={form.salaryRange.visible}
+                onChange={(e) => updateForm({ ...form, salaryRange: { ...form.salaryRange, visible: e.target.checked } })}
+                className="rounded border-border accent-emerald-500"
+              />
+              <span>Show in public listing</span>
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-4">
+            <div className="sm:col-span-1">
+              <span className="marker-num">Currency</span>
+              <select
+                value={form.salaryRange.currency}
+                onChange={(e) => updateForm({ ...form, salaryRange: { ...form.salaryRange, currency: e.target.value } })}
+                disabled={disabled}
+                className="control-surface mt-2 w-full px-3 py-3 text-sm focus:border-ink focus:outline-none"
+              >
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="CAD">CAD ($)</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-1">
+              <NumberField
+                label="Min Salary"
+                value={form.salaryRange.min}
+                onChange={(value) => updateForm({ ...form, salaryRange: { ...form.salaryRange, min: value } })}
+                placeholder="e.g. 80000"
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="sm:col-span-1">
+              <NumberField
+                label="Max Salary"
+                value={form.salaryRange.max}
+                onChange={(value) => updateForm({ ...form, salaryRange: { ...form.salaryRange, max: value } })}
+                placeholder="e.g. 120000"
+                disabled={disabled}
+              />
+            </div>
+
+            <div className="sm:col-span-1">
+              <span className="marker-num">Period</span>
+              <select
+                value={form.salaryRange.period}
+                onChange={(e) => updateForm({ ...form, salaryRange: { ...form.salaryRange, period: e.target.value as any } })}
+                disabled={disabled}
+                className="control-surface mt-2 w-full px-3 py-3 text-sm focus:border-ink focus:outline-none"
+              >
+                <option value="annual">Annual</option>
+                <option value="monthly">Monthly</option>
+                <option value="hourly">Hourly</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Description with DEI Rewrite & Requirement Blocks Actions */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="marker-num">Description <span className="text-destructive">*</span></span>
+            <div className="flex flex-wrap items-center gap-2">
+              <CandidateQuestionsPreview
+                jobPayload={toPayload(form)}
+                onAppendFaq={(faqText) => {
+                  const currentDesc = form.description ? `${form.description}\n\n${faqText}` : faqText;
+                  updateForm({ ...form, description: currentDesc }, "description");
+                }}
+                disabled={disabled}
+              />
+              <button
+                type="button"
+                onClick={() => setIsBlocksDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-panel px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-panel/80 cursor-pointer"
+              >
+                <Layers className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Requirement Blocks</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeiModalOpen(true)}
+                disabled={disabled || form.description.trim().length < 20}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Make DEI-Friendly</span>
+              </button>
+            </div>
+          </div>
+
+          <CollaborativeJDEditor
             value={form.description}
-            onChange={(event) => updateForm({ ...form, description: event.target.value }, "description")}
-            rows={7}
-            maxLength={8000}
+            onChange={(val) => updateForm({ ...form, description: val }, "description")}
             disabled={disabled}
-            aria-invalid={Boolean(errors.description)}
-            aria-describedby={errors.description ? "description-error" : undefined}
-            className="control-surface mt-2 w-full resize-y px-4 py-3 text-base placeholder:text-ink/30 focus:border-ink focus:outline-none disabled:opacity-50"
-            placeholder="Describe the work, outcomes, and the person you need."
           />
-          {errors.description && <p id="description-error" className="mt-2 text-sm text-destructive" role="alert">{errors.description}</p>}
-        </label>
-        <Field label="Skills (optional)" value={form.skills} onChange={(value) => updateForm({ ...form, skills: value }, "skills")} placeholder="React, TypeScript, Postgres" disabled={disabled} error={errors.skills} maxLength={2400} multiline />
+          {errors.description && <p id="description-error" className="mt-1 text-sm text-destructive" role="alert">{errors.description}</p>}
+        </div>
+
+        <Field 
+          label="Skills (optional)" 
+          value={form.skills} 
+          onChange={(value) => updateForm({ ...form, skills: value }, "skills")} 
+          placeholder="React, TypeScript, Postgres" 
+          disabled={disabled} 
+          error={errors.skills} 
+          maxLength={2400} 
+          multiline 
+          coachingField="skills"
+        />
 
         <section aria-labelledby="eligibility-heading" className="surface-subtle mt-10 p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -328,7 +525,15 @@ function PostJobPage() {
             </button>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <NumberField label="Minimum CGPA" value={form.atsRequirements.minCgpa} onChange={(value) => updateForm({ ...form, atsRequirements: { ...form.atsRequirements, minCgpa: value } }, "minCgpa")} placeholder="e.g. 8.5" disabled={disabled} error={errors.minCgpa} />
+            <NumberField 
+              label="Minimum CGPA" 
+              value={form.atsRequirements.minCgpa} 
+              onChange={(value) => updateForm({ ...form, atsRequirements: { ...form.atsRequirements, minCgpa: value } }, "minCgpa")} 
+              placeholder="e.g. 8.5" 
+              disabled={disabled} 
+              error={errors.minCgpa} 
+              coachingField="cgpa"
+            />
             <label className="block">
               <span className="marker-num">College tier</span>
               <select value={form.atsRequirements.targetCollegeTier} onChange={(event) => updateForm({ ...form, atsRequirements: { ...form.atsRequirements, targetCollegeTier: event.target.value } })} disabled={disabled} className="control-surface mt-2 w-full px-4 py-3.5 text-base focus:border-ink focus:outline-none disabled:opacity-50">
@@ -352,15 +557,45 @@ function PostJobPage() {
           {loading ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Publishing</> : "Publish role"}
         </button>
       </form>
+
+      {/* DEI Rewrite Modal */}
+      <DeiRewriteModal
+        isOpen={isDeiModalOpen}
+        onClose={() => setIsDeiModalOpen(false)}
+        title={form.title}
+        description={form.description}
+        onApply={(newDescription) => {
+          updateForm({ ...form, description: newDescription }, "description");
+          toast.success("Applied DEI-friendly rewrite to description!");
+        }}
+      />
+      {/* Requirement Blocks Drawer */}
+      <RequirementBlocksDrawer
+        isOpen={isBlocksDrawerOpen}
+        onClose={() => setIsBlocksDrawerOpen(false)}
+        selectedText={selectedTextForBlock}
+        onInsertContent={(content) => {
+          const currentDesc = form.description ? `${form.description}\n\n${content}` : content;
+          updateForm({ ...form, description: currentDesc }, "description");
+        }}
+        onAppendSkills={(newSkills) => {
+          const currentList = normalizeSkills(form.skills);
+          const merged = Array.from(new Set([...currentList, ...newSkills]));
+          updateForm({ ...form, skills: merged.join(", ") }, "skills");
+        }}
+      />
     </main>
   );
 }
 
-function Field({ label, value, onChange, placeholder, required, disabled, error, maxLength, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean; disabled?: boolean; error?: string; maxLength?: number; multiline?: boolean }) {
+function Field({ label, value, onChange, placeholder, required, disabled, error, maxLength, multiline = false, coachingField }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; required?: boolean; disabled?: boolean; error?: string; maxLength?: number; multiline?: boolean; coachingField?: "title" | "salary" | "location" | "skills" | "cgpa" }) {
   const controlClass = "control-surface mt-2 w-full px-4 py-3.5 text-base placeholder:text-ink/30 focus:border-ink focus:outline-none disabled:opacity-50";
   return (
     <label className="block">
-      <span className="marker-num">{label} {required && <span className="text-destructive">*</span>}</span>
+      <span className="marker-num flex items-center">
+        <span>{label} {required && <span className="text-destructive">*</span>}</span>
+        {coachingField && <FieldCoachingTooltip fieldKey={coachingField} />}
+      </span>
       {multiline ? (
         <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} maxLength={maxLength} rows={3} disabled={disabled} aria-invalid={Boolean(error)} className={`${controlClass} resize-y`} />
       ) : (
@@ -371,10 +606,13 @@ function Field({ label, value, onChange, placeholder, required, disabled, error,
   );
 }
 
-function NumberField({ label, value, onChange, placeholder, disabled, error }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; disabled?: boolean; error?: string }) {
+function NumberField({ label, value, onChange, placeholder, disabled, error, coachingField }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; disabled?: boolean; error?: string; coachingField?: "title" | "salary" | "location" | "skills" | "cgpa" }) {
   return (
     <label className="block">
-      <span className="marker-num">{label}</span>
+      <span className="marker-num flex items-center">
+        <span>{label}</span>
+        {coachingField && <FieldCoachingTooltip fieldKey={coachingField} />}
+      </span>
       <input type="text" inputMode="decimal" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} disabled={disabled} aria-invalid={Boolean(error)} className="control-surface mt-2 w-full px-4 py-3.5 text-base placeholder:text-ink/30 focus:border-ink focus:outline-none disabled:opacity-50" />
       {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
     </label>

@@ -40,19 +40,19 @@ export function UnifiedTimelineView({ events, onSelectEvent }: UnifiedTimelineVi
   const getPipelineBadge = (pipeline: string) => {
     switch (pipeline) {
       case "CODING":
-        return <span className="flex items-center gap-1 text-emerald-400"><Code2 className="h-3 w-3" /> IDE</span>;
+        return <span className="flex items-center gap-1 text-emerald-400 font-semibold"><Code2 className="h-3 w-3" /> IDE</span>;
       case "WHITEBOARD":
-        return <span className="flex items-center gap-1 text-cyan-400"><Layers className="h-3 w-3" /> Board</span>;
+        return <span className="flex items-center gap-1 text-cyan-400 font-semibold"><Layers className="h-3 w-3" /> Board</span>;
       case "COMMUNICATION":
-        return <span className="flex items-center gap-1 text-blue-400"><MessageSquare className="h-3 w-3" /> Speech</span>;
+        return <span className="flex items-center gap-1 text-blue-400 font-semibold"><MessageSquare className="h-3 w-3" /> Speech</span>;
       case "STAGE":
-        return <span className="flex items-center gap-1 text-amber-400"><UserCheck className="h-3 w-3" /> Stage</span>;
+        return <span className="flex items-center gap-1 text-amber-400 font-semibold"><UserCheck className="h-3 w-3" /> Stage</span>;
       case "AI":
-        return <span className="flex items-center gap-1 text-purple-400"><Sparkles className="h-3 w-3" /> AI</span>;
+        return <span className="flex items-center gap-1 text-purple-400 font-semibold"><Sparkles className="h-3 w-3" /> AI</span>;
       case "INTEGRITY":
-        return <span className="flex items-center gap-1 text-rose-400"><ShieldAlert className="h-3 w-3" /> Signal</span>;
+        return <span className="flex items-center gap-1 text-rose-400 font-semibold"><ShieldAlert className="h-3 w-3" /> Signal</span>;
       default:
-        return <span className="flex items-center gap-1 text-gray-400"><Clock className="h-3 w-3" /> Event</span>;
+        return <span className="flex items-center gap-1 text-gray-400 font-semibold"><Clock className="h-3 w-3" /> Event</span>;
     }
   };
 
@@ -60,17 +60,23 @@ export function UnifiedTimelineView({ events, onSelectEvent }: UnifiedTimelineVi
     if (ev.eventType === "code.execution") {
       return `Code Run (${ev.payload?.language || "Solution"})`;
     }
+    if (ev.eventType === "code.checkpoint" || ev.eventType === "checkpoint.saved") {
+      return ev.payload?.sequenceNumber ? `Checkpoint #${ev.payload.sequenceNumber}` : "Code Checkpoint";
+    }
+    if (ev.eventType === "checkpoint.restored") {
+      return ev.payload?.sequenceNumber ? `Restored to Checkpoint #${ev.payload.sequenceNumber}` : "Checkpoint Restored";
+    }
     if (ev.eventType === "whiteboard.snapshot") {
       return "Whiteboard Snapshot";
     }
     if (ev.eventType === "stage.transition" || ev.eventType === "stage_change") {
-      return `Stage: ${(ev.payload?.stage || "").replace("_", " ")}`;
+      return `Stage: ${(ev.payload?.stage || "").replace(/_/g, " ")}`;
+    }
+    if (ev.eventType === "session.status_change" || ev.eventType === "session.status") {
+      return `Session: ${(ev.payload?.status || "").toUpperCase()}`;
     }
     if (ev.eventType === "transcript.segment") {
       return "Transcript";
-    }
-    if (ev.eventType === "checkpoint.saved") {
-      return "Workspace Checkpoint";
     }
     return ev.eventType.replace(".", " ").toUpperCase();
   };

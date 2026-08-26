@@ -70,6 +70,19 @@ interface ReplayFrame {
  *  Generates intermediate frames that progressively apply the diff.
  * ═══════════════════════════════════════════════════════════════════════════ */
 
+function getPrimarySnapshotFile(cp: Checkpoint): CheckpointFile | null {
+  if (!cp.filesSnapshot || cp.filesSnapshot.length === 0) return null;
+  const solWithContent = cp.filesSnapshot.find(
+    (f) => f.path?.includes("solution") && f.content && f.content.trim().length > 0
+  );
+  if (solWithContent) return solWithContent;
+  const anyWithContent = cp.filesSnapshot.find((f) => f.content && f.content.trim().length > 0);
+  if (anyWithContent) return anyWithContent;
+  const sol = cp.filesSnapshot.find((f) => f.path?.includes("solution"));
+  if (sol) return sol;
+  return cp.filesSnapshot[0];
+}
+
 function computeReplayFrames(checkpoints: Checkpoint[]): ReplayFrame[] {
   if (checkpoints.length === 0) return [];
 
@@ -78,11 +91,11 @@ function computeReplayFrames(checkpoints: Checkpoint[]): ReplayFrame[] {
 
   for (let i = 0; i < totalCheckpoints; i++) {
     const cp = checkpoints[i];
-    const file = cp.filesSnapshot?.[0];
+    const file = getPrimarySnapshotFile(cp);
     const content = file?.content || "";
     const currentLines = content.split("\n");
     const language = file?.language || "python";
-    const filePath = file?.path || "/solution.py";
+    const filePath = file?.path || "/src/solution.py";
 
     // Time proportion: each checkpoint gets an equal slice of 0–1
     const tStart = i / totalCheckpoints;
@@ -109,7 +122,7 @@ function computeReplayFrames(checkpoints: Checkpoint[]): ReplayFrame[] {
     } else {
       // For subsequent checkpoints, compute diff from previous
       const prevCp = checkpoints[i - 1];
-      const prevFile = prevCp.filesSnapshot?.[0];
+      const prevFile = getPrimarySnapshotFile(prevCp);
       const prevContent = prevFile?.content || "";
       const prevLines = prevContent.split("\n");
 

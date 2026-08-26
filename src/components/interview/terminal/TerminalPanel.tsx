@@ -72,10 +72,26 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
       }
     };
 
+    const handleRemoteInput = ({ terminalId: incomingTermId, data }: { terminalId: string; data: string; senderId?: string }) => {
+      if (!terminalIdRef.current || incomingTermId === terminalIdRef.current) {
+        setLines((prev) => [
+          ...prev,
+          { 
+            id: Math.random().toString(36).substring(7), 
+            type: "input", 
+            text: data.trim(),
+            prompt: "⋊> ~/interview on main ❯"
+          },
+        ]);
+      }
+    };
+
     socket.on("terminal_output", handleOutput);
+    socket.on("terminal_input_received", handleRemoteInput);
 
     return () => {
       socket.off("terminal_output", handleOutput);
+      socket.off("terminal_input_received", handleRemoteInput);
     };
   }, [sessionId, token]);
 

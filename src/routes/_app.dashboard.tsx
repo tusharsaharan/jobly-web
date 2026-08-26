@@ -6,6 +6,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Metric } from "@/components/dashboard/Metric";
 import { PipelineBar, PipelineDatum } from "@/components/dashboard/PipelineBar";
 import { EmptyGraphic, StatusLabel } from "@/components/dashboard/StatusLabel";
+import { RecruiterLeaderboard } from "@/components/dashboard/RecruiterLeaderboard";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
 
@@ -229,6 +230,11 @@ function RecruiterOverview({ name, workspace }: { name?: string; workspace: Work
             </div>
           )) : <p className="py-8 text-sm leading-6 text-ink/60">No candidate activity yet. Publish a role when you are ready to start the pipeline.</p>}
         </div>
+      </section>
+
+      {/* Recruiter Hiring Velocity Leaderboard */}
+      <section className="mt-10">
+        <RecruiterLeaderboard />
       </section>
     </main>
   );

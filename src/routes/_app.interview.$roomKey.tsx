@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
 import { getInterviewSocket } from "@/lib/socket";
@@ -11,6 +11,7 @@ import {
   UnifiedTimelineView,
   TimelineItem,
 } from "@/components/interview/timeline/UnifiedTimelineView";
+import { CheckpointTimeline } from "@/components/interview/ide/CheckpointTimeline";
 import { AiInterviewerPanel } from "@/components/interview/ai/AiInterviewerPanel";
 import { SignalHUD } from "@/components/interview/ai/SignalHUD";
 import {
@@ -24,6 +25,11 @@ import {
   Video,
   ListTree,
   Sparkles,
+  History,
+  ChevronDown,
+  ChevronUp,
+  ShieldAlert,
+  X as XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,16 +58,24 @@ function InterviewRoomPage() {
   const [permissions, setPermissions] = useState<any>({});
   const [activeTab, setActiveTab] = useState<"CODING" | "WHITEBOARD">("CODING");
   const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState(false);
+  const [isVideoMinimized, setIsVideoMinimized] = useState(false);
   const [isBrowserFullscreen, setIsBrowserFullscreen] = useState(false);
   const [timelineEvents, setTimelineEvents] = useState<TimelineItem[]>([]);
   const [currentStage, setCurrentStage] = useState<string>("WAITING_ROOM");
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [hasJoinedCall, setHasJoinedCall] = useState(false);
-  const [sideTab, setSideTab] = useState<"VIDEO" | "TIMELINE" | "AI">("VIDEO");
+  const [sideTab, setSideTab] = useState<"VIDEO" | "TIMELINE" | "CHECKPOINTS" | "AI">("VIDEO");
   const [mediaPreferences, setMediaPreferences] = useState({
     cameraEnabled: true,
     microphoneEnabled: true,
   });
+  const [proctorAlert, setProctorAlert] = useState<{
+    type: string;
+    timestamp: number;
+  } | null>(null);
+
+  const monacoRestoreRef = useRef<((cp: any) => void) | null>(null);
+  const [remoteExecution, setRemoteExecution] = useState<any>(null);
 
   // Track browser fullscreen state
   useEffect(() => {
@@ -79,6 +93,57 @@ function InterviewRoomPage() {
       document.exitFullscreen().catch(() => {});
     }
   };
+
+  const addTimelineEventUnique = useCallback((event: TimelineItem) => {
+    setTimelineEvents((prev) => {
+      if (event._id && prev.some((e) => e._id === event._id)) return prev;
+      return [...prev, event];
+    });
+  }, []);
+
+  // Seeker proctoring: emit focus/fullscreen events to recruiter
+  useEffect(() => {
+    if (role !== "seeker" || !token || !session) return;
+    const socket = getInterviewSocket(token);
+
+    const emitProctorEvent = (eventType: string) => {
+      socket.emit("proctor_event", {
+        roomKey,
+        eventType,
+        timestamp: Date.now(),
+      });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        emitProctorEvent("tab_hidden");
+      } else {
+        emitProctorEvent("tab_visible");
+      }
+    };
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        emitProctorEvent("fullscreen_exited");
+      } else {
+        emitProctorEvent("fullscreen_entered");
+      }
+    };
+
+    const onWindowBlur = () => {
+      emitProctorEvent("window_blur");
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    window.addEventListener("blur", onWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      window.removeEventListener("blur", onWindowBlur);
+    };
+  }, [role, token, session, roomKey]);
 
   useEffect(() => {
     async function loadInterview() {
@@ -113,7 +178,7 @@ function InterviewRoomPage() {
         const handleStageUpdated = (stageData: { stage: string; status?: string; offsetMs?: number }) => {
           setCurrentStage(stageData.stage);
           setSession((prev: any) => (prev ? { ...prev, stage: stageData.stage, status: stageData.status || prev.status } : prev));
-          toast.info(`Interview stage transitioned to ${stageData.stage.replace("_", " ")}`);
+          toast.info(`Interview stage transitioned to ${stageData.stage.replace(/_/g, " ")}`);
 
           if (stageData.stage === "CODING" || stageData.stage === "DEBUGGING") setActiveTab("CODING");
           if (stageData.stage === "SYSTEM_DESIGN") setActiveTab("WHITEBOARD");
@@ -130,51 +195,77 @@ function InterviewRoomPage() {
         };
 
         const handleCodeExecutionReceived = (execData: any) => {
-          const exitCode = execData.execution?.exitCode ?? 0;
+          const execution = execData.execution;
+          const exitCode = execution?.exitCode ?? 0;
+
+          // Store the execution result so MonacoWorkspace can render it
+          setRemoteExecution({
+            stdout: execution?.stdout || "",
+            stderr: execution?.stderr || "",
+            exitCode: exitCode,
+            durationMs: execution?.durationMs || 0,
+            timedOut: execution?.timedOut || false,
+            compilerOutput: execution?.compilerOutput,
+            failureKind: execution?.failureKind,
+            executionId: execution?.executionId || Date.now().toString(), // Force React to detect a new object/event
+          });
+
           if (exitCode === 0) {
             toast.success("Code run succeeded in sandbox.");
           } else {
             toast.error(`Code execution failed with exit code ${exitCode}`);
           }
-
-          if (execData.execution) {
-            setTimelineEvents((prev) => [
-              ...prev,
-              {
-                pipeline: "CODING",
-                eventType: "code.execution",
-                offsetMs: execData.offsetMs || 0,
-                participantRole: role,
-                payload: {
-                  text: `Executed ${execData.language || "code"} (Exit ${exitCode})`,
-                  status: exitCode === 0 ? "success" : "error",
-                  durationMs: execData.execution.durationMs,
-                },
-              },
-            ]);
-          }
         };
 
         const handleLiveTranscript = (trans: any) => {
-          setTimelineEvents((prev) => [
-            ...prev,
-            {
-              pipeline: "COMMUNICATION",
-              eventType: "transcript.segment",
-              offsetMs: trans.offsetMs || 0,
-              participantRole: trans.role,
-              payload: { text: `[${trans.speakerName}]: ${trans.text}` },
-            },
-          ]);
+          addTimelineEventUnique({
+            pipeline: "COMMUNICATION",
+            eventType: "transcript.segment",
+            offsetMs: trans.offsetMs || 0,
+            participantRole: trans.role,
+            payload: { text: `[${trans.speakerName}]: ${trans.text}` },
+          });
         };
 
         const handleTimelineEvent = (event: TimelineItem) => {
-          setTimelineEvents((prev) => [...prev, event]);
+          addTimelineEventUnique(event);
         };
 
         const handleWhiteboardSnapshot = (snapshotData: any) => {
           if (snapshotData.timelineEvent) {
-            setTimelineEvents((prev) => [...prev, snapshotData.timelineEvent]);
+            addTimelineEventUnique(snapshotData.timelineEvent);
+          }
+        };
+
+        const handleCheckpointCreated = (cp: any) => {
+          toast.success(`Checkpoint #${cp.sequenceNumber} created`);
+        };
+
+        const handleCheckpointRestored = (cp: any) => {
+          toast.info(`Restored to Checkpoint #${cp.sequenceNumber}`);
+        };
+
+        const handleProctorEvent = (data: { eventType: string; timestamp: number }) => {
+          if (data.eventType === "fullscreen_exited" || data.eventType === "tab_hidden" || data.eventType === "window_blur") {
+            setProctorAlert({ type: data.eventType, timestamp: data.timestamp });
+            addTimelineEventUnique({
+              _id: `proctor-${data.timestamp}`,
+              pipeline: "INTEGRITY",
+              eventType: `focus.${data.eventType}`,
+              offsetMs: session?.actualStart ? Date.now() - new Date(session.actualStart).getTime() : 0,
+              participantRole: "seeker",
+              payload: {
+                text: data.eventType === "fullscreen_exited"
+                  ? "⚠️ Candidate exited fullscreen mode"
+                  : data.eventType === "tab_hidden"
+                  ? "⚠️ Candidate switched to a different browser tab"
+                  : "⚠️ Candidate's browser window lost focus",
+                isAnomalous: true,
+              },
+            } as TimelineItem);
+            setTimeout(() => setProctorAlert(null), 8000);
+          } else {
+            setProctorAlert(null);
           }
         };
 
@@ -186,6 +277,9 @@ function InterviewRoomPage() {
         socket.on("live_transcript_received", handleLiveTranscript);
         socket.on("timeline_event_received", handleTimelineEvent);
         socket.on("whiteboard_snapshot_saved", handleWhiteboardSnapshot);
+        socket.on("checkpoint_created", handleCheckpointCreated);
+        socket.on("checkpoint_restored", handleCheckpointRestored);
+        socket.on("proctor_event_received", handleProctorEvent);
       } catch (err: any) {
         toast.error(err.message || "Failed joining interview room.");
       } finally {
@@ -209,9 +303,12 @@ function InterviewRoomPage() {
         socket.off("live_transcript_received");
         socket.off("timeline_event_received");
         socket.off("whiteboard_snapshot_saved");
+        socket.off("checkpoint_created");
+        socket.off("checkpoint_restored");
+        socket.off("proctor_event_received");
       }
     };
-  }, [roomKey, token]);
+  }, [roomKey, token, addTimelineEventUnique]);
 
   // Real-time interview timer
   useEffect(() => {
@@ -240,7 +337,7 @@ function InterviewRoomPage() {
       );
       setCurrentStage(newStage);
       setSession((prev: any) => ({ ...prev, stage: newStage }));
-      toast.success(`Stage changed to ${newStage.replace("_", " ")}`);
+      toast.success(`Stage changed to ${newStage.replace(/_/g, " ")}`);
 
       if (newStage === "CODING" || newStage === "DEBUGGING") setActiveTab("CODING");
       if (newStage === "SYSTEM_DESIGN") setActiveTab("WHITEBOARD");
@@ -357,6 +454,25 @@ function InterviewRoomPage() {
           >
             {session.status}
           </span>
+
+          {proctorAlert && permissions.canManageSession && (
+            <div className="flex items-center gap-1.5 rounded-full bg-red-500/20 border border-red-500/30 px-2.5 py-0.5 text-[10px] font-bold text-red-400 animate-pulse">
+              <ShieldAlert className="h-3 w-3" />
+              <span>
+                {proctorAlert.type === "fullscreen_exited"
+                  ? "Candidate exited fullscreen!"
+                  : proctorAlert.type === "tab_hidden"
+                  ? "Candidate switched tabs!"
+                  : "Candidate window lost focus!"}
+              </span>
+              <button
+                onClick={() => setProctorAlert(null)}
+                className="ml-1 rounded-full p-0.5 hover:bg-red-500/30 transition"
+              >
+                <XIcon className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Recruiter Stage Controls */}
@@ -483,23 +599,25 @@ function InterviewRoomPage() {
                 initialLanguage={session.codeWorkspace?.activeLanguage || session.codeWorkspace?.files?.[0]?.language || "python"}
                 allowedLanguages={session.allowedLanguages || ["python", "javascript", "typescript", "cpp", "java"]}
                 readOnly={!permissions.canExecuteCode && role !== "seeker" && role !== "recruiter"}
+                restoreRef={monacoRestoreRef}
+                remoteExecution={remoteExecution}
               />
             ) : (
               <ExcalidrawWhiteboard
                 roomKey={roomKey}
                 sessionId={session._id}
                 readOnly={!permissions.canEditWhiteboard && role !== "seeker" && role !== "recruiter"}
-                onSnapshotSaved={(ev) => setTimelineEvents((prev) => [...prev, ev])}
+                onSnapshotSaved={(ev) => addTimelineEventUnique(ev)}
               />
             )}
           </div>
         </div>
 
-        {/* Tabbed Side Panel */}
+        {/* Right Side Panel: Docked Persistent Video Call + Tabs (Timeline, Checkpoints, AI) */}
         {!isSidePanelCollapsed && (
           <div className="col-span-12 flex flex-col lg:col-span-3 border-l border-[#1F1F1F] bg-[#0E0E0E] overflow-hidden">
-            {/* Side Panel Tab Bar */}
-            <div className="flex items-center gap-0.5 border-b border-[#222222] bg-[#121212] px-2 py-1 flex-shrink-0">
+            {/* Tab Bar — identical for both roles, AI tab is recruiter-only */}
+            <div className="flex items-center gap-0.5 border-b border-[#222222] bg-[#141414] px-2 py-1 flex-shrink-0 select-none">
               <button
                 onClick={() => setSideTab("VIDEO")}
                 className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
@@ -511,22 +629,33 @@ function InterviewRoomPage() {
                 <Video className="h-3 w-3" />
                 Video
               </button>
-
               <button
                 onClick={() => setSideTab("TIMELINE")}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                className={`flex flex-1 items-center justify-center gap-1.5 py-2 font-medium transition ${
                   sideTab === "TIMELINE"
+                    ? "border-b-2 border-[#2A9D7B] text-white"
+                    : "text-[#888888] hover:text-[#CCCCCC]"
+                }`}
+              >
+                <ListTree className="h-3 w-3" />
+                <span>Timeline</span>
+                {timelineEvents.filter(e => !e.eventType?.startsWith("focus.") && e.pipeline !== "INTEGRITY" || Boolean(e.payload?.isAnomalous)).length > 0 && (
+                  <span className="rounded-full bg-[#2A9D7B]/20 px-1.5 py-0.2 text-[9px] font-bold text-[#7EE0C5]">
+                    {timelineEvents.filter(e => !e.eventType?.startsWith("focus.") && e.pipeline !== "INTEGRITY" || Boolean(e.payload?.isAnomalous)).length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setSideTab("CHECKPOINTS")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                  sideTab === "CHECKPOINTS"
                     ? "bg-[#1E1E1E] text-white border-b-2 border-[#2A9D7B]"
                     : "text-[#666666] hover:text-[#CCCCCC]"
                 }`}
               >
-                <ListTree className="h-3 w-3" />
-                Timeline
-                {timelineEvents.length > 0 && (
-                  <span className="rounded-full bg-[#1A3D33] px-1.5 text-[9px] text-[#7EE0C5] font-bold">
-                    {timelineEvents.length}
-                  </span>
-                )}
+                <History className="h-3 w-3" />
+                Checkpoints
               </button>
 
               {permissions.canViewAiAssistant && (
@@ -544,31 +673,50 @@ function InterviewRoomPage() {
               )}
             </div>
 
-            {/* Side Panel Content — Only one visible at a time */}
-            <div className="flex-1 overflow-hidden p-2">
-              {sideTab === "VIDEO" && (
-                <div className="h-full">
-                  <VideoGrid
-                    roomKey={roomKey}
-                    sessionId={session._id}
-                    token={token ?? undefined}
-                    userName={user?.name || "Participant"}
-                    userRole={role}
-                    initialCameraEnabled={mediaPreferences.cameraEnabled}
-                    initialMicrophoneEnabled={mediaPreferences.microphoneEnabled}
-                    onLeave={() => navigate({ to: "/interviews" })}
-                  />
-                </div>
-              )}
+            {/* Tab Content Area */}
+            <div className="flex-1 overflow-hidden relative">
+              {/* VideoGrid — ALWAYS MOUNTED, shown/hidden via CSS so WebRTC never drops */}
+              <div
+                className={`absolute inset-0 flex flex-col ${
+                  sideTab === "VIDEO" ? "z-10 opacity-100" : "z-0 opacity-0 pointer-events-none"
+                }`}
+              >
+                <VideoGrid
+                  roomKey={roomKey}
+                  sessionId={session._id}
+                  token={token ?? undefined}
+                  userName={user?.name || "Participant"}
+                  userRole={role}
+                  initialCameraEnabled={mediaPreferences.cameraEnabled}
+                  initialMicrophoneEnabled={mediaPreferences.microphoneEnabled}
+                  onLeave={() => navigate({ to: "/interviews" })}
+                />
+              </div>
 
               {sideTab === "TIMELINE" && (
-                <div className="h-full">
+                <div className="h-full p-2">
                   <UnifiedTimelineView events={timelineEvents} />
                 </div>
               )}
 
+              {sideTab === "CHECKPOINTS" && (
+                <div className="h-full p-2 rounded-xl overflow-hidden">
+                  <CheckpointTimeline
+                    sessionId={session._id}
+                    token={token ?? undefined}
+                    onRestoreComplete={(cp) => {
+                      if (monacoRestoreRef.current) {
+                        monacoRestoreRef.current(cp);
+                      }
+                      toast.success(`Workspace restored to Checkpoint #${cp.sequenceNumber}`);
+                    }}
+                    readOnly={!permissions.canExecuteCode && role !== "seeker" && role !== "recruiter"}
+                  />
+                </div>
+              )}
+
               {sideTab === "AI" && permissions.canViewAiAssistant && (
-                <div className="flex h-full flex-col gap-2 overflow-y-auto">
+                <div className="flex h-full flex-col gap-2 overflow-y-auto p-2">
                   <AiInterviewerPanel
                     sessionId={session._id}
                     problemTitle={session.activeProblem?.title}

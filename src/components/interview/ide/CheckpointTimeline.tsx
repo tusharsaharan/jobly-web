@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { History, Camera, RotateCcw, Clock, CheckCircle, Tag, Loader2 } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { History, Camera, RotateCcw, Clock, CheckCircle, Tag, Loader2, X } from "lucide-react";
 import { apiCall } from "@/lib/api";
+import { getInterviewSocket } from "@/lib/socket";
 import { toast } from "sonner";
 
 export interface CheckpointItem {
@@ -28,8 +29,9 @@ export function CheckpointTimeline({
   const [checkpoints, setCheckpoints] = useState<CheckpointItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
-  const fetchCheckpoints = async () => {
+  const fetchCheckpoints = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiCall<{ checkpoints: CheckpointItem[] }>(
@@ -46,11 +48,34 @@ export function CheckpointTimeline({
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId, token]);
 
   useEffect(() => {
+    setRestoringId(null);
+    setConfirmingId(null);
     fetchCheckpoints();
-  }, [sessionId, token]);
+
+    if (token) {
+      const socket = getInterviewSocket(token);
+      const handleCheckpointCreated = (cp: any) => {
+        setCheckpoints((prev) => {
+          if (prev.some((item) => item._id === cp._id)) return prev;
+          return [cp, ...prev].sort((a, b) => b.sequenceNumber - a.sequenceNumber);
+        });
+      };
+      const handleCheckpointRestored = () => {
+        fetchCheckpoints();
+      };
+
+      socket.on("checkpoint_created", handleCheckpointCreated);
+      socket.on("checkpoint_restored", handleCheckpointRestored);
+
+      return () => {
+        socket.off("checkpoint_created", handleCheckpointCreated);
+        socket.off("checkpoint_restored", handleCheckpointRestored);
+      };
+    }
+  }, [sessionId, token, fetchCheckpoints]);
 
   const handleTakeSnapshot = async () => {
     try {
@@ -69,10 +94,9 @@ export function CheckpointTimeline({
 
   const handleRestore = async (cp: CheckpointItem) => {
     if (readOnly) return;
-    if (!confirm(`Restore workspace back to Checkpoint #${cp.sequenceNumber}?`)) return;
-
     try {
       setRestoringId(cp._id);
+      setConfirmingId(null);
       const res = await apiCall<{ msg: string; checkpoint?: CheckpointItem }>(
         `/coding/${sessionId}/checkpoints/${cp._id}/restore`,
         "POST",
@@ -101,8 +125,8 @@ export function CheckpointTimeline({
             onClick={handleTakeSnapshot}
             className="flex items-center gap-1 rounded bg-[#222222] px-2.5 py-1 text-[11px] font-semibold text-[#CCCCCC] hover:bg-[#2A9D7B] hover:text-white transition"
           >
-            <Camera className="h-3 w-3" />
-            <span>Snapshot</span>
+            <Camera className="h-3 w-3 pointer-events-none" />
+            <span className="pointer-events-none">Snapshot</span>
           </button>
         )}
       </div>
@@ -142,18 +166,43 @@ export function CheckpointTimeline({
               </div>
 
               {!readOnly && (
-                <button
-                  onClick={() => handleRestore(cp)}
-                  disabled={restoringId === cp._id}
-                  className="flex items-center gap-1 rounded bg-[#2A2A2A] px-2 py-1 text-[10px] text-[#AAAAAA] hover:bg-[#2A9D7B] hover:text-white transition disabled:opacity-50"
-                >
-                  {restoringId === cp._id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {confirmingId === cp._id ? (
+                    <>
+                      <button
+                        onClick={() => handleRestore(cp)}
+                        disabled={restoringId === cp._id}
+                        className="flex items-center gap-1 rounded bg-[#2A9D7B] px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-[#238266] disabled:opacity-50"
+                      >
+                        {restoringId === cp._id ? (
+                          <Loader2 className="h-3 w-3 animate-spin pointer-events-none" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3 pointer-events-none" />
+                        )}
+                        <span className="pointer-events-none">Confirm</span>
+                      </button>
+                      <button
+                        onClick={() => setConfirmingId(null)}
+                        className="rounded bg-[#333333] px-1.5 py-1 text-[10px] text-[#AAAAAA] hover:bg-[#444444] hover:text-white transition"
+                      >
+                        <X className="h-3 w-3 pointer-events-none" />
+                      </button>
+                    </>
                   ) : (
-                    <RotateCcw className="h-3 w-3" />
+                    <button
+                      onClick={() => setConfirmingId(cp._id)}
+                      disabled={restoringId === cp._id}
+                      className="flex items-center gap-1 rounded bg-[#2A2A2A] px-2 py-1 text-[10px] text-[#AAAAAA] hover:bg-[#2A9D7B] hover:text-white transition disabled:opacity-50"
+                    >
+                      {restoringId === cp._id ? (
+                        <Loader2 className="h-3 w-3 animate-spin pointer-events-none" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3 pointer-events-none" />
+                      )}
+                      <span className="pointer-events-none">Restore</span>
+                    </button>
                   )}
-                  <span>Restore</span>
-                </button>
+                </div>
               )}
             </div>
           ))

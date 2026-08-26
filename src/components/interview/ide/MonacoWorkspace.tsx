@@ -38,6 +38,16 @@ interface MonacoWorkspaceProps {
   allowedLanguages?: string[];
   readOnly?: boolean;
   onExecutionComplete?: (result: any) => void;
+  restoreRef?: React.MutableRefObject<((cp: any) => void) | null>;
+  remoteExecution?: {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+    durationMs: number;
+    timedOut: boolean;
+    compilerOutput?: string;
+    failureKind?: "compilation_error" | "runtime_error" | "runtime_unavailable" | "timeout" | null;
+  } | null;
 }
 
 const getLanguageExtension = (lang: string) => {
@@ -106,6 +116,8 @@ export function MonacoWorkspace({
   allowedLanguages = ["python", "javascript", "typescript", "cpp", "java"],
   readOnly = false,
   onExecutionComplete,
+  restoreRef,
+  remoteExecution,
 }: MonacoWorkspaceProps) {
   const { user, token } = useAuth();
   const [language, setLanguage] = useState<string>(initialLanguage);
@@ -135,7 +147,8 @@ export function MonacoWorkspace({
     durationMs: number;
     timedOut: boolean;
     compilerOutput?: string;
-    failureKind?: string;
+    failureKind?: "compilation_error" | "runtime_error" | "runtime_unavailable" | "timeout" | null;
+    executionId?: string;
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -707,6 +720,30 @@ export function MonacoWorkspace({
     setBottomDrawerTab(tab);
     setIsPanelOpen(true);
   };
+
+  // Expose restore handler to parent via ref so side panel can trigger editor updates
+  useEffect(() => {
+    if (restoreRef) {
+      restoreRef.current = handleRestoreComplete;
+    }
+    return () => {
+      if (restoreRef) {
+        restoreRef.current = null;
+      }
+    };
+  }, [restoreRef]);
+
+  // When a remote participant runs code, update our output panel
+  useEffect(() => {
+    if (remoteExecution?.executionId) {
+      setExecutionOutput(remoteExecution);
+      setIsPanelOpen(true);
+      if (isPanelMaximized === false) {
+        setPanelHeight((prev) => (prev < 200 ? 250 : prev)); // ensure it has height
+      }
+      setBottomDrawerTab("OUTPUT");
+    }
+  }, [remoteExecution?.executionId]);
 
   return (
     <div ref={containerRef} className="flex h-full flex-col overflow-hidden rounded-xl border border-[#222222] bg-[#141414] text-white shadow-2xl">
