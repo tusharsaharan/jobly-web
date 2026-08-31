@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiCall } from "@/lib/api";
 import { getInterviewSocket as getSocket } from "@/lib/socket";
 import { toast } from "sonner";
-import { Users, Play, Crown, AlertCircle } from "lucide-react";
+import { Users, Play, Crown, AlertCircle, SkipNext } from "lucide-react";
 import QuizArena from "@/components/compete/QuizArena";
 import CPArena from "@/components/compete/CPArena";
 
@@ -57,16 +57,43 @@ function CompeteArena() {
       toast(`${data.name} joined!`);
     };
 
-    const handleCompStarted = () => {
+    const handleCompStarted = (data: any) => {
       setLobbyState((prev: any) => ({ ...prev, status: "PLAYING" }));
+      // Server sends first question data for quiz mode
+      if (data.questionIndex !== undefined && data.question) {
+        setLobbyState((prev: any) => ({
+          ...prev,
+          currentQuestionIndex: data.questionIndex,
+          quizData: prev.quizData // already loaded
+        }));
+      }
+    };
+
+    const handleQuestionChanged = (data: any) => {
+      setLobbyState((prev: any) => ({
+        ...prev,
+        currentQuestionIndex: data.questionIndex
+      }));
+    };
+
+    const handleQuizComplete = (data: any) => {
+      setLobbyState((prev: any) => ({ 
+        ...prev, 
+        status: "LEADERBOARD", 
+        players: data.finalScores 
+      }));
     };
 
     socket.on("player_joined", handlePlayerJoined);
     socket.on("comp_started", handleCompStarted);
+    socket.on("question_changed", handleQuestionChanged);
+    socket.on("quiz_complete", handleQuizComplete);
 
     return () => {
       socket.off("player_joined", handlePlayerJoined);
       socket.off("comp_started", handleCompStarted);
+      socket.off("question_changed", handleQuestionChanged);
+      socket.off("quiz_complete", handleQuizComplete);
     };
   }, [lobbyState?.pin, user]);
 

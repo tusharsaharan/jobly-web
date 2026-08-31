@@ -208,19 +208,66 @@ function AuthPage() {
             >
               {loading ? "Hold on…" : isLogin ? "Log in" : "Sign up"}
             </button>
+
+            {isLogin && (
+              <div className="pt-2 border-t border-[rgba(24,58,50,0.08)] mt-3">
+                <div className="flex items-center justify-between text-[11px] font-semibold mb-2">
+                  <span style={{ color: `${INK}99`, letterSpacing: "0.08em" }} className="uppercase text-[10px] font-mono">
+                    ⚡ Quick Demo Accounts
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, email: "sarah@techcorp.com", password: "password123" })}
+                    className="flex flex-col items-start rounded-xl p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 border cursor-pointer group"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.7)",
+                      borderColor: "rgba(24,58,50,0.12)",
+                    }}
+                  >
+                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
+                      <span>👔</span> Sarah (Recruiter)
+                    </span>
+                    <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
+                      sarah@techcorp.com
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, email: "alex@example.com", password: "password123" })}
+                    className="flex flex-col items-start rounded-xl p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 border cursor-pointer group"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.7)",
+                      borderColor: "rgba(24,58,50,0.12)",
+                    }}
+                  >
+                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
+                      <span>💻</span> Alex (Candidate)
+                    </span>
+                    <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
+                      alex@example.com
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs font-medium" style={{ color: `${INK}A6` }}>
           <span>{isLogin ? "New here?" : "Already a member?"}</span>
-          <button
-            type="button"
-            onClick={() => setMode(isLogin ? "signup" : "login")}
+          <a
+            href={isLogin ? "?mode=signup" : "?mode=login"}
+            onClick={(e) => {
+              e.preventDefault();
+              setMode(isLogin ? "signup" : "login");
+            }}
             className="font-extrabold underline underline-offset-4 transition-opacity hover:opacity-70 cursor-pointer"
             style={{ color: CORAL }}
           >
             {isLogin ? "Create an account" : "Log in"}
-          </button>
+          </a>
         </div>
         <a
           href="/"

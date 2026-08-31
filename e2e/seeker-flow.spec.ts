@@ -80,6 +80,10 @@ test.describe("Seeker E2E workflow", () => {
       await page.click("button[type='submit']");
       await expect(page.locator("text=Hello, I am very excited about this role!")).toBeVisible();
 
+      // Test Summarize feature
+      await page.click("button:has-text('Summarize')");
+      await expect(page.locator("text=AI Summary")).toBeVisible();
+
       // Empty message constraint
       await page.fill("textarea", "");
       const isMsgBtnDisabled = await page.locator("button[type='submit']").isDisabled();

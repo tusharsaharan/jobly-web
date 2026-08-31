@@ -8,19 +8,41 @@ interface AiInterviewerPanelProps {
   sessionId: string;
   problemTitle?: string;
   currentStage: string;
+  jobSkills?: string[];
+  jobTitle?: string;
 }
 
-export function AiInterviewerPanel({ sessionId, problemTitle, currentStage }: AiInterviewerPanelProps) {
+export function AiInterviewerPanel({ sessionId, problemTitle, currentStage, jobSkills, jobTitle }: AiInterviewerPanelProps) {
   const [loading, setLoading] = useState(false);
   const { token } = useAuth();
   const [suggestion, setSuggestion] = useState<{ observation: string; suggestedQuestion: string; assessedCompetency: string } | null>(null);
-  const [competencies, setCompetencies] = useState<{ name: string; assessed: boolean }[]>([
-    { name: "Time Complexity Analysis", assessed: true },
-    { name: "Space Complexity Optimization", assessed: false },
-    { name: "Concurrency & Thread Safety", assessed: false },
-    { name: "Error & Edge Case Handling", assessed: true },
-    { name: "Distributed Cache Strategy", assessed: false },
-  ]);
+  
+  // Strict 4-pillar Bar Raiser Rubric — plan hierarchy Phase 4
+  const derivedCompetencies = React.useMemo(() => {
+    const pillarMap = [
+      { pillar: "problem_solving", name: "Problem Solving & Decomposition", desc: "Clarifies constraints, decomposes task" },
+      { pillar: "coding_algorithms", name: "Algorithmic Implementation & Code Quality", desc: "Data structures, complexity, correctness" },
+      { pillar: "system_design", name: "System Architecture & Tradeoff Reasoning", desc: "Whiteboard, scale, trade-offs" },
+      { pillar: "communication", name: "Technical Communication & Collaboration", desc: "Cadence, clarity, terminology" },
+    ];
+    // Optionally prioritize pillars based on jobSkills matching; still always show 4
+    const skillsText = (jobSkills || []).join(" ").toLowerCase();
+    if (skillsText.includes("system") || skillsText.includes("distributed") || currentStage === "SYSTEM_DESIGN") {
+      // Reorder to surface system_design first when relevant
+      const idx = pillarMap.findIndex((p) => p.pillar === "system_design");
+      if (idx > 0) {
+        const [sys] = pillarMap.splice(idx, 1);
+        pillarMap.unshift(sys);
+      }
+    }
+    return pillarMap.map((p) => ({ name: p.name, pillar: p.pillar, desc: p.desc, assessed: false }));
+  }, [jobSkills, currentStage]);
+
+  const [competencies, setCompetencies] = useState<{ name: string; pillar: string; assessed: boolean; desc: string }[]>(derivedCompetencies as any);
+
+  React.useEffect(() => {
+    setCompetencies(derivedCompetencies as any);
+  }, [derivedCompetencies]);
 
   const handleGenerateFollowUp = async () => {
     setLoading(true);
@@ -37,9 +59,11 @@ export function AiInterviewerPanel({ sessionId, problemTitle, currentStage }: Ai
         }, token,
       );
       setSuggestion(response.suggestion);
+      // Map assessedCompetency string to pillar enum; fallback to name match
+      const norm = (response.suggestion.assessedCompetency || "").toLowerCase().replace(/\s+/g, "_");
       setCompetencies((current) => current.map((item) => ({
         ...item,
-        assessed: item.name === response.suggestion.assessedCompetency || item.assessed,
+        assessed: item.pillar === norm || item.name.toLowerCase().includes(norm) || item.name === response.suggestion.assessedCompetency || item.assessed,
       })));
       toast.success("Evidence-grounded suggestion generated from the shared workspace.");
     } catch (error) {

@@ -13,14 +13,17 @@ import {
   Play,
   History,
   X,
-  ChevronUp,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Trash2,
   FolderTree,
   FilePlus,
   FolderPlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Beaker,
+  ArrowLeft,
+  VideoOff as VideoOffIcon,
 } from "lucide-react";
 import { apiCall } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -28,7 +31,11 @@ import { toast } from "sonner";
 import { ExecutionPanel } from "./ExecutionPanel";
 import { CheckpointTimeline } from "./CheckpointTimeline";
 import { TerminalPanel } from "../terminal/TerminalPanel";
+import { TestCasePanel } from "./TestCasePanel";
+import { ProblemStatement } from "./ProblemStatement";
 import { FileExplorer, WorkspaceFile, getFileIcon } from "./FileExplorer";
+import { ActivityBar, ActivityType } from "./ActivityBar";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 interface MonacoWorkspaceProps {
   roomKey: string;
@@ -48,6 +55,20 @@ interface MonacoWorkspaceProps {
     compilerOutput?: string;
     failureKind?: "compilation_error" | "runtime_error" | "runtime_unavailable" | "timeout" | null;
   } | null;
+  activeProblem?: {
+    title?: string;
+    description?: string;
+    examples?: Array<{ input: string; output: string }>;
+    testCases?: Array<{ input: string; expectedOutput: string; isHidden?: boolean }>;
+  } | null;
+
+  // New props for the redesign
+  onLeaveEditor?: () => void;
+  videoElement?: React.ReactNode;
+  isVideoHidden?: boolean;
+  onToggleVideo?: () => void;
+  showAiTab?: boolean;
+  aiPanel?: React.ReactNode;
 }
 
 const getLanguageExtension = (lang: string) => {
@@ -108,6 +129,48 @@ const getDefaultCode = (lang: string) => {
   return "";
 };
 
+const MAX_FILE_SIZE = 100000;
+
+function decodeAndValidatePath(rawPath: string): { cleanPath: string; error?: string } {
+  try {
+    const decoded = decodeURIComponent(String(rawPath));
+    // Double decode to catch double-encoded traversal
+    let doubleDecoded = decoded;
+    try {
+      const d2 = decodeURIComponent(decoded);
+      if (d2 !== decoded) doubleDecoded = d2;
+    } catch {}
+    const check = doubleDecoded;
+    if (check.includes("..") || check.includes("\0") || check.includes("\\")) {
+      return { cleanPath: "", error: "Invalid file path (directory traversal not allowed)." };
+    }
+    // Simple posix normalize (without node path)
+    const normalized = check.startsWith("/") ? check : `/${check}`;
+    // Normalize segments
+    const segments = normalized.split("/").filter(Boolean);
+    const stack: string[] = [];
+    for (const seg of segments) {
+      if (seg === "..") {
+        if (stack.length === 0) return { cleanPath: "", error: "Invalid file path (directory traversal not allowed)." };
+        stack.pop();
+      } else if (seg !== "." && seg !== "") {
+        stack.push(seg);
+      }
+    }
+    const clean = "/" + stack.join("/");
+    if (clean.includes("..") || !clean.startsWith("/")) {
+      return { cleanPath: "", error: "Invalid file path (directory traversal not allowed)." };
+    }
+    return { cleanPath: clean };
+  } catch {
+    return { cleanPath: "", error: "Invalid encoded path" };
+  }
+}
+
+function wouldExceedSizeLimit(ytext: Y.Text, insertText: string): boolean {
+  return ytext.length + insertText.length > MAX_FILE_SIZE;
+}
+
 export function MonacoWorkspace({
   roomKey,
   sessionId,
@@ -118,19 +181,25 @@ export function MonacoWorkspace({
   onExecutionComplete,
   restoreRef,
   remoteExecution,
+  activeProblem,
+  onLeaveEditor,
+  videoElement,
+  isVideoHidden = false,
+  onToggleVideo,
+  showAiTab = false,
+  aiPanel,
 }: MonacoWorkspaceProps) {
   const { user, token } = useAuth();
   const [language, setLanguage] = useState<string>(initialLanguage);
   const [customInput, setCustomInput] = useState<string>("");
-  const [bottomDrawerTab, setBottomDrawerTab] = useState<"OUTPUT" | "TERMINAL" | "CHECKPOINTS">("OUTPUT");
-  const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true);
-  const [panelHeight, setPanelHeight] = useState<number>(220);
-  const [isPanelMaximized, setIsPanelMaximized] = useState<boolean>(false);
+  const [rightPanelTab, setRightPanelTab] = useState<"OUTPUT" | "TESTS" | "TERMINAL" | "CHECKPOINTS" | "AI">("OUTPUT");
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [executing, setExecuting] = useState<boolean>(false);
   const [synced, setSynced] = useState<boolean>(false);
   const [activePeers, setActivePeers] = useState<Array<{ name: string; color: string }>>([]);
   const [lspStatus, setLspStatus] = useState<"ready" | "connecting" | "unavailable">("connecting");
   const [editorStats, setEditorStats] = useState({ lines: 1, characters: 0 });
+  const [activeActivity, setActiveActivity] = useState<ActivityType>("EXPLORER");
 
   // File Explorer & Open Tabs State
   const initialExt = getLanguageExtension(initialLanguage);
@@ -149,6 +218,7 @@ export function MonacoWorkspace({
     compilerOutput?: string;
     failureKind?: "compilation_error" | "runtime_error" | "runtime_unavailable" | "timeout" | null;
     executionId?: string;
+    sequence?: number;
   } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -161,36 +231,15 @@ export function MonacoWorkspace({
   const lspSocketRef = useRef<WebSocket | null>(null);
   const lspContentListenerRef = useRef<{ dispose: () => void } | null>(null);
   const lspRequestIdRef = useRef(0);
-  const isResizingRef = useRef(false);
 
   const languageRef = useRef<string>(initialLanguage);
   const activeFilePathRef = useRef<string>(defaultInitialPath);
   const currentBoundPathRef = useRef<string | null>(null);
+  const latestExecutionSeqRef = useRef<number>(remoteExecution?.sequence || 0);
 
-  // Panel Resizing Logic (Drag handle)
-  const handleMouseDownResize = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizingRef.current = true;
-    const startY = e.clientY;
-    const startHeight = panelHeight;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const deltaY = startY - moveEvent.clientY;
-      const newHeight = Math.min(Math.max(startHeight + deltaY, 90), 550);
-      setPanelHeight(newHeight);
-    };
-
-    const onMouseUp = () => {
-      isResizingRef.current = false;
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
-  };
-
+  // =============================================
+  // Yjs CRDT Sync — same as original
+  // =============================================
   useEffect(() => {
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
@@ -208,7 +257,6 @@ export function MonacoWorkspace({
     const metaMap = ydoc.getMap("meta");
     const filesystem = ydoc.getMap("filesystem");
 
-    // Initialize/Sync Folder Structure from Yjs
     const syncFilesystem = () => {
       const list: WorkspaceFile[] = [];
       filesystem.forEach((val: any) => {
@@ -233,36 +281,33 @@ export function MonacoWorkspace({
         ydoc.transact(() => {
           starterFiles.forEach((f) => filesystem.set(f.path, f));
 
+          const safeInsert = (ytext: Y.Text, content: string) => {
+            if (ytext.length === 0 && content) {
+              if (content.length > MAX_FILE_SIZE) {
+                content = content.slice(0, MAX_FILE_SIZE);
+                toast.error("Initial file exceeds 100KB, truncated");
+              }
+              if (wouldExceedSizeLimit(ytext, content)) {
+                toast.error("File would exceed 100KB limit");
+                return;
+              }
+              ytext.insert(0, content);
+            }
+          };
           const mainYText = ydoc.getText(`/src/solution.${ext}`);
-          if (mainYText.length === 0) {
-            mainYText.insert(0, initialCode || getDefaultCode(languageRef.current));
-          }
+          safeInsert(mainYText, initialCode || getDefaultCode(languageRef.current));
 
           const utilsYText = ydoc.getText("/src/utils.cpp");
-          if (utilsYText.length === 0) {
-            utilsYText.insert(
-              0,
-              `// Utility functions & helpers\n#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nvoid printVector(const vector<int>& vec) {\n    for (int x : vec) cout << x << " ";\n    cout << endl;\n}\n`
-            );
-          }
+          safeInsert(utilsYText, `// Utility functions & helpers\n#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nvoid printVector(const vector<int>& vec) {\n    for (int x : vec) cout << x << " ";\n    cout << endl;\n}\n`);
 
           const headerYText = ydoc.getText("/include/solution.h");
-          if (headerYText.length === 0) {
-            headerYText.insert(
-              0,
-              `// Header definitions\n#pragma once\n#include <vector>\n\nclass Solution {\npublic:\n    void solve();\n};\n`
-            );
-          }
+          safeInsert(headerYText, `// Header definitions\n#pragma once\n#include <vector>\n\nclass Solution {\npublic:\n    void solve();\n};\n`);
 
           const testYText = ydoc.getText("/tests/custom_input.txt");
-          if (testYText.length === 0) {
-            testYText.insert(0, `// Custom test inputs\n5\n10 20 30 40 50\n`);
-          }
+          safeInsert(testYText, `// Custom test inputs\n5\n10 20 30 40 50\n`);
 
           const readmeYText = ydoc.getText("/README.md");
-          if (readmeYText.length === 0) {
-            readmeYText.insert(0, getDefaultCode("markdown"));
-          }
+          safeInsert(readmeYText, getDefaultCode("markdown"));
         });
         setFiles(starterFiles);
         return;
@@ -272,6 +317,19 @@ export function MonacoWorkspace({
 
     syncFilesystem();
     filesystem.observe(syncFilesystem);
+    // Y.Text size limit enforcement for collaborative edits
+    const enforceSizeLimit = (update: Uint8Array, origin: any) => {
+      if (origin === "size-limit-enforcement") return;
+      for (const [key, value] of (ydoc as any).share.entries()) {
+        if (value instanceof Y.Text && (value as Y.Text).length > MAX_FILE_SIZE) {
+          ydoc.transact(() => {
+            (value as Y.Text).delete(MAX_FILE_SIZE, (value as Y.Text).length - MAX_FILE_SIZE);
+          }, "size-limit-enforcement");
+          toast.error(`File ${key} exceeds 100KB, truncated`);
+        }
+      }
+    };
+    ydoc.on("update", enforceSizeLimit);
 
     const metaObserver = () => {
       const remoteLang = metaMap.get("activeLanguage") as string | undefined;
@@ -322,6 +380,7 @@ export function MonacoWorkspace({
     return () => {
       metaMap.unobserve(metaObserver);
       filesystem.unobserve(syncFilesystem);
+      ydoc.off("update", enforceSizeLimit);
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
@@ -334,6 +393,9 @@ export function MonacoWorkspace({
     };
   }, [roomKey, token, user?.name]);
 
+  // =============================================
+  // LSP Language Service — same as original
+  // =============================================
   const stopLanguageService = () => {
     lspContentListenerRef.current?.dispose();
     lspContentListenerRef.current = null;
@@ -435,10 +497,21 @@ export function MonacoWorkspace({
     });
   };
 
+  // =============================================
+  // File Binding — same as original
+  // =============================================
   const bindActiveFile = (filePath: string, lang: string, force = false) => {
     if (!editorRef.current || !ydocRef.current || !providerRef.current) return;
 
-    if (!force && currentBoundPathRef.current === filePath && bindingRef.current) {
+    // Path traversal check: decode and normalize before binding
+    const pathCheck = decodeAndValidatePath(filePath);
+    if (pathCheck.error) {
+      toast.error(pathCheck.error);
+      return;
+    }
+    const safePath = pathCheck.cleanPath;
+
+    if (!force && currentBoundPathRef.current === safePath && bindingRef.current) {
       return;
     }
 
@@ -447,16 +520,26 @@ export function MonacoWorkspace({
       bindingRef.current = null;
     }
 
-    currentBoundPathRef.current = filePath;
+    currentBoundPathRef.current = safePath;
 
-    const ytext = ydocRef.current.getText(filePath);
+    const ytext = ydocRef.current.getText(safePath);
     const targetDefaultCode = lang === initialLanguage && initialCode ? initialCode : getDefaultCode(lang);
 
     if (ytext.length === 0 && targetDefaultCode) {
+      if (wouldExceedSizeLimit(ytext, targetDefaultCode)) {
+        toast.error("File content exceeds 100KB limit");
+        return;
+      }
       ydocRef.current.transact(() => {
         ytext.delete(0, ytext.length);
         ytext.insert(0, targetDefaultCode);
       });
+    } else if (ytext.length > MAX_FILE_SIZE) {
+      // Enforce size limit if existing content already exceeds
+      ydocRef.current.transact(() => {
+        ytext.delete(MAX_FILE_SIZE, ytext.length - MAX_FILE_SIZE);
+      }, "size-limit-enforcement");
+      toast.error("File exceeds 100KB limit, truncated");
     }
 
     const model = editorRef.current.getModel();
@@ -490,6 +573,9 @@ export function MonacoWorkspace({
     connectLanguageService(filePath, lang);
   };
 
+  // =============================================
+  // File operations — same as original
+  // =============================================
   const handleSelectFile = (file: WorkspaceFile) => {
     if (file.type === "directory") return;
     setActiveFilePath(file.path);
@@ -524,21 +610,39 @@ export function MonacoWorkspace({
 
   const handleCreateFile = (fullPath: string, type: "file" | "directory") => {
     if (!ydocRef.current) return;
-    const filename = fullPath.split("/").pop() || "untitled";
-    const lang = type === "file" ? getLanguageFromPath(fullPath) : undefined;
+    // Path traversal encoded fix: decodeURIComponent before checking .. and normalize path
+    const validated = decodeAndValidatePath(fullPath);
+    if (validated.error) {
+      toast.error(validated.error);
+      return;
+    }
+    const safePath = validated.cleanPath;
+    const filename = safePath.split("/").pop() || "untitled";
+    const lang = type === "file" ? getLanguageFromPath(safePath) : undefined;
     const newEntry: WorkspaceFile = {
       type,
-      path: fullPath,
+      path: safePath,
       name: filename,
       language: lang,
     };
     const filesystem = ydocRef.current.getMap("filesystem");
-    filesystem.set(fullPath, newEntry);
+    if (filesystem.has(safePath)) {
+      toast.error("File or directory already exists at this path.");
+      return;
+    }
+    filesystem.set(safePath, newEntry);
 
     if (type === "file") {
-      const ytext = ydocRef.current.getText(fullPath);
+      const ytext = ydocRef.current.getText(safePath);
       if (ytext.length === 0) {
-        ytext.insert(0, getDefaultCode(lang || "plaintext"));
+        const defaultCode = getDefaultCode(lang || "plaintext");
+        // Size limit check: if Y.Text insert would exceed 100000, reject
+        if (wouldExceedSizeLimit(ytext, defaultCode)) {
+          toast.error("File content exceeds 100KB limit");
+          filesystem.delete(safePath);
+          return;
+        }
+        ytext.insert(0, defaultCode);
       }
       handleSelectFile(newEntry);
       toast.success(`Created file ${filename}`);
@@ -549,21 +653,27 @@ export function MonacoWorkspace({
 
   const handleDeleteFile = (fullPath: string) => {
     if (!ydocRef.current) return;
+    const validated = decodeAndValidatePath(fullPath);
+    if (validated.error) {
+      toast.error(validated.error);
+      return;
+    }
+    const safePath = validated.cleanPath;
     const filesystem = ydocRef.current.getMap("filesystem");
-    filesystem.delete(fullPath);
-    filesystem.forEach((val: any, key: string) => {
-      if (key.startsWith(fullPath + "/")) {
+    filesystem.delete(safePath);
+    filesystem.forEach((_val: any, key: string) => {
+      if (key.startsWith(safePath + "/")) {
         filesystem.delete(key);
       }
     });
-    setOpenTabs((prev) => prev.filter((t) => t !== fullPath && !t.startsWith(fullPath + "/")));
-    if (activeFilePath === fullPath || activeFilePath.startsWith(fullPath + "/")) {
-      const remaining = files.filter((f) => f.path !== fullPath && !f.path.startsWith(fullPath + "/") && f.type === "file");
+    setOpenTabs((prev) => prev.filter((t) => t !== safePath && !t.startsWith(safePath + "/")));
+    if (activeFilePath === safePath || activeFilePath.startsWith(safePath + "/")) {
+      const remaining = files.filter((f) => f.path !== safePath && !f.path.startsWith(safePath + "/") && f.type === "file");
       if (remaining.length > 0) {
         handleSelectFile(remaining[0]);
       }
     }
-    toast.info(`Deleted ${fullPath}`);
+    toast.info(`Deleted ${safePath}`);
   };
 
   const handleLanguageChange = (newLang: string) => {
@@ -632,8 +742,8 @@ export function MonacoWorkspace({
 
     setExecuting(true);
     setExecutionOutput(null);
-    setIsPanelOpen(true);
-    setBottomDrawerTab("OUTPUT");
+    setIsRightPanelCollapsed(false);
+    setRightPanelTab("OUTPUT");
 
     try {
       const res = await apiCall<{ execution: any }>(
@@ -647,12 +757,22 @@ export function MonacoWorkspace({
         token,
       );
 
-      setExecutionOutput(res.execution);
-      if (onExecutionComplete) onExecutionComplete(res.execution);
-      if (res.execution?.exitCode === 0) {
+      const execution = res.execution;
+      if (execution?.sequence) {
+        if (execution.sequence < latestExecutionSeqRef.current) {
+          console.warn(`[Execution Dropped] Stale local HTTP response #${execution.sequence} arrived after #${latestExecutionSeqRef.current}`);
+          setExecuting(false);
+          return;
+        }
+        latestExecutionSeqRef.current = execution.sequence;
+      }
+
+      setExecutionOutput(execution);
+      if (onExecutionComplete) onExecutionComplete(execution);
+      if (execution?.exitCode === 0) {
         toast.success("Code executed successfully in sandbox.");
       } else {
-        toast.error(`Code execution exited with code ${res.execution?.exitCode || 1}`);
+        toast.error(`Code execution exited with code ${execution?.exitCode || 1}`);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed running code in sandbox.");
@@ -716,12 +836,12 @@ export function MonacoWorkspace({
     }
   };
 
-  const openPanelTab = (tab: "OUTPUT" | "TERMINAL" | "CHECKPOINTS") => {
-    setBottomDrawerTab(tab);
-    setIsPanelOpen(true);
+  const openRightPanelTab = (tab: "OUTPUT" | "TESTS" | "TERMINAL" | "CHECKPOINTS" | "AI") => {
+    setRightPanelTab(tab);
+    setIsRightPanelCollapsed(false);
   };
 
-  // Expose restore handler to parent via ref so side panel can trigger editor updates
+  // Expose restore handler to parent via ref
   useEffect(() => {
     if (restoreRef) {
       restoreRef.current = handleRestoreComplete;
@@ -736,42 +856,51 @@ export function MonacoWorkspace({
   // When a remote participant runs code, update our output panel
   useEffect(() => {
     if (remoteExecution?.executionId) {
-      setExecutionOutput(remoteExecution);
-      setIsPanelOpen(true);
-      if (isPanelMaximized === false) {
-        setPanelHeight((prev) => (prev < 200 ? 250 : prev)); // ensure it has height
+      if (remoteExecution.sequence) {
+        if (remoteExecution.sequence < latestExecutionSeqRef.current) {
+          console.warn(`[Execution Dropped] Stale remote Socket response #${remoteExecution.sequence} arrived after #${latestExecutionSeqRef.current}`);
+          return;
+        }
+        latestExecutionSeqRef.current = remoteExecution.sequence;
       }
-      setBottomDrawerTab("OUTPUT");
+
+      setExecutionOutput(remoteExecution);
+      setIsRightPanelCollapsed(false);
+      setRightPanelTab("OUTPUT");
     }
   }, [remoteExecution?.executionId]);
 
-  return (
-    <div ref={containerRef} className="flex h-full flex-col overflow-hidden rounded-xl border border-[#222222] bg-[#141414] text-white shadow-2xl">
-      {/* Top Header & Main Toolbar */}
-      <div className="flex items-center justify-between border-b border-[#252526] bg-[#181818] px-3 py-1.5 flex-shrink-0 select-none">
-        <div className="flex items-center gap-2">
-          {/* File Explorer Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
-            title={isExplorerOpen ? "Hide File Explorer" : "Show File Explorer"}
-            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-mono border transition ${
-              isExplorerOpen
-                ? "bg-[#252525] text-[#7EE0C5] border-[#2A9D7B]"
-                : "bg-[#1E1E1E] text-[#AAAAAA] border-[#333333] hover:text-white"
-            }`}
-          >
-            {isExplorerOpen ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeftOpen className="h-3.5 w-3.5" />}
-            <span className="font-semibold text-[11px]">Explorer</span>
-          </button>
+  // Activity bar click toggles explorer visibility
+  const handleActivityChange = (activity: ActivityType) => {
+    if (activity === "EXPLORER") {
+      if (activeActivity === "EXPLORER" && isExplorerOpen) {
+        setIsExplorerOpen(false);
+      } else {
+        setIsExplorerOpen(true);
+      }
+    }
+    setActiveActivity(activity);
+  };
 
-          <div className="flex items-center gap-1.5 text-xs text-[#888888] ml-1">
+  return (
+    <div
+      ref={containerRef}
+      className="flex h-full flex-col overflow-hidden"
+      style={{ background: "var(--iv-bg)", color: "var(--iv-text)", fontFamily: "var(--font-iv-ui)" }}
+    >
+      {/* Top Header & Main Toolbar */}
+      <div
+        className="flex items-center justify-between border-b px-3 py-1.5 flex-shrink-0 select-none"
+        style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--iv-text-muted)" }}>
             <span className={`h-2 w-2 rounded-full ${synced ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "bg-amber-400 animate-pulse"}`} />
-            <span className="text-[11px] hidden sm:inline">{synced ? "CRDT Synced" : "Connecting..."}</span>
+            <span className="hidden sm:inline">{synced ? "Synced" : "Connecting..."}</span>
           </div>
 
           {activePeers.length > 0 && (
-            <div className="flex items-center gap-1 rounded-full bg-[#2A9D7B]/20 px-2 py-0.5 text-[11px] text-[#7EE0C5]">
+            <div className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]" style={{ background: "var(--iv-accent-surface)", color: "var(--iv-accent-glow)" }}>
               <Users className="h-2.5 w-2.5" />
               <span>{activePeers.length} peer(s)</span>
             </div>
@@ -781,23 +910,13 @@ export function MonacoWorkspace({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => openPanelTab("CHECKPOINTS")}
-            title="Open Code Timeline & Version Checkpoints"
-            className="flex items-center gap-1.5 rounded border border-[#3A3A3A] bg-[#1E1E1E] px-2.5 py-1 text-[11px] text-[#CCCCCC] transition hover:border-[#2A9D7B] hover:text-white"
-          >
-            <History className="h-3 w-3 text-[#2A9D7B]" />
-            <span>Timeline</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleFormatDocument}
             disabled={readOnly || executing}
             title="Format document"
-            className="flex items-center gap-1 rounded border border-[#3A3A3A] bg-[#1E1E1E] px-2.5 py-1 text-[11px] text-[#CCCCCC] transition hover:border-[#2A9D7B] hover:text-white disabled:opacity-45"
+            className="iv-btn iv-btn-ghost text-[11px] disabled:opacity-45"
           >
             <Wand2 className="h-3 w-3" />
-            <span>Format</span>
+            Format
           </button>
 
           <select
@@ -805,7 +924,12 @@ export function MonacoWorkspace({
             onChange={(e) => handleLanguageChange(e.target.value)}
             disabled={readOnly || executing}
             aria-label="Active language"
-            className="rounded border border-[#3A3A3A] bg-[#1E1E1E] px-2.5 py-1 text-xs font-semibold text-white outline-none hover:border-[#2A9D7B] focus:ring-1 focus:ring-[#2A9D7B]"
+            className="rounded-md border py-1 pl-2.5 pr-6 text-[12px] font-semibold text-white outline-none transition"
+            style={{
+              borderColor: "var(--iv-border)",
+              background: "var(--iv-surface-elevated)",
+              fontFamily: "var(--font-iv-ui)",
+            }}
           >
             {allowedLanguages.map((lang) => (
               <option key={lang} value={lang}>
@@ -818,7 +942,7 @@ export function MonacoWorkspace({
             onClick={handleReset}
             disabled={readOnly || executing}
             title="Reset code template"
-            className="rounded border border-[#3A3A3A] bg-[#1E1E1E] p-1 text-[#888888] hover:border-[#2A9D7B] hover:text-white transition cursor-pointer"
+            className="iv-btn iv-btn-ghost p-1 disabled:opacity-45"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
@@ -826,18 +950,21 @@ export function MonacoWorkspace({
           <button
             onClick={handleRunCode}
             disabled={executing || readOnly}
-            className="flex items-center gap-1.5 rounded bg-[#2A9D7B] px-3.5 py-1 font-sans text-xs font-semibold text-white shadow transition hover:bg-[#238266] disabled:opacity-50 cursor-pointer"
+            className="iv-btn iv-btn-primary text-[12px] disabled:opacity-50"
           >
             <Play className="h-3 w-3 fill-current" />
-            <span>Run Code</span>
+            Run Code
           </button>
         </div>
       </div>
 
-      {/* Middle Workspace Area (Explorer Sidebar + Editor Canvas) */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* VS Code Style Folder Structure Explorer Sidebar */}
-        {isExplorerOpen && (
+      {/* Main workspace: Activity Bar + Explorer + Editor + Right Panel */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Activity Bar */}
+        <ActivityBar active={activeActivity} onChange={handleActivityChange} />
+
+        {/* File Explorer */}
+        {isExplorerOpen && activeActivity === "EXPLORER" && (
           <FileExplorer
             files={files}
             activeFilePath={activeFilePath}
@@ -848,209 +975,289 @@ export function MonacoWorkspace({
           />
         )}
 
-        {/* Editor Main Canvas with Tabs */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-[#1E1E1E]">
-          {/* Open Tabs Bar */}
-          <div className="flex items-center h-8 bg-[#181818] border-b border-[#252526] overflow-x-auto px-1 gap-1 flex-shrink-0 select-none scrollbar-none">
-            {openTabs.map((tabPath) => {
-              const filename = tabPath.split("/").pop() || "untitled";
-              const isActive = activeFilePath === tabPath;
-              return (
-                <div
-                  key={tabPath}
-                  onClick={() => {
-                    const targetFile = files.find((f) => f.path === tabPath) || {
-                      type: "file",
-                      path: tabPath,
-                      name: filename,
-                    };
-                    handleSelectFile(targetFile as WorkspaceFile);
-                  }}
-                  className={`group flex items-center gap-1.5 px-3 py-1 text-[11px] font-mono rounded-t cursor-pointer border-t-2 transition flex-shrink-0 ${
-                    isActive
-                      ? "bg-[#1E1E1E] text-white border-[#2A9D7B] font-medium shadow-sm"
-                      : "bg-[#141414] text-[#888888] border-transparent hover:bg-[#1C1C1C] hover:text-[#CCCCCC]"
-                  }`}
-                >
-                  {getFileIcon(filename)}
-                  <span className="truncate max-w-[120px]">{filename}</span>
-                  {openTabs.length > 1 && (
-                    <button
-                      onClick={(e) => handleCloseTab(tabPath, e)}
-                      title="Close Tab"
-                      className="p-0.5 text-[#666666] hover:text-white rounded hover:bg-[#333333] transition"
+        {/* Editor + Right Panel Horizontal Split */}
+        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+          {/* Editor Area (~50%) */}
+          <ResizablePanel defaultSize={isRightPanelCollapsed ? 100 : 65} minSize={35} className="flex flex-col min-h-0 min-w-0">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ background: "var(--iv-surface-elevated)" }}>
+              {/* Open Tabs Bar */}
+              <div
+                className="flex items-center h-8 overflow-x-auto px-1 gap-0.5 flex-shrink-0 select-none border-b"
+                style={{
+                  background: "var(--iv-surface)",
+                  borderColor: "var(--iv-border-subtle)",
+                  scrollbarWidth: "none",
+                }}
+              >
+                {openTabs.map((tabPath) => {
+                  const filename = tabPath.split("/").pop() || "untitled";
+                  const isActive = activeFilePath === tabPath;
+                  return (
+                    <div
+                      key={tabPath}
+                      onClick={() => {
+                        const targetFile = files.find((f) => f.path === tabPath) || {
+                          type: "file",
+                          path: tabPath,
+                          name: filename,
+                        };
+                        handleSelectFile(targetFile as WorkspaceFile);
+                      }}
+                      className="group flex items-center gap-1.5 px-3 py-1 text-[11px] rounded-t cursor-pointer border-t-2 transition flex-shrink-0"
+                      style={{
+                        fontFamily: "var(--font-iv-ui)",
+                        ...(isActive
+                          ? { background: "var(--iv-surface-elevated)", color: "#fff", borderColor: "var(--iv-accent)" }
+                          : { background: "var(--iv-surface)", color: "var(--iv-text-muted)", borderColor: "transparent" }),
+                      }}
                     >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                      {getFileIcon(filename)}
+                      <span className="truncate max-w-[120px]">{filename}</span>
+                      {openTabs.length > 1 && (
+                        <button
+                          onClick={(e) => handleCloseTab(tabPath, e)}
+                          title="Close Tab"
+                          className="p-0.5 rounded transition"
+                          style={{ color: "var(--iv-text-dim)" }}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-          {/* Monaco Editor Canvas */}
-          <div className="flex-1 relative overflow-hidden">
-            <Editor
-              height="100%"
-              language={getMonacoLanguage(language)}
-              theme="vs-dark"
-              onMount={handleEditorMount}
-              options={{
-                readOnly,
-                fontSize: 14,
-                fontFamily: "JetBrains Mono, Fira Code, Menlo, monospace",
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 4,
-                cursorBlinking: "smooth",
-                smoothScrolling: true,
-                padding: { top: 10, bottom: 10 },
-              }}
-            />
-          </div>
-        </div>
-      </div>
+              {/* Breadcrumb */}
+              <div
+                className="h-5 flex items-center px-3 border-b text-[11px] flex-shrink-0 gap-1"
+                style={{
+                  fontFamily: "var(--font-iv-code)",
+                  background: "var(--iv-surface-alt)",
+                  borderColor: "var(--iv-border-subtle)",
+                  color: "var(--iv-text-dim)",
+                }}
+              >
+                <span style={{ color: "var(--iv-text-muted)" }}>src</span>
+                <span style={{ color: "var(--iv-text-dim)" }}>/</span>
+                <span style={{ color: "var(--iv-text)" }}>{activeFilePath.split("/").pop()}</span>
+              </div>
 
-      {/* Resizable & Collapsible VS Code Style Bottom Panel */}
-      {isPanelOpen ? (
-        <div
-          style={{ height: isPanelMaximized ? "75%" : `${panelHeight}px` }}
-          className="flex-shrink-0 flex flex-col border-t border-[#252526] bg-[#0E1117] relative transition-[height] duration-75"
-        >
-          {/* Top Drag-to-Resize Handle */}
-          {!isPanelMaximized && (
-            <div
-              onMouseDown={handleMouseDownResize}
-              className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize z-20 hover:bg-[#2A9D7B]/40 transition-colors"
-              title="Drag to resize panel"
+              {/* Monaco Editor */}
+              <div className="flex-1 relative overflow-hidden min-h-0">
+                <Editor
+                  height="100%"
+                  language={getMonacoLanguage(language)}
+                  theme="vs-dark"
+                  onMount={handleEditorMount}
+                  options={{
+                    readOnly,
+                    fontSize: 14,
+                    fontFamily: "Fira Code, Cascadia Code, JetBrains Mono, Menlo, monospace",
+                    fontLigatures: true,
+                    lineHeight: 22,
+                    minimap: { enabled: true, scale: 1, showSlider: "mouseover" },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    cursorBlinking: "smooth",
+                    smoothScrolling: true,
+                    padding: { top: 14, bottom: 14 },
+                    wordWrap: "on",
+                    wrappingStrategy: "advanced",
+                    bracketPairColorization: { enabled: true },
+                    guides: { bracketPairs: true, indentation: true, bracketPairsHorizontal: true },
+                    suggest: { showKeywords: true, showSnippets: true },
+                    quickSuggestions: { other: true, comments: false, strings: false },
+                    parameterHints: { enabled: true },
+                    hover: { enabled: true },
+                    lightbulb: { enabled: true },
+                    formatOnType: true,
+                    formatOnPaste: true,
+                    autoClosingBrackets: "always",
+                    autoClosingQuotes: "always",
+                    autoSurround: "languageDefined",
+                    folding: true,
+                    foldingHighlight: true,
+                    unfoldOnClickAfterEndOfLine: true,
+                    renderLineHighlight: "all",
+                    renderWhitespace: "selection",
+                    rulers: [80, 100],
+                    stickyScroll: { enabled: true },
+                  }}
+                />
+              </div>
+            </div>
+          </ResizablePanel>
+
+          {/* Resizable Handle */}
+          {!isRightPanelCollapsed && (
+            <ResizableHandle
+              withHandle
+              className="transition-colors w-px data-[panel-group-direction=horizontal]:w-px"
+              style={{ background: "var(--iv-border)" }}
             />
           )}
 
-          {/* VS Code Style Header with Tab Buttons & Right Control Actions */}
-          <div className="flex h-8 items-center justify-between bg-[#161B22] px-2 border-b border-[#21262D] text-xs font-mono select-none">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setBottomDrawerTab("OUTPUT")}
-                className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition ${
-                  bottomDrawerTab === "OUTPUT"
-                    ? "bg-[#21262D] text-[#7EE0C5] font-semibold border-b-2 border-[#2A9D7B]"
-                    : "text-[#8B949E] hover:text-white"
-                }`}
+          {/* Right Panel (~25%) — Video + Leave/Hide + Tabs */}
+          {!isRightPanelCollapsed && (
+            <ResizablePanel defaultSize={35} minSize={20} maxSize={50} className="flex flex-col min-h-0 min-w-0" style={{ background: "var(--iv-surface)" }}>
+              {/* Compact Video Preview + Actions */}
+              <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--iv-border)" }}>
+                {/* Video preview */}
+                {videoElement && !isVideoHidden && (
+                  <div className="iv-video-compact m-2" style={{ height: 120 }}>
+                    {videoElement}
+                  </div>
+                )}
+
+                {/* Leave Editor + Hide Video buttons */}
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  {onLeaveEditor && (
+                    <button
+                      type="button"
+                      onClick={onLeaveEditor}
+                      className="iv-btn iv-btn-ghost text-[11px] flex-1 justify-center border"
+                      style={{ borderColor: "var(--iv-border)" }}
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      Leave Editor
+                    </button>
+                  )}
+                  {onToggleVideo && (
+                    <button
+                      type="button"
+                      onClick={onToggleVideo}
+                      className="iv-btn iv-btn-ghost text-[11px]"
+                    >
+                      <VideoOffIcon className="h-3 w-3" />
+                      {isVideoHidden ? "Show" : "Hide"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Panel Tabs */}
+              <div
+                className="flex items-center gap-0.5 border-b px-1.5 py-0.5 flex-shrink-0 select-none overflow-x-auto"
+                style={{
+                  borderColor: "var(--iv-border)",
+                  background: "var(--iv-surface)",
+                  scrollbarWidth: "none",
+                }}
               >
-                <Play className="h-3 w-3" />
-                <span>Output & Execution</span>
-              </button>
+                {(["OUTPUT", "TESTS", "TERMINAL", "CHECKPOINTS", ...(showAiTab ? ["AI"] : [])] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setRightPanelTab(tab as any)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide border-b-2 whitespace-nowrap transition"
+                    style={{
+                      fontFamily: "var(--font-iv-ui)",
+                      borderColor: rightPanelTab === tab ? "var(--iv-accent)" : "transparent",
+                      color: rightPanelTab === tab ? "#fff" : "var(--iv-text-dim)",
+                      background: rightPanelTab === tab ? "var(--iv-surface-elevated)" : "transparent",
+                    }}
+                  >
+                    {tab === "OUTPUT" && <Play className="h-3 w-3" />}
+                    {tab === "TESTS" && <Beaker className="h-3 w-3" />}
+                    {tab === "TERMINAL" && <TermIcon className="h-3 w-3" />}
+                    {tab === "CHECKPOINTS" && <History className="h-3 w-3" />}
+                    {tab === "AI" && <Braces className="h-3 w-3" />}
+                    {tab === "TESTS" ? "Tests" : tab === "CHECKPOINTS" ? "Chkpt" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
 
-              <button
-                onClick={() => setBottomDrawerTab("TERMINAL")}
-                className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition ${
-                  bottomDrawerTab === "TERMINAL"
-                    ? "bg-[#21262D] text-[#7EE0C5] font-semibold border-b-2 border-[#2A9D7B]"
-                    : "text-[#8B949E] hover:text-white"
-                }`}
-              >
-                <TermIcon className="h-3 w-3" />
-                <span>Terminal (fish)</span>
-              </button>
+              {/* Tab Content */}
+              <div className="flex-1 min-h-0 overflow-hidden" style={{ background: "var(--iv-surface-elevated)" }}>
+                {rightPanelTab === "OUTPUT" ? (
+                  <div className="h-full overflow-hidden">
+                    <ExecutionPanel
+                      executing={executing}
+                      output={executionOutput}
+                      language={language}
+                      customInput={customInput}
+                      setCustomInput={setCustomInput}
+                      onRunCode={handleRunCode}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                ) : rightPanelTab === "TESTS" ? (
+                  <div className="h-full overflow-hidden">
+                    <TestCasePanel
+                      sessionId={sessionId}
+                      language={language}
+                      getCode={() => editorRef.current?.getValue() || ""}
+                      problemTestCases={activeProblem?.testCases}
+                      problemExamples={activeProblem?.examples}
+                    />
+                  </div>
+                ) : rightPanelTab === "TERMINAL" ? (
+                  <div className="h-full overflow-hidden">
+                    <TerminalPanel sessionId={sessionId} roomKey={roomKey} token={token ?? undefined} readOnly={readOnly} />
+                  </div>
+                ) : rightPanelTab === "CHECKPOINTS" ? (
+                  <div className="h-full overflow-hidden">
+                    <CheckpointTimeline sessionId={sessionId} token={token ?? undefined} onRestoreComplete={handleRestoreComplete} readOnly={readOnly} />
+                  </div>
+                ) : rightPanelTab === "AI" && aiPanel ? (
+                  <div className="h-full overflow-y-auto iv-scroll p-2">
+                    {aiPanel}
+                  </div>
+                ) : null}
+              </div>
+            </ResizablePanel>
+          )}
+        </ResizablePanelGroup>
+      </div>
 
-              <button
-                onClick={() => setBottomDrawerTab("CHECKPOINTS")}
-                className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition ${
-                  bottomDrawerTab === "CHECKPOINTS"
-                    ? "bg-[#21262D] text-[#7EE0C5] font-semibold border-b-2 border-[#2A9D7B]"
-                    : "text-[#8B949E] hover:text-white"
-                }`}
-              >
-                <History className="h-3 w-3" />
-                <span>Checkpoints</span>
-              </button>
-            </div>
-
-            {/* VS Code Style Action Controls on the Right (Maximize, Clear, Close X) */}
-            <div className="flex items-center gap-1 text-[#8B949E]">
-              <button
-                onClick={() => setIsPanelMaximized(!isPanelMaximized)}
-                title={isPanelMaximized ? "Restore panel size" : "Maximize panel size"}
-                className="rounded p-1 hover:bg-[#21262D] hover:text-white transition"
-              >
-                {isPanelMaximized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-              </button>
-
-              <button
-                onClick={() => setIsPanelOpen(false)}
-                title="Close panel (can reopen from bottom status bar)"
-                className="rounded p-1 hover:bg-[#21262D] hover:text-white transition"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Panel Viewport */}
-          <div className="flex-1 overflow-hidden">
-            {bottomDrawerTab === "OUTPUT" ? (
-              <ExecutionPanel
-                executing={executing}
-                output={executionOutput}
-                language={language}
-                customInput={customInput}
-                setCustomInput={setCustomInput}
-                onRunCode={handleRunCode}
-                readOnly={readOnly}
-              />
-            ) : bottomDrawerTab === "TERMINAL" ? (
-              <TerminalPanel
-                sessionId={sessionId}
-                roomKey={roomKey}
-                token={token ?? undefined}
-                readOnly={readOnly}
-              />
-            ) : (
-              <CheckpointTimeline
-                sessionId={sessionId}
-                token={token ?? undefined}
-                onRestoreComplete={handleRestoreComplete}
-                readOnly={readOnly}
-              />
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Editor Status Bar with Quick Panel Toggles */}
-      <div className="flex h-6 items-center justify-between border-t border-[#252526] bg-[#141414] px-3 font-mono text-[10px] text-[#888888] flex-shrink-0">
+      {/* Status Bar */}
+      <div
+        className="flex h-6 items-center justify-between border-t px-3 text-[10px] flex-shrink-0"
+        style={{
+          borderColor: "var(--iv-border)",
+          background: "var(--iv-surface)",
+          fontFamily: "var(--font-iv-ui)",
+          color: "var(--iv-text-muted)",
+        }}
+      >
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-[#CCCCCC]">
-            <Braces className="h-3 w-3 text-[#2A9D7B]" />
-            {activeFilePath} · {language.toUpperCase()}
+          <span className="flex items-center gap-1.5" style={{ color: "var(--iv-text)" }}>
+            <Braces className="h-3 w-3" style={{ color: "var(--iv-accent)" }} />
+            {activeFilePath.split("/").pop()} · {language.toUpperCase()}
           </span>
 
-          <button
-            onClick={() => openPanelTab("OUTPUT")}
-            className="hover:text-[#7EE0C5] transition flex items-center gap-1 cursor-pointer"
-          >
-            <span>Output</span>
+          <button onClick={() => openRightPanelTab("OUTPUT")} className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
+            Output
           </button>
 
-          <button
-            onClick={() => openPanelTab("TERMINAL")}
-            className="hover:text-[#7EE0C5] transition flex items-center gap-1 cursor-pointer"
-          >
-            <span>Terminal</span>
+          <button onClick={() => openRightPanelTab("TERMINAL")} className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
+            Terminal
           </button>
 
-          <button
-            onClick={() => openPanelTab("CHECKPOINTS")}
-            className="hover:text-[#7EE0C5] transition flex items-center gap-1 cursor-pointer"
-          >
-            <History className="h-2.5 w-2.5 text-[#2A9D7B]" />
-            <span>Timeline</span>
+          <button onClick={() => openRightPanelTab("CHECKPOINTS")} className="flex items-center gap-1 transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
+            <History className="h-2.5 w-2.5" style={{ color: "var(--iv-accent)" }} />
+            Checkpoints
           </button>
+
+          <button onClick={() => openRightPanelTab("TESTS")} className="flex items-center gap-1 transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
+            <Beaker className="h-2.5 w-2.5" style={{ color: "var(--iv-accent)" }} />
+            Tests
+          </button>
+
+          {isRightPanelCollapsed && (
+            <button
+              onClick={() => setIsRightPanelCollapsed(false)}
+              className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer"
+            >
+              Show Panel
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
-          <span className={`${lspStatus === "ready" ? "text-emerald-400" : "text-amber-400"}`}>
+          <span style={{ color: lspStatus === "ready" ? "#34d399" : "#fbbf24" }}>
             LSP {lspStatus.toUpperCase()}
           </span>
           <span>

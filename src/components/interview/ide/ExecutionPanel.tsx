@@ -183,7 +183,7 @@ export function ExecutionPanel({
               <div className="flex-1 overflow-y-auto p-2.5">
                 {output ? (
                   <pre className="whitespace-pre-wrap text-[#E0E0E0] text-[11px] leading-relaxed select-text font-mono">
-                    {output.stdout || output.stderr || "[Process completed with no output]"}
+                    {[output.stdout, output.stderr].filter(Boolean).join("\n") || "[Process completed with no output]"}
                   </pre>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-[#555555] text-center p-3">

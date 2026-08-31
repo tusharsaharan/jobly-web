@@ -8,7 +8,7 @@ type HealthScoreData = {
   breakdown: {
     completeness: number;
     salary: { score: number; feedback: string[] };
-    bias?: { score: number; feedback: string[] };
+    bias?: { score: number | null; feedback: string[]; isUnavailable?: boolean; isPending?: boolean };
   };
 };
 
@@ -33,17 +33,21 @@ export function HealthScoreGauge({ payload }: HealthScoreGaugeProps) {
         }, token);
         
         setData(current => {
-          if (!current) return result;
-          // Derived from original 20:20:15 relative ratio (sum = 55) -> 36.4% Completeness, 36.4% Bias, 27.3% Salary
-          const biasVal = current.breakdown.bias?.score !== undefined ? current.breakdown.bias.score : 100;
-          return {
-            ...result,
-            total: Math.round((result.breakdown.completeness * 20 + biasVal * 20 + result.breakdown.salary.score * 15) / 55),
-            breakdown: {
-              ...result.breakdown,
-              bias: current.breakdown.bias,
-            }
-          };
+          if (!current || !current.breakdown.bias || current.breakdown.bias.isPending || current.breakdown.bias.isUnavailable) {
+            return result;
+          }
+          const biasVal = typeof current.breakdown.bias.score === "number" ? current.breakdown.bias.score : null;
+          if (biasVal !== null) {
+            return {
+              ...result,
+              total: Math.round((result.breakdown.completeness * 20 + biasVal * 20 + result.breakdown.salary.score * 15) / 55),
+              breakdown: {
+                ...result.breakdown,
+                bias: current.breakdown.bias,
+              }
+            };
+          }
+          return result;
         });
       } catch (err) {
         console.error("Failed to fetch rule health score", err);
@@ -98,6 +102,10 @@ export function HealthScoreGauge({ payload }: HealthScoreGaugeProps) {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
+  const isBiasUnavailable = Boolean(data.breakdown.bias?.isUnavailable);
+  const isBiasPending = Boolean(data.breakdown.bias?.isPending) || (!data.breakdown.bias?.score && !isBiasUnavailable);
+  const biasScore = typeof data.breakdown.bias?.score === "number" ? data.breakdown.bias.score : null;
+
   return (
     <div className={`mt-6 rounded-xl border p-4 transition-colors ${bg}`}>
       <div className="flex items-center justify-between">
@@ -109,9 +117,11 @@ export function HealthScoreGauge({ payload }: HealthScoreGaugeProps) {
           {loading && <span className="text-xs text-ink/60 animate-pulse">Updating...</span>}
           <span 
             className="rounded bg-ink/5 px-2 py-0.5 text-[10px] font-medium text-ink/60 cursor-help"
-            title="Provisional 3-Factor Calibration: 36.4% Completeness, 36.4% Bias-free, 27.3% Salary. Full 5-factor model recalibrated at N > 100."
+            title={isBiasUnavailable 
+              ? "Rescaled 2-Factor Calibration: Completeness & Salary. Bias check temporarily unavailable." 
+              : "Provisional 3-Factor Calibration: 36.4% Completeness, 36.4% Bias-free, 27.3% Salary. Full 5-factor model recalibrated at N > 100."}
           >
-            Day 1 (3-factor)
+            {isBiasUnavailable ? "2-Factor (Bias Outage)" : "Day 1 (3-factor)"}
           </span>
         </div>
       </div>
@@ -143,23 +153,29 @@ export function HealthScoreGauge({ payload }: HealthScoreGaugeProps) {
         
         <div className="flex-1 space-y-1.5 text-xs">
           <div className="flex justify-between">
-            <span className="text-ink/70">Completeness (36.4%)</span>
+            <span className="text-ink/70">Completeness ({isBiasUnavailable ? "57.1%" : "36.4%"})</span>
             <span className="font-medium text-ink">{data.breakdown.completeness}/100</span>
           </div>
           <div className="flex justify-between">
             <span className="text-ink/70 flex items-center" title={data.breakdown.salary.feedback.join("\n")}>
-              Salary Transparency (27.3%) {data.breakdown.salary.feedback.length > 0 && <AlertCircle className="inline h-3 w-3 text-amber-500 ml-1 shrink-0" />}
+              Salary Transparency ({isBiasUnavailable ? "42.9%" : "27.3%"}) {data.breakdown.salary.feedback.length > 0 && <AlertCircle className="inline h-3 w-3 text-amber-500 ml-1 shrink-0" />}
             </span>
             <span className="font-medium text-ink">{data.breakdown.salary.score}/100</span>
           </div>
-          {data.breakdown.bias && (
-            <div className="flex justify-between">
-              <span className="text-ink/70 flex items-center" title={data.breakdown.bias.feedback.join("\n")}>
-                Bias-free Language (36.4%) {data.breakdown.bias.feedback.length > 0 && <AlertCircle className="inline h-3 w-3 text-amber-500 ml-1 shrink-0" />}
+          <div className="flex justify-between items-center">
+            <span className="text-ink/70 flex items-center" title={data.breakdown.bias?.feedback.join("\n")}>
+              Bias-free Language ({isBiasUnavailable ? "Excluded" : "36.4%"}) {data.breakdown.bias?.feedback && data.breakdown.bias.feedback.length > 0 && <AlertCircle className="inline h-3 w-3 text-amber-500 ml-1 shrink-0" />}
+            </span>
+            {isBiasUnavailable ? (
+              <span className="text-[10px] font-semibold text-amber-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> Unavailable
               </span>
-              <span className="font-medium text-ink">{data.breakdown.bias.score}/100</span>
-            </div>
-          )}
+            ) : isBiasPending ? (
+              <span className="text-[10px] text-ink/40 italic">Evaluating on blur...</span>
+            ) : (
+              <span className="font-medium text-ink">{biasScore}/100</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

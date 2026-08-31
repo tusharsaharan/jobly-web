@@ -356,7 +356,11 @@ function ApplicantRow({
           {status === "shortlisted" && (
             <button
               type="button"
-              onClick={async () => {
+              disabled={updating}
+              onClick={async (e) => {
+                const btn = e.currentTarget;
+                if (btn.dataset.busy === "1") return;
+                btn.dataset.busy = "1";
                 try {
                   const res = await apiCall<{ session: any }>(
                     "/interviews/schedule",
@@ -374,10 +378,17 @@ function ApplicantRow({
                     navigate({ to: "/interview/$roomKey", params: { roomKey: res.session.roomKey } });
                   }
                 } catch (err: any) {
-                  toast.error(err.message || "Failed scheduling interview");
+                  // Handle duplicate interview already scheduled
+                  if (err.status === 409 || /already/i.test(err.message)) {
+                    toast.info("Interview already scheduled for this candidate");
+                  } else {
+                    toast.error(err.message || "Failed scheduling interview");
+                  }
+                } finally {
+                  btn.dataset.busy = "0";
                 }
               }}
-              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#2A9D7B] px-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#238266]"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#2A9D7B] px-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#238266] disabled:opacity-50"
             >
               <Video className="h-4 w-4" />
               Launch Interview

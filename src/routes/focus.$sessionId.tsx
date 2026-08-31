@@ -66,7 +66,7 @@ function FocusEnvironment() {
   const submitSession = async () => {
     if (submitted) return;
     setSubmitted(true);
-    let finalScore = undefined;
+    let finalScore: number | undefined = undefined;
     
     if (activeSession?.type === "QUIZ") {
       finalScore = calculateScore();
@@ -74,11 +74,25 @@ function FocusEnvironment() {
     }
 
     try {
+      // Send both verified answers (server will recompute) and legacy score for backwards compat
+      const body: any = {};
+      if (activeSession?.type === "QUIZ") {
+        body.answers = quizAnswers;
+        body.score = finalScore;
+      }
       const res = await apiCall(`/learn/session/${sessionId}/complete`, {
         method: "POST",
-        body: { score: finalScore }
+        body,
       });
-      toast.success(`Earned ${res.pointsAwarded} Focus Points!`);
+      // Prefer server-verified score if returned
+      if (res.verifiedScore !== undefined && res.verifiedScore !== finalScore) {
+        setScore(res.verifiedScore);
+      }
+      if (res.autoResolvedCount > 0) {
+        toast.success(`Earned ${res.pointsAwarded} pts · ${res.autoResolvedCount} weakness(es) auto-resolved!`);
+      } else {
+        toast.success(`Earned ${res.pointsAwarded} Focus Points!`);
+      }
     } catch (e) {
       console.error("Failed to submit", e);
     }

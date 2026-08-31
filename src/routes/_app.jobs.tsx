@@ -90,6 +90,7 @@ function JobsPage() {
   }, [token, user?.id, user?._id, user?.resumeText, user?.role]);
 
   async function apply(jobId: string) {
+    if (applying) return;
     if (!user?.resumeText) {
       toast.error("Upload your resume before applying.");
       return;
@@ -114,6 +115,7 @@ function JobsPage() {
   }
 
   async function checkScore(jobId: string) {
+    if (scoring) return;
     if (!user?.resumeText) {
       toast.error("Upload your resume to calculate a fit score.");
       return;

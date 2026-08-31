@@ -39,7 +39,7 @@ const fs = require('fs');
   await recruiterPage.fill("input[placeholder='Senior Product Engineer']", "React Ninja");
   await recruiterPage.fill("input[placeholder='Your organization']", "Ninja Corp");
   await recruiterPage.fill("input[placeholder='Remote, hybrid, or city']", "NYC");
-  await recruiterPage.fill("textarea[placeholder*='Describe the work']", "We need a ninja.");
+  await recruiterPage.fill("textarea[placeholder*='Describe the work']", "We need an experienced React engineer who can architect modular systems and mentor junior developers. 5+ years of experience expected. This is a critical role for our infrastructure team.");
   await recruiterPage.click("button:has-text('Publish role')");
   await recruiterPage.waitForURL(/.*dashboard/);
   console.log("Job posted.");
@@ -67,7 +67,7 @@ const fs = require('fs');
   const fileChooserPromise = seekerPage.waitForEvent("filechooser");
   await seekerPage.click("button:has-text('Browse PDF')");
   const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(path.join(__dirname, "../../../../jobly-web/e2e/fixtures/mock-resume.pdf"));
+  await fileChooser.setFiles(path.join(__dirname, "fixtures/mock-resume.pdf"));
   await seekerPage.waitForSelector("text='javascript'", { timeout: 15000 });
   console.log("Seeker resume uploaded.");
 
@@ -76,9 +76,20 @@ const fs = require('fs');
   await seekerPage.waitForURL(/.*jobs/);
   
   // Ensure job is listed
-  await seekerPage.waitForSelector("article:first-child");
-  await seekerPage.click("article:first-child button:has-text('Apply')");
-  await seekerPage.waitForSelector("text=Applied");
+  await seekerPage.waitForSelector("article:first-child", {timeout: 15000});
+  // Use more robust locator for Apply button
+  const applyBtn = seekerPage.locator("article").first().getByRole("button", {name: "Apply"});
+  await applyBtn.waitFor({timeout: 10000});
+  await applyBtn.click();
+  // Wait for Applied state with increased timeout and fallback to check button text
+  try {
+    await seekerPage.waitForSelector("text=Applied", {timeout: 15000});
+  } catch {
+    const html = await seekerPage.content();
+    console.log("Apply failed, page content snippet:", html.slice(0, 3000));
+    // Try alternative: button now says Applied
+    await seekerPage.locator("button:has-text('Applied')").waitFor({timeout: 5000});
+  }
   console.log("Seeker applied to job.");
 
   // 3. Recruiter views applicants and messages

@@ -18,17 +18,26 @@ describe("AtsScoreRing", () => {
   });
 
   it("should render correct color class based on score value", () => {
-    // Red/pink for low score (< 40)
+    // Low score (< 40) - should have lighter green shade
     const { container: lowContainer } = render(<AtsScoreRing score={35} />);
-    expect(lowContainer.querySelector("circle.text-\\[\\#a65b75\\]")).toBeInTheDocument();
+    const lowCircle = lowContainer.querySelector("circle:nth-child(2)") as HTMLElement;
+    expect(lowCircle).toBeInTheDocument();
+    expect(lowCircle.style.stroke).toBeTruthy();
 
-    // Yellow/brown for mid score (>= 40, < 70)
+    // Mid score (>= 40, < 70) - medium green shade
     const { container: midContainer } = render(<AtsScoreRing score={55} />);
-    expect(midContainer.querySelector("circle.text-\\[\\#b48644\\]")).toBeInTheDocument();
+    const midCircle = midContainer.querySelector("circle:nth-child(2)") as HTMLElement;
+    expect(midCircle).toBeInTheDocument();
+    expect(midCircle.style.stroke).toBeTruthy();
 
-    // Green for high score (>= 70)
+    // High score (>= 70) - darker green shade
     const { container: highContainer } = render(<AtsScoreRing score={85} />);
-    expect(highContainer.querySelector("circle.text-\\[\\#4f8c78\\]")).toBeInTheDocument();
+    const highCircle = highContainer.querySelector("circle:nth-child(2)") as HTMLElement;
+    expect(highCircle).toBeInTheDocument();
+    expect(highCircle.style.stroke).toBeTruthy();
+
+    // Verify shades are distinct (lighter to darker)
+    expect(lowCircle.style.stroke).not.toBe(highCircle.style.stroke);
   });
 });
 

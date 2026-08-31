@@ -66,6 +66,13 @@ type ChatMessage = {
   createdAt: string;
 };
 
+type ConversationSummaryResult = {
+  summary: string;
+  highlights: string[];
+  messageCount: number;
+  generatedAt?: string;
+};
+
 export const Route = createFileRoute("/_app/messages")({
   validateSearch: (search: Record<string, unknown>): { applicationId?: string } => ({
     applicationId: typeof search.applicationId === "string" ? search.applicationId : undefined,
@@ -89,6 +96,8 @@ function MessagesPage() {
   const [filterTab, setFilterTab] = useState<"all" | "unread" | "interviews">("all");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | null>(null);
+  const [summary, setSummary] = useState<ConversationSummaryResult | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -142,6 +151,8 @@ function MessagesPage() {
   useEffect(() => {
     if (!selectedAppId || !token) return;
     setLoadingChat(true);
+    setSummary(null);
+    setSummaryLoading(false);
     apiCall<ChatMessage[]>(`/messages/application/${selectedAppId}`, "GET", null, token)
       .then((data) => {
         setMessages(Array.isArray(data) ? data : []);
@@ -251,13 +262,18 @@ function MessagesPage() {
     }
   }, [messages, isTyping]);
 
-  // Handle typing debounce
+  // Handle typing debounce — throttle typing_start to once per 2s to avoid socket flood
   const handleTextChange = (val: string) => {
     setText(val);
     if (!selectedAppId || !token) return;
     const socket = getInterviewSocket(token);
 
-    socket.emit("typing_start", { applicationId: selectedAppId });
+    const now = Date.now();
+    const last = (handleTextChange as any)._lastTypingAt || 0;
+    if (now - last > 2000) {
+      socket.emit("typing_start", { applicationId: selectedAppId });
+      (handleTextChange as any)._lastTypingAt = now;
+    }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
@@ -309,6 +325,25 @@ function MessagesPage() {
       toast.error(err.message || "Failed to send message");
     } finally {
       setSending(false);
+    }
+  };
+
+  // Summarize the active conversation (Instagram-style)
+  const handleSummarize = async () => {
+    if (!selectedAppId || !token || summaryLoading) return;
+    setSummaryLoading(true);
+    try {
+      const data = await apiCall<ConversationSummaryResult>(
+        `/messages/application/${selectedAppId}/summary`,
+        "GET",
+        null,
+        token,
+      );
+      setSummary(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to summarize conversation");
+    } finally {
+      setSummaryLoading(false);
     }
   };
 
@@ -631,6 +666,23 @@ function MessagesPage() {
                     </button>
                   ) : null}
 
+                  {messages.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleSummarize}
+                      disabled={summaryLoading}
+                      title="Summarize this conversation"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:border-[#2A9D7B] hover:bg-[#E9FBF2] hover:text-[#1E7058] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {summaryLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      <span className="hidden sm:inline">Summarize</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {
@@ -655,6 +707,51 @@ function MessagesPage() {
                 className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[#FAFCFB]"
               >
                 <div className="max-w-3xl mx-auto space-y-3">
+                  {summary && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="relative rounded-xl border border-[#8DDCBE] bg-[#E9FBF2] px-4 py-3 shadow-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-[#1E7058]" />
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#1E7058]">
+                            AI Summary
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSummary(null)}
+                          title="Dismiss summary"
+                          className="text-ink/40 hover:text-ink transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {summary.summary && (
+                        <p className="mt-1.5 text-xs font-semibold leading-relaxed text-ink">
+                          {summary.summary}
+                        </p>
+                      )}
+
+                      {summary.highlights.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {summary.highlights.map((item, i) => (
+                            <li
+                              key={i}
+                              className="flex items-start gap-1.5 text-xs leading-relaxed text-ink/75"
+                            >
+                              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#2A9D7B]" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </motion.div>
+                  )}
+
                   {loadingChat ? (
                     <div className="flex h-60 items-center justify-center gap-2 text-ink/50">
                       <Loader2 className="h-5 w-5 animate-spin text-[#2A9D7B]" />

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Terminal as TerminalIcon, RotateCcw, Sparkles } from "lucide-react";
+import { Terminal as TerminalIcon, RotateCcw } from "lucide-react";
 import { apiCall } from "@/lib/api";
 import { getInterviewSocket } from "@/lib/socket";
 
@@ -80,7 +80,7 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
             id: Math.random().toString(36).substring(7), 
             type: "input", 
             text: data.trim(),
-            prompt: "⋊> ~/interview on main ❯"
+            prompt: "~/interview on main"
           },
         ]);
       }
@@ -167,7 +167,7 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
         id: Math.random().toString(36).substring(7),
         type: "input",
         text: input,
-        prompt: "⋊> ~/interview on main ❯",
+        prompt: "~/interview on main",
       };
 
       const localResult = executeLocalCommand(input);
@@ -220,14 +220,28 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[#0D1117] text-white font-mono text-xs select-text">
-      {/* VS Code Style Header */}
-      <div className="flex h-8 items-center justify-between border-b border-[#21262D] bg-[#161B22] px-3">
-        <div className="flex items-center gap-2 text-[#8B949E]">
-          <span className="font-semibold uppercase tracking-wider text-[11px] text-[#C9D1D9]">
-            Interview Terminal
+    <div
+      className="flex h-full flex-col overflow-hidden text-white select-text"
+      style={{ background: "var(--iv-bg)", fontFamily: "var(--font-iv-code)" }}
+    >
+      {/* Header */}
+      <div
+        className="flex h-8 items-center justify-between border-b px-3"
+        style={{
+          borderColor: "var(--iv-border)",
+          background: "var(--iv-surface)",
+          fontFamily: "var(--font-iv-ui)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <TerminalIcon className="h-3.5 w-3.5 text-[var(--iv-accent)]" />
+          <span className="text-[12px] font-semibold tracking-wide text-white/80">
+            Terminal
           </span>
-          <span className="rounded bg-[#21262D] px-1.5 py-0.5 text-[10px] text-[#7EE0C5]">
+          <span
+            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+            style={{ background: "var(--iv-surface-elevated)", color: "var(--iv-accent-glow)" }}
+          >
             fish 3.6
           </span>
         </div>
@@ -235,7 +249,7 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
         <button
           onClick={() => setLines([])}
           title="Clear Terminal"
-          className="rounded p-1 text-[#8B949E] hover:bg-[#21262D] hover:text-white transition"
+          className="rounded p-1 text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
         >
           <RotateCcw className="h-3 w-3" />
         </button>
@@ -244,22 +258,25 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
       {/* Terminal Output Stream */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-3 text-[#C9D1D9] space-y-1.5 scrollbar-thin scrollbar-thumb-[#21262D]"
+        className="iv-scroll flex-1 overflow-y-auto p-3 space-y-1.5"
+        style={{ fontSize: "13px", lineHeight: "1.6" }}
       >
         {lines.map((line) => (
-          <div key={line.id} className="leading-relaxed">
+          <div key={line.id}>
             {line.type === "input" ? (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[#38BDF8] font-bold">⋊&gt;</span>
-                <span className="text-[#7EE0C5] font-semibold">~/interview</span>
-                <span className="text-[#A78BFA] text-[11px]">on main</span>
-                <span className="text-[#2A9D7B] font-bold">❯</span>
-                <span className="text-white font-semibold">{line.text}</span>
+                <span className="font-bold" style={{ color: "#38BDF8" }}>{">"}</span>
+                <span className="font-semibold" style={{ color: "var(--iv-accent-glow)" }}>~/interview</span>
+                <span style={{ color: "#A78BFA", fontSize: "12px" }}>on main</span>
+                <span className="font-bold" style={{ color: "var(--iv-accent)" }}>$</span>
+                <span className="font-semibold text-white">{line.text}</span>
               </div>
             ) : line.type === "system" ? (
-              <div className="text-[#7EE0C5] opacity-90">{line.text}</div>
+              <div style={{ color: "var(--iv-accent-glow)", opacity: 0.85 }}>{line.text}</div>
             ) : (
-              <div className="whitespace-pre-wrap text-[#C9D1D9] font-normal">{line.text}</div>
+              <div className="whitespace-pre-wrap font-normal" style={{ color: "var(--iv-text)" }}>
+                {line.text}
+              </div>
             )}
           </div>
         ))}
@@ -267,17 +284,18 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
         {/* Active Interactive Fish Prompt */}
         {!readOnly && (
           <div className="flex items-center gap-1.5 pt-1">
-            <span className="text-[#38BDF8] font-bold select-none">⋊&gt;</span>
-            <span className="text-[#7EE0C5] font-semibold select-none">~/interview</span>
-            <span className="text-[#A78BFA] text-[11px] select-none">on main</span>
-            <span className="text-[#2A9D7B] font-bold select-none">❯</span>
+            <span className="font-bold select-none" style={{ color: "#38BDF8" }}>{">"}</span>
+            <span className="font-semibold select-none" style={{ color: "var(--iv-accent-glow)" }}>~/interview</span>
+            <span className="select-none" style={{ color: "#A78BFA", fontSize: "12px" }}>on main</span>
+            <span className="font-bold select-none" style={{ color: "var(--iv-accent)" }}>$</span>
             <input
               type="text"
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="type command..."
-              className="flex-1 bg-transparent text-white outline-none font-mono text-xs placeholder:text-[#484F58]"
+              className="flex-1 bg-transparent text-white outline-none placeholder:text-white/20"
+              style={{ fontFamily: "var(--font-iv-code)", fontSize: "13px" }}
             />
           </div>
         )}

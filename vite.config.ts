@@ -12,12 +12,32 @@ export default defineConfig({
   // Pin the path explicitly so Rolldown can resolve the collaborative IDE
   // during production builds instead of treating it as an unavailable export.
   vite: {
+    server: {
+      port: 8080,
+      hmr: { overlay: false },
+      proxy: {
+        "/api": {
+          target: "http://localhost:5000",
+          changeOrigin: true,
+        },
+      },
+    },
     resolve: {
       alias: {
         "monaco-editor/esm/vs/editor/editor.api.js": fileURLToPath(
           new URL("./node_modules/monaco-editor/esm/vs/editor/editor.api.js", import.meta.url),
         ),
       },
+    },
+    optimizeDeps: {
+      exclude: ["@excalidraw/excalidraw"],
+      include: ["react", "react-dom", "@tanstack/react-router", "@tanstack/react-query"],
+    },
+    ssr: {
+      noExternal: ["@excalidraw/excalidraw"],
+    },
+    define: {
+      "process.env.IS_PREACT": JSON.stringify("true"),
     },
   },
   tanstackStart: {

@@ -84,8 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    // Force navigate to auth — Nav logout previously stayed on protected route showing empty outlet
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth";
+    }
   }, []);
 
   const refresh = useCallback(async () => {

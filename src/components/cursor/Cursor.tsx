@@ -2,38 +2,39 @@ import { useEffect, useState } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 /**
- * A soft mint tinge that gently follows the pointer — no visible dot, just
- * a diffuse green wash over a small part of the screen. Native cursor stays
- * visible. Respects reduced-motion and coarse pointers.
+ * A soft mint wash that drifts behind the cursor. Native cursor stays visible.
+ * - Respects prefers-reduced-motion
+ * - Respects coarse pointers (touch devices)
+ * - Mount only where it's wanted via the `enabled` prop
  */
-export function Cursor() {
+export function Cursor({ enabled = false }: { enabled?: boolean }) {
   const x = useMotionValue(-1000);
   const y = useMotionValue(-1000);
-  // Slower, softer spring so the tinge drifts rather than snaps.
   const sx = useSpring(x, { damping: 40, stiffness: 90, mass: 0.9 });
   const sy = useSpring(y, { damping: 40, stiffness: 90, mass: 0.9 });
   const [hover, setHover] = useState(false);
-  const [enabled, setEnabled] = useState(false);
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const fine = window.matchMedia("(pointer: fine)").matches;
     if (reduce || !fine) return;
-    setEnabled(true);
+    setActive(true);
 
     const onMove = (e: PointerEvent) => {
       x.set(e.clientX);
       y.set(e.clientY);
       const el = (e.target as HTMLElement | null)?.closest?.(
-        "a, button, input, textarea, select, [role='button'], [data-cursor]",
+        "a, button, input, textarea, select, [role='button'], [data-cursor]"
       );
       setHover(Boolean(el));
     };
-    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
-  }, [x, y]);
+  }, [enabled, x, y]);
 
-  if (!enabled) return null;
+  if (!active) return null;
 
   const size = hover ? 520 : 420;
   return (
@@ -54,6 +55,6 @@ export function Cursor() {
           filter: "blur(34px)",
         }}
       />
-    </motion.div>
+   </motion.div>
   );
 }

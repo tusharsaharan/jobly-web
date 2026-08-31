@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { convertToExcalidrawElements, Excalidraw } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
-import "@excalidraw/excalidraw/index.css";
+// Excalidraw CSS is bundled via main.js; explicit CSS import removed to fix Vite resolution (was index.css not found)
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
-import { Layers3, Save, Users } from "lucide-react";
+import { Layers3, Save, Users, ArrowLeft, VideoOff } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
@@ -15,6 +15,10 @@ interface ExcalidrawWhiteboardProps {
   sessionId?: string;
   readOnly?: boolean;
   onSnapshotSaved?: (timelineEvent: any) => void;
+  onLeave?: () => void;
+  videoElement?: React.ReactNode;
+  isVideoHidden?: boolean;
+  onToggleVideo?: () => void;
 }
 
 const userColors = ["#2A9D7B", "#E76F51", "#F4A261", "#457B9D", "#9D4EDD"];
@@ -61,6 +65,10 @@ export function ExcalidrawWhiteboard({
   sessionId,
   readOnly = false,
   onSnapshotSaved,
+  onLeave,
+  videoElement,
+  isVideoHidden = false,
+  onToggleVideo,
 }: ExcalidrawWhiteboardProps) {
   const { token, user } = useAuth();
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -138,10 +146,32 @@ export function ExcalidrawWhiteboard({
     };
   }, [applyRemoteScene, identity, roomKey, token]);
 
+  const MAX_WHITEBOARD_ELEMENTS = 3000;
+  const MAX_WHITEBOARD_TOTAL_SIZE = 500 * 1024; // 500KB total
+  const MAX_WHITEBOARD_ELEMENT_SIZE = 20 * 1024; // 20KB per element
+
   const persistScene = useCallback(
     (elements: readonly OrderedExcalidrawElement[]) => {
       const scene = sceneRef.current;
       if (!scene || applyingRemoteRef.current || readOnly) return;
+      // Whiteboard size limits: element count and size
+      if (elements.length > MAX_WHITEBOARD_ELEMENTS) {
+        toast.error(`Whiteboard limit: max ${MAX_WHITEBOARD_ELEMENTS} elements (currently ${elements.length})`);
+        return;
+      }
+      let totalSize = 0;
+      for (const element of elements) {
+        const elStr = JSON.stringify(element);
+        if (elStr.length > MAX_WHITEBOARD_ELEMENT_SIZE) {
+          toast.error(`Element ${element.id} exceeds ${MAX_WHITEBOARD_ELEMENT_SIZE / 1024}KB, rejected`);
+          return;
+        }
+        totalSize += elStr.length;
+      }
+      if (totalSize > MAX_WHITEBOARD_TOTAL_SIZE) {
+        toast.error(`Whiteboard total size exceeds ${MAX_WHITEBOARD_TOTAL_SIZE / 1024}KB (${Math.round(totalSize / 1024)}KB), save blocked`);
+        return;
+      }
       const ids = new Set(elements.map((element) => element.id));
       scene.doc?.transact(() => {
         for (const key of Array.from(scene.keys())) {
@@ -197,41 +227,55 @@ export function ExcalidrawWhiteboard({
 
   return (
     <section
-      className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#121212] shadow-2xl"
+      className="relative flex h-full min-h-0 flex-col overflow-hidden"
+      style={{ background: "var(--iv-bg)" }}
       aria-label="Collaborative system-design whiteboard"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#333] bg-[#1b1b1b] px-3 py-2 font-sans text-xs text-[#d4d4d4]">
-        <div className="flex items-center gap-2">
-          <Layers3 className="h-4 w-4 text-[#2A9D7B]" aria-hidden="true" />
-          <span className="font-semibold">Excalidraw System Design</span>
+      {/* Header bar */}
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2 text-[13px]"
+        style={{
+          borderColor: "var(--iv-border)",
+          background: "var(--iv-surface)",
+          fontFamily: "var(--font-iv-ui)",
+          color: "var(--iv-text)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <Layers3 className="h-4 w-4" style={{ color: "var(--iv-accent)" }} aria-hidden="true" />
+          <span className="font-semibold">System Design Whiteboard</span>
           <span
-            className="rounded-full bg-[#2A9D7B]/15 px-2 py-0.5 text-[11px] text-[#7ee0c5]"
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+            style={{
+              background: "var(--iv-accent-surface)",
+              color: "var(--iv-accent-glow)",
+            }}
             aria-live="polite"
           >
-            {connected ? "CRDT Synced" : "Connecting..."}
+            {connected ? "Synced" : "Connecting..."}
           </span>
           {peerCount > 0 && (
-            <span className="flex items-center gap-1 text-[11px] text-[#a8a8a8]">
+            <span className="flex items-center gap-1 text-[11px]" style={{ color: "var(--iv-text-muted)" }}>
               <Users className="h-3 w-3" />
               {peerCount} collaborating
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {!readOnly && (
             <button
               type="button"
               onClick={addTemplate}
-              className="rounded-md border border-[#444] px-2.5 py-1.5 text-[11px] font-medium transition hover:border-[#2A9D7B] hover:bg-[#2A9D7B]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7ee0c5]"
+              className="iv-btn iv-btn-ghost text-[12px]"
             >
-              Add Architecture Stencil
+              Add Stencil
             </button>
           )}
           {sessionId && !readOnly && (
             <button
               type="button"
               onClick={saveSnapshot}
-              className="flex items-center gap-1.5 rounded-md bg-[#2A9D7B] px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-[#238266] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7ee0c5]"
+              className="iv-btn iv-btn-primary text-[12px]"
             >
               <Save className="h-3.5 w-3.5" />
               Snapshot
@@ -239,6 +283,8 @@ export function ExcalidrawWhiteboard({
           )}
         </div>
       </div>
+
+      {/* Excalidraw Canvas */}
       <div className="min-h-0 flex-1 bg-[#f8fafc]">
         {ready && (
           <Excalidraw
@@ -254,6 +300,51 @@ export function ExcalidrawWhiteboard({
           />
         )}
       </div>
+
+      {/* Bottom bar: Leave + Hide Video */}
+      <div
+        className="flex h-10 flex-shrink-0 items-center justify-between border-t px-4"
+        style={{
+          borderColor: "var(--iv-border)",
+          background: "var(--iv-surface)",
+          fontFamily: "var(--font-iv-ui)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          {onLeave && (
+            <button
+              type="button"
+              onClick={onLeave}
+              className="iv-btn iv-btn-ghost text-[12px]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Leave Whiteboard
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {onToggleVideo && (
+            <button
+              type="button"
+              onClick={onToggleVideo}
+              className="iv-btn iv-btn-ghost text-[12px]"
+            >
+              <VideoOff className="h-3.5 w-3.5" />
+              {isVideoHidden ? "Show Video" : "Hide Video"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Compact video in bottom-right corner */}
+      {videoElement && !isVideoHidden && (
+        <div
+          className="iv-video-compact absolute bottom-14 right-4 z-20"
+          style={{ width: 200, height: 120 }}
+        >
+          {videoElement}
+        </div>
+      )}
     </section>
   );
 }

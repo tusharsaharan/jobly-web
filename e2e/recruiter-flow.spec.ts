@@ -70,6 +70,11 @@ test.describe("Recruiter E2E workflow", () => {
       await page.fill("textarea", "Thanks for applying! We'd love to schedule a interview.");
       await page.click("button[type='submit']");
       await expect(page.locator("text=schedule a interview")).toBeVisible();
+
+      // Summarize feature
+      await page.click("button:has-text('Summarize')");
+      await expect(page.locator("text=AI Summary")).toBeVisible();
+
       // Empty message submission (should be disabled or ignored)
       await page.fill("textarea", "");
       const isSubmitDisabled = await page.locator("button[type='submit']").isDisabled();

@@ -16,13 +16,14 @@ type RequirementFlagsProps = {
 export function RequirementFlags({ payload }: RequirementFlagsProps) {
   const { token } = useAuth();
   const [flags, setFlags] = useState<Flag[]>([]);
+  const [isSemanticUnavailable, setIsSemanticUnavailable] = useState(false);
   const lastSemanticCheck = useRef("");
 
   // Rule-based checks (debounced on typing)
   useEffect(() => {
     const fetchRuleFlags = async () => {
       try {
-        const result = await apiCall<{ flags: Flag[] }>("/jobs/flag-requirements", "POST", {
+        const result = await apiCall<{ flags: Flag[]; isUnavailable?: boolean }>("/jobs/flag-requirements", "POST", {
           type: "rules",
           payload,
         }, token);
@@ -48,20 +49,22 @@ export function RequirementFlags({ payload }: RequirementFlagsProps) {
 
     const fetchSemanticFlags = async () => {
       try {
-        const result = await apiCall<{ flags: Flag[] }>("/jobs/flag-requirements", "POST", {
+        const result = await apiCall<{ flags: Flag[]; isUnavailable?: boolean }>("/jobs/flag-requirements", "POST", {
           type: "semantic",
           payload,
         }, token);
         
         lastSemanticCheck.current = currentDesc;
+        setIsSemanticUnavailable(Boolean(result.isUnavailable));
         
         setFlags(current => {
           // Replace only semantic flags for description, keep rule flags
           const nonDescFlags = current.filter(f => f.field !== "description");
-          return [...nonDescFlags, ...result.flags];
+          return [...nonDescFlags, ...(result.flags || [])];
         });
       } catch (err) {
         console.error("Failed to fetch semantic flags", err);
+        setIsSemanticUnavailable(true);
       }
     };
 
@@ -70,10 +73,19 @@ export function RequirementFlags({ payload }: RequirementFlagsProps) {
     return () => clearTimeout(timer);
   }, [payload.description, payload, token]);
 
-  if (flags.length === 0) return null;
+  if (flags.length === 0 && !isSemanticUnavailable) return null;
 
   return (
     <div className="mb-8 space-y-3">
+      {isSemanticUnavailable && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-400 text-xs">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">AI Semantic Contradiction Check Unavailable</span>
+            <p className="mt-0.5 opacity-90">Automated contradiction detection could not run. Rule-based requirements checks remain active.</p>
+          </div>
+        </div>
+      )}
       {flags.map((flag, idx) => (
         <div 
           key={`${flag.field}-${idx}`}

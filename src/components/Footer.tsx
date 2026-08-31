@@ -44,16 +44,16 @@ export function Footer() {
             keep every application moving.
           </p>
           <div className="mt-6 flex items-center gap-3 text-ink/60">
-            <a href="#" aria-label="Twitter" className="hover-icon rounded-md p-1.5">
+            <a href="/" aria-label="Twitter" className="hover-icon rounded-md p-1.5">
               <Twitter className="h-4 w-4" />
             </a>
-            <a href="#" aria-label="Instagram" className="hover-icon rounded-md p-1.5">
+            <a href="/" aria-label="Instagram" className="hover-icon rounded-md p-1.5">
               <Instagram className="h-4 w-4" />
             </a>
-            <a href="#" aria-label="LinkedIn" className="hover-icon rounded-md p-1.5">
+            <a href="/" aria-label="LinkedIn" className="hover-icon rounded-md p-1.5">
               <Linkedin className="h-4 w-4" />
             </a>
-            <a href="#" aria-label="GitHub" className="hover-icon rounded-md p-1.5">
+            <a href="/" aria-label="GitHub" className="hover-icon rounded-md p-1.5">
               <Github className="h-4 w-4" />
             </a>
           </div>

@@ -29,7 +29,13 @@ function AppLayout() {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    // Still render Outlet so child routes can handle their own auth redirects
+    // but show loading state for immersive routes
+    return (
+      <Outlet />
+    );
+  }
 
   if (isInterviewRoom) {
     return (

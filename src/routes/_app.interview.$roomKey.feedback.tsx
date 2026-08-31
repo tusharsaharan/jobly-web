@@ -23,9 +23,16 @@ interface Feedback {
   decision: string;
   strengths: string[];
   improvementAreas: string[];
-  competencies: Array<{ category: string; score: number; notes: string }>;
+  competencies: Array<{ category: string; score: number; notes: string; evidenceRefs?: any[]; pillar?: string; rationale?: string }>;
   completedAt?: string;
 }
+
+const PILLAR_META: Record<string, { label: string; icon: string }> = {
+  problem_solving: { label: "Problem Solving & Decomposition", icon: "🧩" },
+  coding_algorithms: { label: "Algorithmic Implementation & Code Quality", icon: "💻" },
+  system_design: { label: "System Architecture & Tradeoff Reasoning", icon: "🏗️" },
+  communication: { label: "Technical Communication & Collaboration", icon: "💬" },
+};
 
 function CandidateFeedbackPage() {
   const { roomKey } = Route.useParams();
@@ -35,9 +42,13 @@ function CandidateFeedbackPage() {
   const [session, setSession] = useState<{
     title: string;
     job?: { title?: string; company?: string };
+    _id?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fullEvaluation, setFullEvaluation] = useState<any>(null);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [resolvedArtifact, setResolvedArtifact] = useState<Record<string, any>>({});
 
   useEffect(() => {
     async function loadFeedback() {
@@ -53,7 +64,14 @@ function CandidateFeedbackPage() {
           session: { title: string; job?: { title?: string; company?: string } };
         }>(`/evaluations/${room.session._id}/candidate-feedback`, "GET", null, token);
         setFeedback(data.feedback);
-        setSession(data.session);
+        setSession(data.session as any);
+        // Try to load full evaluation for evidence links if recruiter
+        try {
+          const evalData = await apiCall<{ evaluation: any }>(`/evaluations/${room.session._id}`, "GET", null, token);
+          if (evalData?.evaluation) setFullEvaluation(evalData.evaluation);
+        } catch {
+          // candidate view hides evidence — expected 403 for seekers without recruiter perms
+        }
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unable to load interview feedback.");
       } finally {
@@ -62,6 +80,19 @@ function CandidateFeedbackPage() {
     }
     if (token) void loadFeedback();
   }, [roomKey, token]);
+
+  const handleResolveEvidence = async (evidenceId: string) => {
+    if (!session?._id) return;
+    setResolvingId(evidenceId);
+    try {
+      const res = await apiCall<{ evidenceRef: any; resolvedArtifact: any }>(`/evaluations/${session._id}/evidence/${evidenceId}`, "GET", null, token);
+      setResolvedArtifact((m) => ({ ...m, [evidenceId]: res.resolvedArtifact }));
+    } catch (e: any) {
+      setResolvedArtifact((m) => ({ ...m, [evidenceId]: { error: e.message } }));
+    } finally {
+      setResolvingId(null);
+    }
+  };
 
   if (loading)
     return (
@@ -144,25 +175,90 @@ function CandidateFeedbackPage() {
           />
         </section>
         <section className="mt-6 rounded-2xl border border-[#303640] bg-[#12151b] p-6">
-          <h2 className="text-lg font-semibold">Competency breakdown</h2>
-          <div className="mt-5 space-y-4">
-            {feedback.competencies.map((competency) => (
-              <article key={competency.category}>
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-medium">{competency.category}</h3>
-                  <span className="text-sm font-semibold text-[#7ee0c5]">{competency.score}/5</span>
-                </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#29313b]">
-                  <div
-                    className="h-full rounded-full bg-[#2A9D7B]"
-                    style={{ width: `${competency.score * 20}%` }}
-                  />
-                </div>
-                {competency.notes && (
-                  <p className="mt-2 text-sm leading-6 text-[#b4bdc8]">{competency.notes}</p>
-                )}
-              </article>
-            ))}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Competency breakdown — 4 Pillars (signals-engine/2026-08-v1)</h2>
+            <span className="rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-xs text-emerald-300">Evidence-grounded</span>
+          </div>
+          <p className="mt-1 text-xs text-[#8b95a5]">Each score cites verifiable timeline evidence. Click evidence badges to resolve artifacts.</p>
+          <div className="mt-5 space-y-5">
+            {feedback.competencies.map((competency) => {
+              const pillarKey = (competency as any).pillar || String(competency.category).toLowerCase().replace(/[^a-z_]/g, "_");
+              const meta = PILLAR_META[pillarKey] || { label: competency.category, icon: "📌" };
+              const fullComp = fullEvaluation?.competencies?.find((c: any) => (c.category === competency.category || c.pillar === pillarKey));
+              const evidenceList: any[] = fullComp?.evidenceRefs || (competency as any).evidenceRefs || [];
+              return (
+                <article key={competency.category} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <span>{meta.icon}</span>
+                      {meta.label}
+                      <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">{pillarKey}</span>
+                    </h3>
+                    <span className="text-sm font-semibold text-[#7ee0c5]">{competency.score}/5</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#29313b]">
+                    <div className="h-full rounded-full bg-[#2A9D7B]" style={{ width: `${competency.score * 20}%` }} />
+                  </div>
+                  {(competency.notes || (competency as any).rationale) && (
+                    <p className="mt-2 text-sm leading-6 text-[#b4bdc8]">{competency.notes || (competency as any).rationale}</p>
+                  )}
+                  {/* Evidence links — plan Phase 7b interactive */}
+                  {evidenceList.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-zinc-400">
+                        <span className="flex items-center gap-1">
+                          <CircleGauge className="h-3 w-3 text-emerald-400" />
+                          Evidence ({evidenceList.length})
+                        </span>
+                        <span className="text-[10px] text-zinc-600">click badge to resolve to timeline artifact</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {evidenceList.slice(0, 5).map((ref: any) => {
+                          const id = String(ref._id || ref.id || ref.timelineEventId || Math.random().toString(36).slice(2, 6));
+                          const label = ref.refType || ref.type || "TIMELINE_EVENT";
+                          return (
+                            <button
+                              key={id}
+                              onClick={() => handleResolveEvidence(id)}
+                              disabled={resolvingId === id}
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300 hover:bg-emerald-500/20 transition"
+                            >
+                              {resolvingId === id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Target className="h-3 w-3" />}
+                              {label} · {id.slice(-6)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {evidenceList.slice(0, 5).map((ref: any) => {
+                        const id = String(ref._id || ref.id || ref.timelineEventId);
+                        const artifact = resolvedArtifact[id];
+                        if (!artifact) return null;
+                        return (
+                          <div key={`artifact-${id}`} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300">
+                            <div className="font-semibold text-zinc-200">Resolved artifact — {ref.refType || ref.type}</div>
+                            {artifact.error ? (
+                              <p className="mt-1 text-rose-300">{artifact.error}</p>
+                            ) : (
+                              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words text-[11px] text-zinc-400">{JSON.stringify(artifact, null, 2).slice(0, 800)}</pre>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-zinc-500">No direct evidence cited for this pillar in candidate view (hiring team sees full evidence graph).</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500">
+            <span>engineVersion: signals-engine/2026-08-v1</span>
+            <span>·</span>
+            <span>Scoring is deterministic; redo with same signals produces identical 1–5 scores.</span>
+            <button onClick={() => navigate({ to: `/interview/${roomKey}/replay` as any })} className="ml-auto inline-flex items-center gap-1 text-emerald-300 hover:text-white bg-transparent border-0 p-0 text-xs cursor-pointer">
+              View timeline replay with evidence markers <ChevronRight className="h-3 w-3" />
+            </button>
           </div>
         </section>
         <section className="mt-6 rounded-2xl border border-[#2A9D7B]/30 bg-[#2A9D7B]/10 p-5">

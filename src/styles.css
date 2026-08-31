@@ -2,16 +2,30 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* ─── Self-hosted fonts (no Google Fonts blocking request) ─── */
+@import "@fontsource-variable/fredoka/wght.css";
+@import "@fontsource-variable/nunito/wght.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────
+   Theme tokens — single source of truth.
+   Brand-locked palette (Fredoka + warm cream). Light only for v1.
+   ───────────────────────────────────────────────────────────── */
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  /* Radii */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.25rem;
+  --radius-pill: 999px;
 
+  /* Core semantic surfaces */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -28,28 +42,51 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* Brand-specific tokens */
   --color-cream: var(--cream);
   --color-ink: var(--ink);
-  --color-lime: var(--lime);
   --color-mint: var(--mint);
+  --color-mint-hover: var(--mint-hover);
+  --color-mint-deep: var(--mint-deep);
   --color-mint-soft: var(--mint-soft);
+  --color-mint-tint: var(--mint-tint);
+  --color-mint-light: var(--mint-light);
   --color-warm: var(--warm);
+  --color-warm-hover: var(--warm-hover);
   --color-butter: var(--butter);
   --color-panel: var(--panel);
 
-  --font-display: "Fredoka", "Nunito", "Helvetica Neue", system-ui, sans-serif;
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Typography */
+  --font-display: "Fredoka Variable", "Nunito Variable", "Helvetica Neue", system-ui, sans-serif;
+  --font-sans: "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Shadow scale */
+  --shadow-xs: 0 1px 2px rgb(47 48 45 / 0.06);
+  --shadow-soft: 0 22px 46px -30px rgb(47 48 45 / 0.24), 0 3px 8px rgb(47 48 45 / 0.05);
+  --shadow-lift: 0 30px 58px -30px rgb(47 48 45 / 0.30), 0 7px 16px rgb(47 48 45 / 0.08);
+  --shadow-glow: 0 24px 60px -28px rgb(42 157 123 / 0.45);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Single root token block. Interview dark tokens are scoped to
+   the interview route via a CSS Module (see _app.interview.*).
+   ───────────────────────────────────────────────────────────── */
 :root {
+  /* Radii */
   --radius: 0.75rem;
 
-  /* Cleaned palette — white-first with very subtle mint accents. */
+  /* Brand palette — white-first with mint accents */
   --mint: #b8ddd2;
   --mint-hover: #a3cfc2;
   --mint-deep: #628c80;
@@ -62,8 +99,8 @@
   --warm: #6e978d;
   --warm-hover: #577d73;
   --butter: #e6efe1;
-  --lime: #b8ddd2;
 
+  /* Semantic surfaces (shadcn-style) */
   --background: var(--cream);
   --foreground: var(--ink);
   --card: rgb(255 255 255 / 0.78);
@@ -71,81 +108,135 @@
   --popover: #fffefd;
   --popover-foreground: var(--ink);
   --primary: var(--ink);
-  --primary-foreground: oklch(1 0 0);
+  --primary-foreground: #ffffff;
   --secondary: var(--panel);
   --secondary-foreground: var(--ink);
   --muted: var(--panel);
-  --muted-foreground: oklch(0.5 0.04 165);
+  --muted-foreground: rgb(47 48 45 / 0.62);
   --accent: var(--mint);
   --accent-foreground: var(--ink);
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: oklch(0.60 0.22 25);
+  --destructive-foreground: #ffffff;
+  --success: #2a9d7b;
+  --success-foreground: #ffffff;
+  --warning: #d99a3a;
+  --warning-foreground: #1f1707;
+  --info: #5b8fb9;
+  --info-foreground: #ffffff;
+
+  /* Borders & inputs */
   --border: rgb(47 48 45 / 0.12);
   --input: rgb(47 48 45 / 0.16);
   --ring: var(--mint);
 
+  /* Chart palette (data viz) */
   --chart-1: #b8ddd2;
   --chart-2: #b9ced7;
   --chart-3: #86b4a6;
   --chart-4: #dce8d7;
   --chart-5: #628c80;
-
-  --sidebar: #fffefd;
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: var(--panel);
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--mint);
-
-  --shadow-soft: 0 22px 46px -30px rgb(47 48 45 / 0.24), 0 3px 8px rgb(47 48 45 / 0.05);
-  --shadow-lift: 0 30px 58px -30px rgb(47 48 45 / 0.3), 0 7px 16px rgb(47 48 45 / 0.08);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Base layer
+   ───────────────────────────────────────────────────────────── */
 @layer base {
   * {
     border-color: var(--color-border);
   }
   html {
     scroll-behavior: smooth;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: thin;
+    scrollbar-color: rgb(47 48 45 / 0.18) transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   html::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    width: 10px;
+    height: 10px;
+  }
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html::-webkit-scrollbar-thumb {
+    background: rgb(47 48 45 / 0.18);
+    border-radius: 999px;
+    border: 2px solid var(--cream);
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: rgb(47 48 45 / 0.32);
   }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  body::-webkit-scrollbar {
-    display: none;
+    font-feature-settings: "ss01", "cv11";
   }
   :focus-visible {
-    outline: 2px solid var(--mint);
+    outline: 2px solid var(--mint-deep);
     outline-offset: 3px;
+    border-radius: 4px;
   }
   ::selection {
     background: var(--mint);
     color: var(--ink);
   }
+
+  /* Screen-reader-only utility */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
-/* ============ Custom utilities ============ */
+/* ─────────────────────────────────────────────────────────────
+   Skip link for accessibility
+   ───────────────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 100;
+  padding: 0.5rem 0.875rem;
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 0.5rem;
+  transition: top 0.2s ease;
+}
+.skip-link:focus-visible {
+  top: 1rem;
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
 
+/* ─────────────────────────────────────────────────────────────
+   Component utilities
+   ───────────────────────────────────────────────────────────── */
 @utility font-display {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
   line-height: 1.04;
 }
 
+@utility font-num {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum", "zero";
+}
+
+/* Primary brand button — mint pill with sweep */
 @utility pill-mint {
   display: inline-flex;
   align-items: center;
@@ -155,19 +246,21 @@
   background: var(--mint);
   color: var(--ink);
   padding: 0.625rem 1rem;
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 0.875rem;
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  cursor: pointer;
   transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   &::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: rgb(255 255 255 / 0.28);
+    background: rgb(255 255 255 / 0.32);
     transform: scaleX(0);
     transform-origin: left;
-    transition: transform 0.35s ease;
+    transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
     pointer-events: none;
   }
   &:hover::before { transform: scaleX(1); }
@@ -177,7 +270,14 @@
     transform: translateY(-2px);
   }
   &:active { transform: translateY(0) scale(0.98); }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 }
+
+/* Large variant */
 @utility pill-mint-lg {
   display: inline-flex;
   align-items: center;
@@ -187,20 +287,21 @@
   background: var(--mint-light);
   color: var(--ink);
   padding: 0.75rem 1.25rem;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 1rem;
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  cursor: pointer;
   transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   &::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: rgb(255 255 255 / 0.28);
+    background: rgb(255 255 255 / 0.32);
     transform: scaleX(0);
     transform-origin: left;
-    transition: transform 0.35s ease;
+    transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
     pointer-events: none;
   }
   &:hover::before { transform: scaleX(1); }
@@ -210,29 +311,66 @@
     transform: translateY(-2px);
   }
   &:active { transform: translateY(0) scale(0.98); }
-}
-
-@utility btn-shine {
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: rgb(255 255 255 / 0.22);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.35s ease;
-    pointer-events: none;
-    mix-blend-mode: overlay;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
-  &:hover::after { transform: scaleX(1); }
 }
 
+/* Ghost / outline button */
+@utility pill-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  &:hover {
+    background: var(--mint-tint);
+    border-color: rgb(42 157 123 / 0.32);
+  }
+  &:active { transform: scale(0.98); }
+}
+
+/* Eyebrow / micro-label */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(24 58 50 / 0.58);
+  font-weight: 500;
+}
+
+/* Eyebrow with mint color */
+@utility marker-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #247a61;
+  font-weight: 600;
+}
+
+/* Surface card — used in dashboards */
 @utility surface {
   border: 1px solid var(--border);
-  border-radius: 0.8rem;
-  background: rgb(255 255 255 / 0.64);
+  border-radius: 1rem;
+  background: var(--card);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-soft);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+@utility surface-hover {
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   &:hover {
     transform: translateY(-2px);
@@ -241,61 +379,22 @@
   }
 }
 
-@utility surface-subtle {
-  border: 1px solid var(--border);
-  border-radius: 0.8rem;
-  background: rgb(255 255 255 / 0.54);
-  backdrop-filter: blur(12px);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
-  &:hover {
-    background: rgb(255 255 255 / 0.74);
-    border-color: rgb(42 157 123 / 0.28);
-    box-shadow: var(--shadow-soft);
-  }
-}
-
+/* Form control — used for inputs/selects inside cards */
 @utility control-surface {
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--card);
   color: var(--ink);
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  &:hover {
-    border-color: rgb(42 157 123 / 0.42);
-  }
+  &:hover { border-color: rgb(42 157 123 / 0.32); }
   &:focus, &:focus-within {
     border-color: var(--mint-deep);
     box-shadow: 0 0 0 3px rgb(169 235 209 / 0.42);
+    outline: none;
   }
 }
 
-@utility hover-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  &:hover {
-    transform: translateY(-2px);
-    border-color: rgb(42 157 123 / 0.28);
-    box-shadow: var(--shadow-lift);
-  }
-}
-
-@utility hover-row {
-  transition: background-color 0.18s ease;
-  &:hover { background-color: rgb(255 255 255 / 0.56); }
-}
-
-@utility hover-icon {
-  transition: background-color 0.18s ease, color 0.18s ease;
-  &:hover { background-color: rgb(169 235 209 / 0.34); }
-}
-
-@utility eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgb(24 58 50 / 0.58);
-}
-
+/* Animated underline for text links */
 @utility link-underline {
   position: relative;
   &::after {
@@ -316,19 +415,7 @@
   }
 }
 
-@utility marker-num {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0;
-  text-transform: uppercase;
-  color: #247a61;
-}
-
-/* legacy hooks kept so app pages don't break */
-@utility grain { position: relative; }
-@utility aurora-bg { background: transparent; }
-@utility hairline { border: 1px solid var(--border); }
-
+/* Grain texture overlay (subtle paper feel) */
 @utility paper-card {
   background: #fffefd;
   box-shadow:
@@ -336,21 +423,58 @@
     0 30px 60px -30px rgb(42 157 123 / 0.22);
 }
 
-@utility bg-statement {
-  background: var(--ink);
-}
-
-/* ============ Keyframes ============ */
+/* ─────────────────────────────────────────────────────────────
+   Keyframes & animation utilities
+   ───────────────────────────────────────────────────────────── */
 @keyframes marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to   { transform: translateX(-50%); }
 }
-.animate-marquee { animation: marquee 40s linear infinite; }
-.cursor-none, .cursor-none * { cursor: none !important; }
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+  will-change: transform;
+}
 
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.04); opacity: 1; }
+}
+.animate-orb-pulse {
+  animation: orb-pulse 4s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--panel) 0%, var(--mint-tint) 50%, var(--panel) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Reduced motion respect — applied globally */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getInterviewSocket as getSocket } from "@/lib/socket";
 import { motion, AnimatePresence } from "framer-motion";
+import { SkipForward } from "lucide-react";
 
 export default function QuizArena({ lobbyState, user, setLobbyState }: any) {
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -8,78 +9,101 @@ export default function QuizArena({ lobbyState, user, setLobbyState }: any) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
   const [score, setScore] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(0);
+  const animationFrameRef = useRef<number | null>(null);
 
+  const isHost = lobbyState.hostId === user._id;
   const question = lobbyState.quizData?.[currentQIndex];
+
+  const handleNextQuestion = () => {
+    if (!isHost) return;
+    getSocket().emit("next_question", { pin: lobbyState.pin });
+  };
 
   useEffect(() => {
     const socket = getSocket();
-    
-    // In a real Kahoot, the host pushes the next question.
-    // For simplicity, we just use local state synced loosely, or we'd have a host-driven "next_question" event.
-    
+
     socket.on("comp_score_update", (data: any) => {
       setLobbyState((prev: any) => {
         const newPlayers = prev.players.map((p: any) => {
           if (p.userId === data.userId) {
-            return { ...p, score: p.score + data.scoreDelta };
+            return { ...p, score: (p.score || 0) + (data.scoreDelta || 0) };
           }
           return p;
         });
-        return { ...prev, players: newPlayers.sort((a: any, b: any) => b.score - a.score) };
+        return { ...prev, players: newPlayers.sort((a: any, b: any) => (b.score || 0) - (a.score || 0)) };
       });
+
+      if (data.userId === user._id) {
+        setScore((prev) => prev + (data.scoreDelta || 0));
+      }
+    });
+
+    socket.on("question_changed", (data: any) => {
+      setCurrentQIndex(data.questionIndex);
+      setSelectedOption(null);
+      setIsAnswerRevealed(false);
+      setQuestionStartTime(new Date(data.startedAt).getTime());
+    });
+
+    socket.on("quiz_complete", (data: any) => {
+      setLobbyState((prev: any) => ({ ...prev, status: "LEADERBOARD", players: data.finalScores }));
+    });
+
+    socket.on("comp_started", (data: any) => {
+      if (data.questionIndex !== undefined) {
+        setCurrentQIndex(data.questionIndex);
+        setQuestionStartTime(new Date(data.startedAt).getTime());
+      }
     });
 
     return () => {
       socket.off("comp_score_update");
+      socket.off("question_changed");
+      socket.off("quiz_complete");
+      socket.off("comp_started");
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, []);
+  }, [user._id, setLobbyState]);
 
   useEffect(() => {
     if (!question || isAnswerRevealed) return;
-    setTimeLeft(question.timeLimitSeconds || 20);
     
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleReveal();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [currentQIndex, isAnswerRevealed]);
-
-  const handleReveal = () => {
-    setIsAnswerRevealed(true);
-    // Auto-advance after 5 seconds
-    setTimeout(() => {
-      if (currentQIndex < (lobbyState.quizData?.length || 0) - 1) {
-        setCurrentQIndex(prev => prev + 1);
-        setSelectedOption(null);
-        setIsAnswerRevealed(false);
-      } else {
-        setLobbyState({ ...lobbyState, status: "LEADERBOARD" });
+    const tick = () => {
+      const elapsed = (Date.now() - questionStartTime) / 1000;
+      const limit = question.timeLimitSeconds || 20;
+      const left = Math.max(0, Math.ceil(limit - elapsed));
+      setTimeLeft(left);
+      
+      if (left > 0 && !isAnswerRevealed) {
+        animationFrameRef.current = requestAnimationFrame(tick);
+      } else if (left <= 0 && !isAnswerRevealed) {
+        handleTimeUp();
       }
-    }, 5000);
+    };
+    
+    animationFrameRef.current = requestAnimationFrame(tick);
+    return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
+  }, [question, questionStartTime, isAnswerRevealed]);
+
+  const handleTimeUp = () => {
+    setIsAnswerRevealed(true);
+    getSocket().emit("submit_comp_answer", { 
+      pin: lobbyState.pin, 
+      questionIndex: currentQIndex, 
+      answer: -1 
+    });
   };
 
   const handleOptionSelect = (index: number) => {
     if (selectedOption !== null || isAnswerRevealed) return;
     setSelectedOption(index);
+    setIsAnswerRevealed(true);
     
-    const isCorrect = index === question.correctAnswer;
-    const scoreDelta = isCorrect ? Math.max(10, timeLeft * 10) : 0; // Speed-based score
-    
-    if (isCorrect) setScore(prev => prev + scoreDelta);
-
     getSocket().emit("submit_comp_answer", { 
       pin: lobbyState.pin, 
       questionIndex: currentQIndex, 
-      isCorrect, 
-      scoreDelta 
+      answer: index 
     });
   };
 
@@ -90,7 +114,6 @@ export default function QuizArena({ lobbyState, user, setLobbyState }: any) {
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-white relative">
         <h1 className="text-6xl font-black mb-12 text-mint">Final Podium</h1>
         <div className="flex items-end justify-center gap-4 h-64">
-          {/* Top 3 Podium (simplified) */}
           {lobbyState.players.slice(0, 3).map((p: any, i: number) => (
             <motion.div 
               key={p.userId}
@@ -160,6 +183,27 @@ export default function QuizArena({ lobbyState, user, setLobbyState }: any) {
           })}
         </AnimatePresence>
       </div>
+
+      {/* Host Next Question Button */}
+      {isHost && isAnswerRevealed && currentQIndex < (lobbyState.quizData?.length || 0) - 1 && (
+        <div className="mt-8 text-center">
+          <button
+            onClick={handleNextQuestion}
+            className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-mint text-ink font-black text-lg rounded-full hover:bg-mint/90 transition-colors shadow-lg"
+          >
+            <SkipForward className="w-5 h-5" />
+            Next Question
+          </button>
+        </div>
+      )}
+
+      {/* Explanation after answer revealed */}
+      {isAnswerRevealed && question.explanation && (
+        <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
+          <div className="text-xs font-bold text-mint uppercase tracking-wider mb-2">Explanation</div>
+          <p className="text-white/80">{question.explanation}</p>
+        </div>
+      )}
     </div>
   );
 }
