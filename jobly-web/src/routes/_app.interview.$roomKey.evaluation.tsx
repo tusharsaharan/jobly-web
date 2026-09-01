@@ -40,28 +40,28 @@ function EvaluationPageRoute() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0E0E0E] text-white">
-        <Loader2 className="h-6 w-6 animate-spin text-[#2A9D7B]" />
+      <div className="flex h-screen items-center justify-center bg-iv-bg">
+        <Loader2 strokeWidth={1.75} className="h-6 w-6 animate-spin text-iv-accent" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#0E0E0E]">
+    <div className="flex h-screen flex-col bg-iv-bg text-iv-text">
       {/* Top Breadcrumb Header */}
-      <div className="flex h-12 items-center justify-between border-b border-[#2A2A2A] bg-[#161616] px-4 text-xs font-mono">
+      <div className="iv-header h-12 shrink-0 justify-between text-xs">
         <button
           onClick={() => navigate({ to: `/interview/${roomKey}` })}
-          className="flex items-center gap-1 text-[#888888] hover:text-white transition"
+          className="flex items-center gap-1 text-iv-muted transition hover:text-iv-text"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft strokeWidth={1.75} className="h-4 w-4" />
           <span>Back to Live Interview Room</span>
         </button>
 
         {session && (
-          <span className="text-[#AAAAAA]">
+          <span className="text-iv-muted">
             Evaluating:{" "}
-            <strong className="text-white">{session.seeker?.name || "Candidate"}</strong> (
+            <strong className="text-iv-text">{session.seeker?.name || "Candidate"}</strong> (
             {session.job?.title || "Technical Role"})
           </span>
         )}

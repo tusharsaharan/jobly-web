@@ -24,6 +24,8 @@ import { apiCall } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { UnifiedTimelineView, TimelineItem } from "@/components/interview/timeline/UnifiedTimelineView";
 
+const SW = 1.75;
+
 export const Route = createFileRoute("/_app/interview/$roomKey/replay")({
   component: InterviewReplayPage,
 });
@@ -748,27 +750,24 @@ function InterviewReplayPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-[#0A0A0A] text-white">
-        <Loader2 className="mb-3 h-8 w-8 animate-spin text-[#2A9D7B]" />
-        <p className="font-mono text-xs text-[#888888]">Loading replay data and checkpoints...</p>
+      <div className="flex h-screen flex-col items-center justify-center bg-iv-bg text-iv-text">
+        <Loader2 strokeWidth={SW} className="mb-3 h-8 w-8 animate-spin text-iv-accent" />
+        <p className="font-iv-code text-xs text-iv-muted">Loading replay data and checkpoints...</p>
       </div>
     );
   }
 
   if (!session || checkpoints.length === 0) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-[#0A0A0A] text-white gap-4">
-        <div className="rounded-2xl border border-[#2A2A2A] bg-[#141414] p-8 text-center max-w-md">
-          <h2 className="text-lg font-bold text-white mb-2">No Replay Data Available</h2>
-          <p className="text-sm text-[#888888] mb-6">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-iv-bg text-iv-text">
+        <div className="iv-card max-w-md p-8 text-center">
+          <h2 className="mb-2 text-lg font-bold">No Replay Data Available</h2>
+          <p className="mb-6 text-sm text-iv-muted">
             {!session
               ? "This interview session could not be found."
               : "No code checkpoints were recorded during this session. Checkpoints are created when code is executed, stages change, or manual snapshots are taken."}
           </p>
-          <button
-            onClick={() => navigate({ to: "/interviews" })}
-            className="rounded-lg bg-[#2A9D7B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#238266] transition"
-          >
+          <button onClick={() => navigate({ to: "/interviews" })} className="iv-btn iv-btn-primary">
             Back to Interviews
           </button>
         </div>
@@ -781,7 +780,7 @@ function InterviewReplayPage() {
   return (
     <div
       ref={containerRef}
-      className="flex h-screen flex-col bg-[#0A0A0A] text-white select-none overflow-hidden"
+      className="flex h-screen select-none flex-col overflow-hidden bg-iv-bg text-iv-text"
     >
       {/* Hidden File Input */}
       <input
@@ -793,23 +792,19 @@ function InterviewReplayPage() {
       />
 
       {/* ─── Header ────────────────────────────────────────────────────── */}
-      <header className="flex h-10 flex-shrink-0 items-center justify-between border-b border-[#1F1F1F] bg-[#111111] px-3 text-xs font-mono">
+      <header className="iv-header h-12 shrink-0 justify-between text-xs">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => navigate({ to: "/interviews" })}
-            className="flex items-center gap-1 rounded-md border border-[#262626] bg-[#181818] px-2.5 py-1 text-[11px] text-[#888888] hover:border-[#2A9D7B] hover:text-white transition"
+            className="iv-btn iv-btn-ghost iv-btn-sm"
           >
-            <ArrowLeft className="h-3 w-3" />
+            <ArrowLeft strokeWidth={SW} className="h-3 w-3" />
             <span>Exit</span>
           </button>
 
-          <span className="font-semibold text-white truncate max-w-[200px]">
-            {session?.title || "Interview Replay"}
-          </span>
+          <span className="max-w-[200px] truncate font-semibold">{session?.title || "Interview Replay"}</span>
 
-          <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-400">
-            REPLAY
-          </span>
+          <span className="iv-badge iv-badge-info">REPLAY</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -817,16 +812,20 @@ function InterviewReplayPage() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingRecording}
-            className="flex items-center gap-1 rounded-md border border-[#2A2A2A] bg-[#1A1A1A] px-2 py-1 text-[11px] text-[#CCCCCC] hover:border-[#2A9D7B] hover:text-white transition"
+            className="iv-btn iv-btn-ghost iv-btn-sm"
             title="Attach recorded video"
           >
-            {uploadingRecording ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+            {uploadingRecording ? (
+              <Loader2 strokeWidth={SW} className="h-3 w-3 animate-spin" />
+            ) : (
+              <Upload strokeWidth={SW} className="h-3 w-3" />
+            )}
             <span className="hidden sm:inline">Attach Video</span>
           </button>
 
           <button
             onClick={() => navigate({ to: `/interview/${roomKey}/evaluation` })}
-            className="rounded-md bg-[#2A9D7B] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#238266] transition"
+            className="iv-btn iv-btn-primary iv-btn-sm"
           >
             Scorecard
           </button>
@@ -836,18 +835,14 @@ function InterviewReplayPage() {
       {/* ─── Main Content ──────────────────────────────────────────────── */}
       <div className="grid flex-1 grid-cols-12 overflow-hidden">
         {/* Left: Code Replay Viewer */}
-        <div className="col-span-12 lg:col-span-9 flex flex-col overflow-hidden border-r border-[#1F1F1F]">
+        <div className="col-span-12 flex flex-col overflow-hidden border-r border-iv-line lg:col-span-9">
           {/* File bar */}
-          <div className="flex h-8 items-center justify-between border-b border-[#222222] bg-[#181818] px-3 text-[11px] flex-shrink-0">
-            <div className="flex items-center gap-2 text-[#CCCCCC]">
+          <div className="flex h-8 shrink-0 items-center justify-between border-b border-iv-line bg-iv-surface px-3 text-[11px]">
+            <div className="flex items-center gap-2 text-iv-muted">
               <span className="font-semibold">{frame?.filePath || "/solution.py"}</span>
-              {frame?.label && (
-                <span className="rounded bg-[#2A9D7B]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#2A9D7B]">
-                  {frame.label}
-                </span>
-              )}
+              {frame?.label && <span className="iv-badge iv-badge-accent">{frame.label}</span>}
             </div>
-            <div className="flex items-center gap-2 text-[#777777]">
+            <div className="flex items-center gap-2 text-iv-dim">
               <span className="uppercase">{frame?.language || "python"}</span>
               <span>·</span>
               <span>{frame?.lines.length || 0} lines</span>
@@ -857,7 +852,7 @@ function InterviewReplayPage() {
           {/* Code content */}
           <div
             ref={codeViewerRef}
-            className="flex-1 overflow-auto bg-[#0D1117] font-mono text-[13px] leading-6"
+            className="iv-scroll flex-1 overflow-auto bg-iv-bg font-iv-code text-[13px] leading-6"
           >
             {frame ? (
               <table className="w-full border-collapse">
@@ -869,15 +864,15 @@ function InterviewReplayPage() {
                         key={idx}
                         data-line={idx}
                         className={`transition-colors duration-500 ${
-                          isChanged ? "bg-[#2A9D7B]/15" : "hover:bg-[#161B22]"
+                          isChanged ? "bg-iv-accent-surface" : "hover:bg-iv-surface-alt"
                         }`}
                       >
-                        <td className="w-12 select-none px-3 text-right text-[11px] text-[#484F58] align-top">
+                        <td className="w-12 select-none px-3 text-right align-top text-[11px] text-iv-dim">
                           {idx + 1}
                         </td>
-                        <td className="pl-4 pr-6 whitespace-pre text-[#E6EDF3] select-text">
+                        <td className="select-text whitespace-pre pl-4 pr-6 text-iv-text">
                           {isChanged && (
-                            <span className="inline-block w-0.5 h-4 bg-[#2A9D7B] mr-2 rounded-full align-middle" />
+                            <span className="mr-2 inline-block h-4 w-0.5 rounded-full bg-iv-accent align-middle" />
                           )}
                           {line || "\u00A0"}
                         </td>
@@ -887,7 +882,7 @@ function InterviewReplayPage() {
                 </tbody>
               </table>
             ) : (
-              <div className="flex h-full items-center justify-center text-[#555555] text-sm">
+              <div className="flex h-full items-center justify-center text-sm text-iv-dim">
                 No code to display
               </div>
             )}
@@ -895,67 +890,59 @@ function InterviewReplayPage() {
 
           {/* Video PiP (if recording exists) */}
           {recordingSource && (
-            <div className="absolute bottom-20 right-8 z-30 w-64 rounded-xl overflow-hidden border border-[#333333] shadow-2xl bg-black">
+            <div className="absolute bottom-20 right-8 z-30 w-64 overflow-hidden rounded-xl border border-iv-line bg-black shadow-lift">
               <video
                 ref={videoRef}
                 src={recordingSource}
                 playsInline
                 muted={isMuted}
-                className="w-full h-auto"
+                className="h-auto w-full"
               />
-              <div className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-400 backdrop-blur-sm">
-                <Film className="h-2.5 w-2.5" />
+              <div className="iv-badge iv-badge-success absolute left-1.5 top-1.5 bg-black/70 backdrop-blur-sm">
+                <Film strokeWidth={SW} className="h-3 w-3" />
                 Recording
               </div>
               <button
                 onClick={() => setIsMuted((m) => !m)}
-                className="absolute top-1.5 right-1.5 rounded bg-black/70 p-1 text-white hover:bg-black/90 transition"
+                className="iv-icon-btn iv-icon-btn-sm absolute right-1.5 top-1.5 bg-black/70 hover:bg-black/90"
               >
-                {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                {isMuted ? (
+                  <VolumeX strokeWidth={SW} className="h-3 w-3" />
+                ) : (
+                  <Volume2 strokeWidth={SW} className="h-3 w-3" />
+                )}
               </button>
             </div>
           )}
         </div>
 
         {/* Right: Checkpoint List / Timeline */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col overflow-hidden bg-[#0E0E0E]">
-          <div className="flex h-8 items-center justify-between border-b border-[#222222] bg-[#141414] px-3 text-[11px] flex-shrink-0">
-            <div className="flex items-center gap-1.5">
+        <div className="col-span-12 flex flex-col overflow-hidden bg-iv-surface lg:col-span-3">
+          <div className="flex h-8 shrink-0 items-center justify-between border-b border-iv-line bg-iv-surface-alt px-3 text-[11px]">
+            <div className="iv-seg">
               <button
                 type="button"
                 onClick={() => setRightPanelTab("CHECKPOINTS")}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition ${
-                  rightPanelTab === "CHECKPOINTS"
-                    ? "bg-[#2A9D7B] text-white"
-                    : "text-[#888888] hover:text-white"
-                }`}
+                className={`iv-seg-btn h-6 ${rightPanelTab === "CHECKPOINTS" ? "active" : ""}`}
               >
-                <History className="h-3 w-3" />
-                <span>Checkpoints</span>
-                <span className="rounded bg-[#2A9D7B]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#2A9D7B]">
-                  {checkpoints.length}
-                </span>
+                <History strokeWidth={SW} className="h-3 w-3" />
+                Checkpoints
+                <span className="iv-badge iv-badge-accent h-4 px-1.5 text-[9px]">{checkpoints.length}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setRightPanelTab("TIMELINE")}
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition ${
-                  rightPanelTab === "TIMELINE"
-                    ? "bg-[#2A9D7B] text-white"
-                    : "text-[#888888] hover:text-white"
-                }`}
+                className={`iv-seg-btn h-6 ${rightPanelTab === "TIMELINE" ? "active" : ""}`}
               >
-                <ListTree className="h-3 w-3" />
-                <span>Timeline</span>
-                <span className="rounded bg-[#2A9D7B]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#2A9D7B]">
-                  {timelineEvents.length}
-                </span>
+                <ListTree strokeWidth={SW} className="h-3 w-3" />
+                Timeline
+                <span className="iv-badge iv-badge-accent h-4 px-1.5 text-[9px]">{timelineEvents.length}</span>
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2">
-{rightPanelTab === "CHECKPOINTS" ? (
+          <div className="iv-scroll flex-1 overflow-y-auto p-2">
+            {rightPanelTab === "CHECKPOINTS" ? (
               <div className="space-y-1.5">
                 {checkpoints.map((cp, idx) => {
                   const isActive = activeCheckpointIdx === idx;
@@ -965,39 +952,39 @@ function InterviewReplayPage() {
                       key={cp._id}
                       type="button"
                       onClick={() => seekToCheckpoint(idx)}
-                      className={`w-full rounded-lg p-2.5 text-left border transition-all text-[11px] ${
+                      className={`w-full rounded-lg border p-2.5 text-left text-[11px] transition-all ${
                         isActive
-                          ? "border-[#2A9D7B] bg-[#2A9D7B]/10 shadow-sm"
+                          ? "border-iv-accent bg-iv-accent-surface"
                           : isPassed
-                            ? "border-[#222222] bg-[#181818] opacity-70 hover:opacity-100 hover:border-[#333333]"
-                            : "border-[#1A1A1A] bg-[#141414] opacity-50 hover:opacity-80"
+                            ? "border-iv-line bg-iv-surface-alt opacity-70 hover:border-iv-elevated hover:opacity-100"
+                            : "border-iv-line bg-iv-surface opacity-50 hover:opacity-80"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="mb-1 flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
-                            isActive ? "bg-[#2A9D7B] text-white" : "bg-[#2A9D7B]/20 text-[#2A9D7B]"
-                          }`}>
+                          <span className={`iv-badge ${isActive ? "iv-badge-accent" : "iv-badge-neutral"} text-[9px]`}>
                             #{cp.sequenceNumber}
                           </span>
-                          <span className={`rounded px-1.5 py-0.5 text-[9px] uppercase ${
-                            cp.triggerType === "EXECUTION"
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : cp.triggerType === "STAGE_TRANSITION"
-                                ? "bg-purple-500/15 text-purple-400"
-                                : cp.triggerType === "AUTO_SAVE"
-                                  ? "bg-blue-500/15 text-blue-400"
-                                  : "bg-amber-500/15 text-amber-400"
-                          }`}>
+                          <span
+                            className={`iv-badge text-[9px] uppercase ${
+                              cp.triggerType === "EXECUTION"
+                                ? "iv-badge-success"
+                                : cp.triggerType === "STAGE_TRANSITION"
+                                  ? "iv-badge-info"
+                                  : cp.triggerType === "AUTO_SAVE"
+                                    ? "iv-badge-neutral"
+                                    : "iv-badge-warning"
+                            }`}
+                          >
                             {cp.triggerType.replace("_", " ")}
                           </span>
                         </div>
-                        {isActive && <ChevronRight className="h-3 w-3 text-[#2A9D7B]" />}
+                        {isActive && <ChevronRight strokeWidth={SW} className="h-3 w-3 text-iv-accent" />}
                       </div>
 
-                      <p className="text-[#CCCCCC] font-medium truncate">{cp.triggerLabel}</p>
+                      <p className="truncate font-medium text-iv-muted">{cp.triggerLabel}</p>
 
-                      <div className="flex items-center gap-2 mt-1 text-[9px] text-[#666666]">
+                      <div className="mt-1 flex items-center gap-2 text-[9px] text-iv-dim">
                         <span>{new Date(cp.createdAt).toLocaleTimeString()}</span>
                         <span>·</span>
                         <span>{cp.filesSnapshot?.length || 1} file(s)</span>
@@ -1016,14 +1003,14 @@ function InterviewReplayPage() {
       </div>
 
       {/* ─── Scrubber Bar ──────────────────────────────────────────────── */}
-      <footer className="border-t border-[#222222] bg-[#111111] px-4 py-2.5 flex-shrink-0 space-y-2">
+      <footer className="iv-glass shrink-0 space-y-2 border-t px-4 py-2.5">
         {/* Progress Bar */}
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[11px] font-bold text-[#2A9D7B] min-w-[40px]">
+          <span className="min-w-[40px] font-num text-[11px] font-bold text-iv-accent">
             {formatProgress(currentFrameIdx / Math.max(1, totalFrames - 1))}
           </span>
 
-          <div className="flex-1 relative">
+          <div className="relative flex-1">
             <input
               type="range"
               min={0}
@@ -1041,7 +1028,7 @@ function InterviewReplayPage() {
                 const val = Number((e.target as HTMLInputElement).value);
                 debouncedSeekToFrame(val);
               }}
-              className="w-full h-1.5 rounded-lg bg-[#222222] accent-[#2A9D7B] cursor-pointer"
+              className="h-1.5 w-full cursor-pointer rounded-lg bg-iv-line accent-iv-accent"
             />
 
             {/* Checkpoint markers on scrubber — fixed leftPct to 0-100 */}
@@ -1053,22 +1040,22 @@ function InterviewReplayPage() {
                 <div
                   key={`cp-${cpIdx}`}
                   style={{ left: `${Math.min(100, Math.max(0, leftPct))}%` }}
-                  className="absolute top-0 h-1.5 w-0.5 rounded bg-purple-400/70 pointer-events-none"
+                  className="pointer-events-none absolute top-0 h-1.5 w-0.5 rounded bg-iv-info/70"
                   title={`Checkpoint #${cpIdx + 1}`}
                 />
               );
             })}
-            {/* Signal markers — plan Phase 7c: evidence-grounded signals on timeline — fixed 0-100 */}
+            {/* Signal markers — evidence-grounded signals on timeline — fixed 0-100 */}
             {signals.map((sig) => {
               const leftPct = Math.min(100, Math.max(0, (sig.offsetMs / Math.max(1, totalDurationMs)) * 100));
               const color =
-                sig.indicator === "positive" ? "bg-emerald-400" : sig.indicator === "concern" ? "bg-rose-400" : "bg-sky-400";
+                sig.indicator === "positive" ? "bg-iv-success" : sig.indicator === "concern" ? "bg-iv-danger" : "bg-iv-info";
               const title = `${sig.category}:${sig.name} · ${sig.indicator} @ ${Math.floor(sig.offsetMs / 1000)}s`;
               return (
                 <div
                   key={`sig-${sig.id}`}
                   style={{ left: `${leftPct}%` }}
-                  className={`absolute top-0 h-1.5 w-1.5 -ml-0.5 rounded-full ${color} border border-black/30 cursor-pointer hover:scale-150 transition`}
+                  className={`absolute top-0 h-1.5 w-1.5 -ml-0.5 cursor-pointer rounded-full border border-black/30 transition hover:scale-150 ${color}`}
                   title={title}
                   onMouseEnter={() => setHoverMarker({ text: title, leftPct })}
                   onMouseLeave={() => setHoverMarker(null)}
@@ -1087,7 +1074,7 @@ function InterviewReplayPage() {
                 <div
                   key={`ev-${ev.id}`}
                   style={{ left: `${leftPct}%` }}
-                  className="absolute -top-1 h-3 w-0.5 rounded bg-amber-400 border border-black/20 cursor-pointer hover:h-3.5 transition"
+                  className="absolute -top-1 h-3 w-0.5 cursor-pointer rounded border border-black/20 bg-iv-warning transition hover:h-3.5"
                   title={title}
                   onMouseEnter={() => setHoverMarker({ text: title, leftPct })}
                   onMouseLeave={() => setHoverMarker(null)}
@@ -1101,24 +1088,24 @@ function InterviewReplayPage() {
             {hoverMarker && (
               <div
                 style={{ left: `${hoverMarker.leftPct}%`, transform: "translateX(-50%)" }}
-                className="absolute -top-8 whitespace-nowrap rounded bg-black border border-zinc-700 px-2 py-1 text-[10px] text-white pointer-events-none"
+                className="iv-badge iv-badge-neutral pointer-events-none absolute -top-8 whitespace-nowrap border-iv-line bg-black text-[10px] text-iv-text"
               >
                 {hoverMarker.text}
               </div>
             )}
           </div>
 
-          <span className="font-mono text-[11px] text-[#666666] min-w-[40px] text-right">
+          <span className="min-w-[40px] text-right font-num text-[11px] text-iv-dim">
             {formatProgress(1)}
           </span>
         </div>
-        {/* Marker legend — plan hierarchy */}
-        <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-mono">
-          <span className="flex items-center gap-1"><span className="h-2 w-0.5 bg-purple-400 inline-block" /> checkpoint</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400 inline-block border border-black/30" /> signal:positive</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-rose-400 inline-block border border-black/30" /> signal:concern</span>
-          <span className="flex items-center gap-1"><span className="h-3 w-0.5 bg-amber-400 inline-block" /> evidence</span>
-          <span className="ml-auto text-zinc-600">{signals.length} signals · {evidenceMarkers.length} evidence · {checkpoints.length} checkpoints</span>
+        {/* Marker legend */}
+        <div className="flex items-center gap-3 font-num text-[10px] text-iv-dim">
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-0.5 bg-iv-info" /> checkpoint</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full border border-black/30 bg-iv-success" /> signal:positive</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full border border-black/30 bg-iv-danger" /> signal:concern</span>
+          <span className="flex items-center gap-1"><span className="inline-block h-3 w-0.5 bg-iv-warning" /> evidence</span>
+          <span className="ml-auto">{signals.length} signals · {evidenceMarkers.length} evidence · {checkpoints.length} checkpoints</span>
         </div>
 
         {/* Controls */}
@@ -1127,61 +1114,57 @@ function InterviewReplayPage() {
             <button
               type="button"
               onClick={togglePlay}
-              className="flex items-center gap-1.5 rounded-lg bg-[#2A9D7B] px-3.5 py-1.5 text-[11px] font-bold text-white shadow hover:bg-[#238266] transition"
+              className="iv-btn iv-btn-primary iv-btn-sm"
             >
               {isPlaying ? (
-                <><Pause className="h-3.5 w-3.5" /> Pause</>
+                <><Pause strokeWidth={SW} className="h-4 w-4" /> Pause</>
               ) : (
-                <><Play className="h-3.5 w-3.5 fill-current" /> {currentFrameIdx >= totalFrames - 1 ? "Replay" : "Play"}</>
+                <><Play strokeWidth={SW} className="h-4 w-4 fill-current" /> {currentFrameIdx >= totalFrames - 1 ? "Replay" : "Play"}</>
               )}
             </button>
 
             <button
               type="button"
               onClick={() => seekRelativeFrames(-Math.max(1, Math.floor(totalFrames * 0.05)))}
-              className="rounded-md border border-[#262626] bg-[#181818] p-1.5 text-[#888888] hover:text-white transition"
+              className="iv-icon-btn"
               title="Rewind 5%"
             >
-              <Rewind className="h-3.5 w-3.5" />
+              <Rewind strokeWidth={SW} className="h-4 w-4" />
             </button>
 
             <button
               type="button"
               onClick={() => seekRelativeFrames(Math.max(1, Math.floor(totalFrames * 0.05)))}
-              className="rounded-md border border-[#262626] bg-[#181818] p-1.5 text-[#888888] hover:text-white transition"
+              className="iv-icon-btn"
               title="Forward 5%"
             >
-              <FastForward className="h-3.5 w-3.5" />
+              <FastForward strokeWidth={SW} className="h-4 w-4" />
             </button>
 
             <button
               type="button"
               onClick={restart}
-              className="rounded-md border border-[#262626] bg-[#181818] p-1.5 text-[#888888] hover:text-white transition"
+              className="iv-icon-btn"
               title="Restart"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw strokeWidth={SW} className="h-4 w-4" />
             </button>
           </div>
 
           <div className="flex items-center gap-2.5">
             {/* Frame counter */}
-            <span className="text-[10px] text-[#555555] font-mono hidden sm:inline">
+            <span className="hidden font-num text-[10px] text-iv-dim sm:inline">
               Frame {currentFrameIdx + 1} / {totalFrames}
             </span>
 
             {/* Speed selector */}
-            <div className="flex items-center gap-0.5 rounded-md border border-[#262626] bg-[#181818] p-0.5">
+            <div className="iv-seg">
               {[0.5, 1, 2, 4].map((speed) => (
                 <button
                   key={speed}
                   type="button"
                   onClick={() => setPlaybackSpeed(speed)}
-                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${
-                    playbackSpeed === speed
-                      ? "bg-[#2A9D7B] text-white"
-                      : "text-[#888888] hover:text-white"
-                  }`}
+                  className={`iv-seg-btn h-6 text-[10px] font-bold ${playbackSpeed === speed ? "active" : ""}`}
                 >
                   {speed}x
                 </button>
@@ -1192,10 +1175,14 @@ function InterviewReplayPage() {
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="rounded-md border border-[#262626] bg-[#181818] p-1.5 text-[#888888] hover:text-white transition"
+              className="iv-icon-btn"
               title="Fullscreen"
             >
-              {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              {isFullscreen ? (
+                <Minimize2 strokeWidth={SW} className="h-4 w-4" />
+              ) : (
+                <Maximize2 strokeWidth={SW} className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>

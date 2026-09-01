@@ -10,12 +10,19 @@ function getRedisClient() {
       host: config.REDIS_HOST,
       port: config.REDIS_PORT,
       password: config.REDIS_PASSWORD || undefined,
-      maxRetriesPerRequest: 0,
+      maxRetriesPerRequest: 2,
       enableReadyCheck: false,
-      autoResubscribe: false,
-      lazyConnect: true,
-      retryStrategy() {
-        return null;
+      autoResubscribe: true,
+      lazyConnect: false,
+      retryStrategy(times) {
+        // Bounded reconnect: 200ms..5s forever — a transient Redis restart
+        // must never permanently brick rate limiting/queues (demo killer).
+        return Math.min(times * 200, 5000);
+      },
+      reconnectOnError(err) {
+        // Reconnect on read-only/NOAUTH style errors so the client self-heals.
+        const targets = ["READONLY", "NOAUTH", "ERR"];
+        return targets.some((t) => String(err?.message || "").includes(t)) ? 2 : false;
       },
     };
 

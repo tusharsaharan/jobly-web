@@ -49,8 +49,11 @@ services:
       dockerfile: Dockerfile
     container_name: jobly-terminal-runner
     restart: unless-stopped
+    ports:
+      - "4100:4100"
     environment:
       - MAX_TERMINAL_SESSIONS=50
+      - JWT_SECRET=${JWT_SECRET:-kX9mPq3vT8rY2nZ5bJ6hL0cF4dG7jK1aW_eR3tY8uI2oP5qS7dF9gH1jK3lM5nB7vC9xZ2}
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m
