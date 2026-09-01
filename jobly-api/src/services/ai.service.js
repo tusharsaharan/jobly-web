@@ -5,6 +5,8 @@ const {
   normalizeJobPayload,
   normalizeSkills,
 } = require("../utils/jobLogic");
+const { coerceCgpa } = require("../modules/ai/schemas");
+const { extractGenericSkills, extractGenericDegree, extractGenericCollege } = require("../modules/ai/providers/mock.provider");
 
 // Lazy-init: don't crash at require-time if the key is missing
 let _ai = null;
@@ -24,18 +26,19 @@ exports.parseResume = async (pdfText) => {
     }
 
     const prompt = `
-You are an expert AI Resume Parser. Analyze the provided resume text and extract the following fields. Return strictly as a JSON object:
+You are an expert resume parser for ANY profession — software, civil services, hospitality, retail, operations, manufacturing, academia, healthcare, administration, or any other occupation.
+Analyze the provided resume text and extract ONLY what is actually present. Return strictly as a JSON object:
 
-- "skills": Array of strings — professional/technical skills found (max 15).
-- "experience": Array of objects with { "title": string, "company": string, "duration": string }. If not found, return empty array.
-- "education": Object with { "degree": string, "college": string, "cgpa": number or null, "tier": "tier1" | "tier2" | "tier3" | "unknown" }. Classify Indian IITs, NITs, BITS, top IIMs as tier1. Other well-known universities as tier2. Remaining as tier3. If non-Indian or ambiguous, use "unknown".
-- "achievements": Array of strings — certifications, awards, hackathon wins, publications, etc. Max 5.
-- "summary": A 2-3 sentence professional summary of the candidate.
+- "skills": Array of strings — the candidate's ACTUAL professional skills, competencies, or trade skills, whatever the domain (e.g., for a custodial role: floor maintenance, chemical handling; for a civil-services officer: public administration, policy formulation). NEVER invent skills that are not evidenced in the text. Use the resume's own terminology. Max 15.
+- "experience": Array of objects with { "title": string, "company": string, "duration": string }. If not found, return empty array. Use "" for unknown fields.
+- "education": Object with { "degree": string, "college": string, "cgpa": number or null, "tier": "tier1" | "tier2" | "tier3" | "unknown" }. Classify institutional tier only if clearly determinable (e.g., IITs/NITs/BITS/top IIMs as tier1, other well-known institutions as tier2, remaining as tier3); use "unknown" when ambiguous or non-applicable.
+- "achievements": Array of strings — certifications, awards, publications, or role-specific accomplishments stated in the resume. Max 5.
+- "summary": A 2-3 sentence professional summary grounded ONLY in the resume's actual content.
 
-Important: For CGPA, only extract if clearly mentioned. Always return CGPA on a 10-point scale: keep a 10-point CGPA as-is, multiply a 4-point GPA by 2.5, and convert a percentage by dividing by 9.5. If the scale is unclear, return null rather than guessing.
+Important: Empty or absent information MUST be empty strings, null, or empty arrays — never placeholder or invented values. For CGPA, only extract if clearly mentioned. Always return CGPA on a 10-point scale: keep a 10-point CGPA as-is, multiply a 4-point GPA by 2.5, and convert a percentage by dividing by 9.5. If the scale is unclear, return null rather than guessing.
 
 Resume Text:
-${pdfText}
+${String(pdfText || "").slice(0, 15000)}
 `;
 
     const response = await getAI().models.generateContent({
@@ -109,23 +112,19 @@ ${userPrompt.slice(0, 4000)}
 };
 
 function basicParse(text) {
-  const skillsList = [
-    "javascript", "react", "node", "express", "mongodb", "sql",
-    "python", "java", "c++", "html", "css", "git", "typescript",
-    "docker", "aws", "kubernetes", "angular", "vue", "django", "flask",
-  ];
+  // Domain-agnostic offline extraction: skills come from the resume's own
+  // skills section / skill-like lines — never a hardcoded tech list.
   const source = String(text || "");
-  const skills = skillsList.filter((skill) => source.toLowerCase().includes(skill));
-  const degree = source.match(/\b(?:b\.?tech|m\.?tech|bachelor(?:'s)?(?:\s+of\s+(?:technology|engineering|science))?|master(?:'s)?(?:\s+of\s+(?:technology|engineering|science))?|mba|ph\.?d)\b[^\n,;]*/i)?.[0] || "";
-  const cgpaMatch = source.match(/\b(?:cgpa|gpa)\s*[:=-]?\s*(10(?:\.0+)?|\d(?:\.\d+)?)(?:\s*\/\s*(4|10))?/i);
-  const cgpa = cgpaMatch
-    ? Number(cgpaMatch[1]) * (cgpaMatch[2] === "4" ? 2.5 : 1)
-    : null;
+  const skills = extractGenericSkills(source);
+  const degree = extractGenericDegree(source);
+  const college = extractGenericCollege(source);
+  const cgpaRaw = (source.match(/\b(?:cgpa|gpa)\s*[:=-]?\s*([0-9.]+(?:\s*\/\s*(?:4|10))?(?:\s*%)?)/i) || [])[1];
+  const cgpa = coerceCgpa(cgpaRaw);
 
   return {
     skills,
     experience: [],
-    education: { degree, college: "", cgpa, tier: "unknown" },
+    education: { degree, college, cgpa, tier: "unknown" },
     achievements: [],
     summary: source.trim() ? "Resume text was extracted. Review the detected profile details before relying on them." : "No readable resume text was found.",
   };

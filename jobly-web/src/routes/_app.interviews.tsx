@@ -4,20 +4,9 @@ import { useAuth } from "@/lib/auth";
 import { apiCall } from "@/lib/api";
 import {
   Calendar,
-  Clock,
-  User,
-  Building,
-  Video,
-  FileCode,
-  CheckCircle2,
   ChevronRight,
   Plus,
   Loader2,
-  AlertCircle,
-  Sparkles,
-  ShieldCheck,
-  Play,
-  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,6 +19,8 @@ export const Route = createFileRoute("/_app/interviews")({
   }),
   component: InterviewsListPage,
 });
+
+const SW = 1.75;
 
 function InterviewsListPage() {
   const { user, token } = useAuth();
@@ -84,7 +75,7 @@ function InterviewsListPage() {
 
         {user?.role === "recruiter" && (
           <Link to="/applicants" className="pill-mint flex items-center gap-2">
-            <Plus className="h-4 w-4" />
+            <Plus strokeWidth={SW} className="h-4 w-4" />
             <span>Schedule from Applicants</span>
           </Link>
         )}
@@ -94,35 +85,33 @@ function InterviewsListPage() {
       {stats && (
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="surface rounded-xl p-4">
-            <div className="text-xs font-semibold text-ink/60 uppercase">Total Interviews</div>
+            <div className="text-xs font-semibold uppercase text-ink/60">Total Interviews</div>
             <div className="mt-1 text-2xl font-bold text-ink">{stats.totalSessions}</div>
           </div>
           <div className="surface rounded-xl p-4">
-            <div className="text-xs font-semibold text-emerald-600 uppercase">
-              Live / In Progress
-            </div>
-            <div className="mt-1 text-2xl font-bold text-emerald-600">{stats.liveSessions}</div>
+            <div className="text-xs font-semibold uppercase text-success">Live / In Progress</div>
+            <div className="mt-1 text-2xl font-bold text-success">{stats.liveSessions}</div>
           </div>
           <div className="surface rounded-xl p-4">
-            <div className="text-xs font-semibold text-blue-600 uppercase">Scheduled</div>
-            <div className="mt-1 text-2xl font-bold text-blue-600">{stats.scheduledSessions}</div>
+            <div className="text-xs font-semibold uppercase text-info">Scheduled</div>
+            <div className="mt-1 text-2xl font-bold text-info">{stats.scheduledSessions}</div>
           </div>
           <div className="surface rounded-xl p-4">
-            <div className="text-xs font-semibold text-ink/60 uppercase">Completed & Evaluated</div>
+            <div className="text-xs font-semibold uppercase text-ink/60">Completed & Evaluated</div>
             <div className="mt-1 text-2xl font-bold text-ink">{stats.completedSessions}</div>
           </div>
         </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="mt-6 flex items-center gap-2 border-b border-border pb-2 text-xs font-mono">
+      <div className="mt-6 flex items-center gap-2 border-b border-border pb-2 font-num text-xs">
         {["ALL", "LIVE", "SCHEDULED", "COMPLETED"].map((st) => (
           <button
             key={st}
             onClick={() => setStatusFilter(st)}
             className={`rounded-lg px-3 py-1.5 font-semibold transition ${
               statusFilter === st
-                ? "bg-[#2A9D7B] text-white"
+                ? "bg-ink text-cream"
                 : "bg-surface text-ink/70 hover:text-ink"
             }`}
           >
@@ -132,14 +121,14 @@ function InterviewsListPage() {
       </div>
 
       {loading ? (
-        <div className="flex py-24 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#2A9D7B]" />
+        <div className="flex items-center justify-center py-24">
+          <Loader2 strokeWidth={SW} className="h-8 w-8 animate-spin text-mint-deep" />
         </div>
       ) : interviews.length === 0 ? (
         <div className="surface mt-6 flex flex-col items-center justify-center p-12 text-center">
-          <Calendar className="mb-3 h-10 w-10 text-ink/40" />
+          <Calendar strokeWidth={SW} className="mb-3 h-10 w-10 text-ink/40" />
           <h3 className="text-lg font-bold text-ink">No interviews found</h3>
-          <p className="mt-1 text-sm text-ink/60 max-w-md">
+          <p className="mt-1 max-w-md text-sm text-ink/60">
             {user?.role === "recruiter"
               ? "Shortlist an applicant from your candidate pipeline to schedule their live technical interview session."
               : "You do not have any interview sessions under this filter."}
@@ -150,7 +139,7 @@ function InterviewsListPage() {
           {interviews.map((item) => (
             <div
               key={item._id}
-              className="surface flex flex-wrap items-center justify-between gap-4 p-5 transition hover:border-[#2A9D7B]"
+              className="surface flex flex-wrap items-center justify-between gap-4 p-5 transition hover:border-mint-deep"
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -158,17 +147,17 @@ function InterviewsListPage() {
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                       item.status === "LIVE"
-                        ? "bg-emerald-500/20 text-emerald-600 animate-pulse"
+                        ? "animate-pulse bg-success/15 text-success"
                         : item.status === "COMPLETED"
-                          ? "bg-gray-200 text-gray-700"
-                          : "bg-blue-500/10 text-blue-600"
+                          ? "bg-ink/10 text-ink/60"
+                          : "bg-info/10 text-info"
                     }`}
                   >
                     {item.status}
                   </span>
 
                   {item.evaluation && (
-                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                    <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-[10px] font-bold text-success">
                       {item.evaluation.decision} ({item.evaluation.overallRating}/5)
                     </span>
                   )}
@@ -194,7 +183,7 @@ function InterviewsListPage() {
                     <Link
                       to="/interview/$roomKey/replay"
                       params={{ roomKey: item.roomKey }}
-                      className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:border-[#2A9D7B] transition"
+                      className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-mint-deep"
                     >
                       Timeline & Replay
                     </Link>
@@ -203,7 +192,7 @@ function InterviewsListPage() {
                       <Link
                         to="/interview/$roomKey/evaluation"
                         params={{ roomKey: item.roomKey }}
-                        className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:border-[#2A9D7B] transition"
+                        className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink transition hover:border-mint-deep"
                       >
                         Scorecard
                       </Link>
@@ -212,7 +201,7 @@ function InterviewsListPage() {
                       <Link
                         to="/interview/$roomKey/feedback"
                         params={{ roomKey: item.roomKey }}
-                        className="rounded-lg border border-[#2A9D7B]/40 bg-[#2A9D7B]/10 px-3 py-1.5 text-xs font-semibold text-[#187258] transition hover:bg-[#2A9D7B]/20"
+                        className="rounded-lg border border-success/40 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success transition hover:bg-success/20"
                       >
                         Feedback & practice plan
                       </Link>
@@ -226,7 +215,7 @@ function InterviewsListPage() {
                   className="pill-mint flex items-center gap-1.5 text-xs"
                 >
                   <span>{item.status === "COMPLETED" ? "Review Room" : "Enter Room"}</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight strokeWidth={SW} className="h-4 w-4" />
                 </Link>
               </div>
             </div>

@@ -14,9 +14,12 @@ import {
   Cpu,
   MessageSquare,
   Terminal,
+  X,
 } from "lucide-react";
 import { apiCall } from "@/lib/api";
 import { toast } from "sonner";
+
+const SW = 1.75;
 
 interface TimelineEvent {
   _id: string;
@@ -59,25 +62,25 @@ const PILLARS: Array<{ pillar: PillarCompetency["pillar"]; label: string; descri
     pillar: "problem_solving",
     label: "Problem Solving & Decomposition",
     description: "Clarifies constraints, decomposes tasks, handles edge cases",
-    icon: <Activity className="h-4 w-4 text-emerald-400" />,
+    icon: <Activity className="h-4 w-4 text-iv-success" />,
   },
   {
     pillar: "coding_algorithms",
     label: "Algorithmic Implementation & Code Quality",
     description: "Data structures, algorithmic paradigms, complexity, correctness",
-    icon: <Cpu className="h-4 w-4 text-blue-400" />,
+    icon: <Cpu className="h-4 w-4 text-iv-info" />,
   },
   {
     pillar: "system_design",
     label: "System Architecture & Tradeoff Reasoning",
     description: "Whiteboard structure, trade-offs around latency/scale/cache",
-    icon: <Layers className="h-4 w-4 text-purple-400" />,
+    icon: <Layers className="h-4 w-4 text-[#c084fc]" />,
   },
   {
     pillar: "communication",
     label: "Technical Communication & Collaboration",
     description: "Cadence, clarity, precise engineering vocabulary",
-    icon: <MessageSquare className="h-4 w-4 text-amber-400" />,
+    icon: <MessageSquare className="h-4 w-4 text-iv-warning" />,
   },
 ];
 
@@ -328,51 +331,53 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex h-full flex-col overflow-y-auto bg-[#0E0E0E] p-4 sm:p-6 text-white text-xs font-mono">
+    <form onSubmit={handleSubmit} className="iv-scroll flex h-full flex-col overflow-y-auto bg-iv-bg p-4 text-iv-text sm:p-6">
       {/* Header with engine version & overall score */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#2A2A2A] pb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-iv-line pb-4">
         <div>
-          <h1 className="flex items-center gap-2 text-base font-bold text-white">
-            <Award className="h-5 w-5 text-emerald-400" />
+          <h1 className="flex items-center gap-2 text-base font-bold">
+            <Award strokeWidth={SW} className="h-5 w-5 text-iv-success" />
             Bar Raiser Competency Rubric — 4 Pillars
-            <span className="rounded bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">signals-engine/2026-08-v1</span>
+            <span className="iv-badge iv-badge-success">signals-engine/2026-08-v1</span>
           </h1>
-          <p className="mt-1 text-[11px] text-[#888]">Every score must cite verifiable timeline evidence (zero-hallucination). Focus tracking is telemetry only — never auto-reject.</p>
+          <p className="mt-1 text-[11px] text-iv-muted">Every score must cite verifiable timeline evidence (zero-hallucination). Focus tracking is telemetry only — never auto-reject.</p>
           <div className="mt-2 flex items-center gap-3 text-[11px]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Overall: <strong className="text-white">{overallScore}/100</strong>
+              <span className="h-2 w-2 animate-pulse rounded-full bg-iv-success" />
+              Overall: <strong className="text-iv-text">{overallScore}/100</strong>
             </span>
-            <span className="rounded bg-zinc-900 border border-zinc-700 px-2 py-0.5 text-zinc-300">Recommended: {recommendedDecision.replaceAll("_", " ")}</span>
-            <span className="text-zinc-500">Avg pillar {(pillars.reduce((s, p) => s + p.score, 0) / pillars.length).toFixed(1)}/5</span>
+            <span className="iv-badge iv-badge-neutral">Recommended: {recommendedDecision.replaceAll("_", " ")}</span>
+            <span className="text-iv-dim">Avg pillar {(pillars.reduce((s, p) => s + p.score, 0) / pillars.length).toFixed(1)}/5</span>
           </div>
         </div>
         <button
           type="submit"
           disabled={saving || !canSubmit}
-          className="flex items-center gap-1.5 rounded-lg bg-[#2A9D7B] px-4 py-2 font-sans text-xs font-semibold text-white shadow-lg transition hover:bg-[#238266] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="iv-btn iv-btn-primary"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saving ? <Loader2 strokeWidth={SW} className="h-4 w-4 animate-spin" /> : <Save strokeWidth={SW} className="h-4 w-4" />}
           <span>Finalize Scorecard</span>
         </button>
       </div>
 
       {!canSubmit && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
-          <ShieldCheck className="h-4 w-4 text-amber-400" />
-          Each of the 4 pillars requires at least 1 evidence link and a rationale ≥10 chars. Confidence is deterministic from evidence depth.
+        <div className="iv-alert iv-alert-danger mb-4 py-2 text-[11px]">
+          <ShieldCheck strokeWidth={SW} className="h-4 w-4 shrink-0 text-iv-warning" />
+          <span className="text-iv-warning-text">
+            Each of the 4 pillars requires at least 1 evidence link and a rationale ≥10 chars. Confidence is deterministic from evidence depth.
+          </span>
         </div>
       )}
 
       <div className="grid grid-cols-12 gap-5">
         {/* Left: Decision & meta */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
-          <div className="rounded-xl border border-[#2A2A2A] bg-[#181818] p-4 space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#AAAAAA]">Hiring Recommendation</h2>
+        <div className="col-span-12 space-y-4 lg:col-span-4">
+          <div className="iv-card space-y-3 p-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-iv-muted">Hiring Recommendation</h2>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { val: "STRONG_HIRE", label: "Strong Hire", color: "border-emerald-500 text-emerald-400 bg-emerald-500/10" },
-                { val: "HIRE", label: "Hire", color: "border-[#2A9D7B] text-[#2A9D7B] bg-[#2A9D7B]/10" },
+                { val: "HIRE", label: "Hire", color: "border-iv-accent text-iv-accent-glow bg-iv-accent-surface" },
                 { val: "LEAN_HIRE", label: "Lean Hire", color: "border-sky-500 text-sky-400 bg-sky-500/10" },
                 { val: "LEAN_REJECT", label: "Lean Reject", color: "border-amber-500 text-amber-400 bg-amber-500/10" },
                 { val: "REJECT", label: "Reject", color: "border-rose-500 text-rose-400 bg-rose-500/10" },
@@ -381,8 +386,8 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                   type="button"
                   key={item.val}
                   onClick={() => setDecision(item.val)}
-                  className={`rounded-lg border p-2.5 text-center font-sans font-semibold transition text-xs ${
-                    decision === item.val ? item.color : "border-[#333333] bg-[#202020] text-[#777777] hover:border-[#444444]"
+                  className={`rounded-lg border p-2.5 text-center text-xs font-semibold transition ${
+                    decision === item.val ? item.color : "border-iv-line bg-iv-surface-alt text-iv-dim hover:border-iv-elevated"
                   }`}
                 >
                   {item.label}
@@ -391,68 +396,68 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#2A2A2A] bg-[#181818] p-4 space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#AAAAAA]">Strengths & Growth Areas</h2>
+          <div className="iv-card space-y-3 p-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-iv-muted">Strengths & Growth Areas</h2>
             <div>
-              <label className="text-[11px] font-semibold text-[#AAAAAA]">Key Strengths (comma-separated)</label>
-              <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={2} className="mt-1 w-full rounded border border-[#333333] bg-[#111111] p-2 text-white outline-none focus:border-[#2A9D7B]" />
+              <label className="text-[11px] font-semibold text-iv-muted">Key Strengths (comma-separated)</label>
+              <textarea value={strengths} onChange={(e) => setStrengths(e.target.value)} rows={2} className="iv-scroll mt-1 w-full resize-y rounded-md border border-iv-line bg-iv-bg p-2 text-iv-text outline-none focus:border-iv-accent" />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-[#AAAAAA]">Growth Areas</label>
-              <textarea value={weaknesses} onChange={(e) => setWeaknesses(e.target.value)} rows={2} className="mt-1 w-full rounded border border-[#333333] bg-[#111111] p-2 text-white outline-none focus:border-[#2A9D7B]" />
+              <label className="text-[11px] font-semibold text-iv-muted">Growth Areas</label>
+              <textarea value={weaknesses} onChange={(e) => setWeaknesses(e.target.value)} rows={2} className="iv-scroll mt-1 w-full resize-y rounded-md border border-iv-line bg-iv-bg p-2 text-iv-text outline-none focus:border-iv-accent" />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-[#AAAAAA]">Private Notes (hiring team only)</label>
-              <textarea value={privateNotes} onChange={(e) => setPrivateNotes(e.target.value)} rows={2} placeholder="Not visible to candidate" className="mt-1 w-full rounded border border-[#333333] bg-[#111111] p-2 text-white outline-none focus:border-[#2A9D7B]" />
+              <label className="text-[11px] font-semibold text-iv-muted">Private Notes (hiring team only)</label>
+              <textarea value={privateNotes} onChange={(e) => setPrivateNotes(e.target.value)} rows={2} placeholder="Not visible to candidate" className="iv-scroll mt-1 w-full resize-y rounded-md border border-iv-line bg-iv-bg p-2 text-iv-text outline-none placeholder:text-iv-dim focus:border-iv-accent" />
             </div>
           </div>
 
           {/* Live signals summary */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 space-y-2">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-              <Activity className="h-3 w-3 text-emerald-400" /> Detected Signals ({signals.length})
+          <div className="iv-card space-y-2 bg-iv-surface-alt p-4">
+            <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-iv-muted">
+              <Activity strokeWidth={SW} className="h-3 w-3 text-iv-success" /> Detected Signals ({signals.length})
             </h3>
             {loadingEvidence ? (
-              <div className="py-4 text-center text-zinc-500 text-xs flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading timeline & signals…
+              <div className="flex items-center justify-center gap-2 py-4 text-xs text-iv-dim">
+                <Loader2 strokeWidth={SW} className="h-4 w-4 animate-spin" /> Loading timeline & signals…
               </div>
             ) : signals.length === 0 ? (
-              <p className="text-[11px] text-zinc-500">No signals yet — run code or speak to generate grounded observations.</p>
+              <p className="text-[11px] text-iv-dim">No signals yet — run code or speak to generate grounded observations.</p>
             ) : (
-              <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+              <div className="iv-scroll max-h-40 space-y-1 overflow-y-auto pr-1">
                 {signals.slice(0, 10).map((s) => (
-                  <div key={s.id} className="flex items-center justify-between rounded bg-zinc-900 border border-zinc-800 px-2 py-1 text-[11px]">
-                    <span className="truncate text-zinc-300">{s.name.replace(/_/g, " ")}</span>
-                    <span className={`ml-2 shrink-0 rounded px-1.5 py-0.5 text-[9px] border ${s.indicator === "positive" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : s.indicator === "concern" ? "border-rose-500/30 bg-rose-500/10 text-rose-300" : "border-zinc-700 bg-zinc-800 text-zinc-400"}`}>
+                  <div key={s.id} className="flex items-center justify-between rounded-md border border-iv-line bg-iv-surface px-2 py-1 text-[11px]">
+                    <span className="truncate text-iv-muted">{s.name.replace(/_/g, " ")}</span>
+                    <span className={`iv-badge ml-2 shrink-0 text-[9px] ${s.indicator === "positive" ? "iv-badge-success" : s.indicator === "concern" ? "iv-badge-danger" : "iv-badge-neutral"}`}>
                       {s.indicator}
                     </span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-zinc-600">Signals are deterministic AST/transcript heuristics — never hallucinated data structures.</p>
+            <p className="text-[10px] text-iv-dim">Signals are deterministic AST/transcript heuristics — never hallucinated data structures.</p>
           </div>
         </div>
 
         {/* Right: 4-pillars */}
-        <div className="col-span-12 lg:col-span-8 space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-[#AAAAAA] flex items-center gap-2">
-            Competency Breakdown — 4 Pillars (1–5) <span className="normal-case font-normal text-[#666]">each requires evidence</span>
+        <div className="col-span-12 space-y-4 lg:col-span-8">
+          <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-iv-muted">
+            Competency Breakdown — 4 Pillars (1–5) <span className="normal-case font-normal text-iv-dim">each requires evidence</span>
           </h2>
           {pillars.map((pillar, pIdx) => {
             const meta = PILLARS.find((x) => x.pillar === pillar.pillar)!;
             const scoreMeta = SCORE_LABELS[pillar.score];
             return (
-              <div key={pillar.pillar} className="rounded-xl border border-[#2A2A2A] bg-[#181818] p-4 space-y-3">
+              <div key={pillar.pillar} className="iv-card space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-2">{meta.icon}</div>
+                    <div className="rounded-lg border border-iv-line bg-iv-surface-alt p-2">{meta.icon}</div>
                     <div>
-                      <div className="font-semibold text-white text-[13px] flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-[13px] font-semibold">
                         {meta.label}
                         <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${scoreMeta.color}`}>{scoreMeta.level}</span>
                       </div>
-                      <p className="text-[11px] text-zinc-500">{meta.description}</p>
+                      <p className="text-[11px] text-iv-dim">{meta.description}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -461,8 +466,10 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                         type="button"
                         key={s}
                         onClick={() => handlePillarScore(pIdx, s)}
-                        className={`h-7 w-7 rounded text-xs font-bold transition border ${
-                          s === pillar.score ? "bg-[#2A9D7B] text-white border-[#2A9D7B]" : "bg-[#252526] text-[#777777] border-[#333] hover:bg-[#333333] hover:text-white"
+                        className={`h-7 w-7 rounded-md border text-xs font-bold transition ${
+                          s === pillar.score
+                            ? "border-iv-accent bg-iv-accent text-white"
+                            : "border-iv-line bg-iv-elevated text-iv-dim hover:bg-white/10 hover:text-iv-text"
                         }`}
                       >
                         {s}
@@ -472,12 +479,12 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                 </div>
 
                 <div className="flex items-center gap-2 text-[11px]">
-                  <span className="text-zinc-500">Confidence</span>
-                  <div className="flex-1 h-1.5 rounded-full bg-zinc-900 overflow-hidden">
-                    <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pillar.confidence * 100}%` }} />
+                  <span className="text-iv-dim">Confidence</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full bg-iv-success transition-all" style={{ width: `${pillar.confidence * 100}%` }} />
                   </div>
-                  <span className="font-mono text-emerald-400">{(pillar.confidence * 100).toFixed(0)}%</span>
-                  <span className="text-zinc-600">· evidence:{pillar.evidenceIds.length} signals:{pillar.signalsObserved.length}</span>
+                  <span className="font-num text-iv-success">{(pillar.confidence * 100).toFixed(0)}%</span>
+                  <span className="text-iv-dim">· evidence:{pillar.evidenceIds.length} signals:{pillar.signalsObserved.length}</span>
                 </div>
 
                 <textarea
@@ -485,48 +492,48 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                   onChange={(e) => handlePillarRationale(pIdx, e.target.value)}
                   rows={2}
                   placeholder="Rationale — explain the score with evidence (≥10 chars)"
-                  className="w-full rounded border border-[#333333] bg-[#111111] px-3 py-2 text-white outline-none focus:border-[#2A9D7B] text-xs"
+                  className="iv-scroll w-full resize-y rounded-md border border-iv-line bg-iv-bg px-3 py-2 text-iv-text outline-none placeholder:text-iv-dim focus:border-iv-accent"
                 />
 
                 {/* Signals observed chips */}
                 {pillar.signalsObserved.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {pillar.signalsObserved.map((s) => (
-                      <span key={s} className="rounded bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] text-blue-300">
+                      <span key={s} className="iv-badge iv-badge-info text-[10px]">
                         {s.replace(/_/g, " ")}
                       </span>
                     ))}
                   </div>
                 )}
 
-                {/* Evidence picker — strict plan: clickable timeline evidence links */}
+                {/* Evidence picker — clickable timeline evidence links */}
                 <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-300">
-                    <Paperclip className="h-3 w-3 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-iv-muted">
+                    <Paperclip strokeWidth={SW} className="h-3 w-3 text-iv-success" />
                     Evidence References (min 1) — click to select:
-                    {pillar.evidenceIds.length === 0 && <span className="text-amber-300 font-normal">required</span>}
+                    {pillar.evidenceIds.length === 0 && <span className="font-normal text-iv-warning-text">required</span>}
                   </div>
                   {timelineEvents.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500">No timeline events captured yet. Run code or change stages to generate evidence.</p>
+                    <p className="text-[11px] text-iv-dim">No timeline events captured yet. Run code or change stages to generate evidence.</p>
                   ) : (
-                    <div className="max-h-36 overflow-y-auto space-y-1 rounded border border-zinc-800 bg-zinc-950 p-2">
+                    <div className="iv-scroll max-h-36 space-y-1 overflow-y-auto rounded-lg border border-iv-line bg-iv-bg p-2">
                       {timelineEvents.map((ev) => {
                         const selected = pillar.evidenceIds.includes(ev._id);
                         return (
                           <label
                             key={ev._id}
-                            className={`flex items-start gap-2 rounded px-2 py-1.5 cursor-pointer border text-[11px] transition ${selected ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-100" : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"}`}
+                            className={`flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5 text-[11px] transition ${selected ? "border-iv-accent/40 bg-iv-accent-surface text-iv-text" : "border-iv-line bg-iv-surface-alt text-iv-muted hover:border-iv-elevated"}`}
                           >
-                            <input type="checkbox" checked={selected} onChange={() => toggleEvidence(pIdx, ev._id)} className="mt-0.5 accent-emerald-500" />
-                            <div className="flex-1 min-w-0">
+                            <input type="checkbox" checked={selected} onChange={() => toggleEvidence(pIdx, ev._id)} className="mt-0.5 accent-iv-accent" />
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <span className={`rounded px-1 py-0.5 text-[9px] border font-bold uppercase ${ev.pipeline === "CODING" ? "bg-blue-500/10 border-blue-500/20 text-blue-300" : ev.pipeline === "COMMUNICATION" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300" : ev.pipeline === "WHITEBOARD" ? "bg-purple-500/10 border-purple-500/20 text-purple-300" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}>
+                                <span className={`iv-badge text-[9px] uppercase ${ev.pipeline === "CODING" ? "iv-badge-info" : ev.pipeline === "COMMUNICATION" ? "iv-badge-success" : ev.pipeline === "WHITEBOARD" ? "iv-badge-warning" : "iv-badge-neutral"}`}>
                                   {ev.pipeline}
                                 </span>
-                                <span className="truncate font-mono text-zinc-400">{ev.eventType}</span>
-                                <span className="ml-auto font-mono text-zinc-500">{Math.floor((ev.offsetMs || 0) / 1000)}s</span>
+                                <span className="truncate font-iv-code text-iv-dim">{ev.eventType}</span>
+                                <span className="ml-auto font-num text-iv-dim">{Math.floor((ev.offsetMs || 0) / 1000)}s</span>
                               </div>
-                              <p className="truncate text-zinc-400 mt-0.5">{ev.payload?.text || ev.payload?.file || ev.eventType}</p>
+                              <p className="mt-0.5 truncate text-iv-dim">{ev.payload?.text || ev.payload?.file || ev.eventType}</p>
                             </div>
                             <button
                               type="button"
@@ -534,10 +541,10 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                                 e.preventDefault();
                                 handleResolveEvidence(ev._id);
                               }}
-                              className="shrink-0 rounded bg-zinc-800 border border-zinc-700 p-1 text-zinc-400 hover:text-white"
+                              className="iv-icon-btn iv-icon-btn-sm shrink-0"
                               title="Resolve evidence artifact"
                             >
-                              <ExternalLink className="h-3 w-3" />
+                              <ExternalLink strokeWidth={SW} className="h-3 w-3" />
                             </button>
                           </label>
                         );
@@ -547,20 +554,20 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
                   {pillar.evidenceIds.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {pillar.evidenceIds.map((id) => (
-                        <span key={id} className="inline-flex items-center gap-1 rounded bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-300">
-                          <CheckCircle2 className="h-3 w-3" />
+                        <span key={id} className="iv-badge iv-badge-success text-[10px]">
+                          <CheckCircle2 strokeWidth={SW} className="h-3 w-3" />
                           {id.slice(-8)} Verified
-                          <button type="button" onClick={() => toggleEvidence(pIdx, id)} className="ml-1 text-emerald-400 hover:text-white">
-                            ×
+                          <button type="button" onClick={() => toggleEvidence(pIdx, id)} className="ml-1 text-iv-success transition hover:text-iv-text">
+                            <X strokeWidth={SW} className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
                     </div>
                   )}
                   {resolvedEvidence[pillar.evidenceIds[0]] && (
-                    <div className="rounded bg-zinc-900 border border-zinc-800 p-2 text-[11px] text-zinc-300">
-                      <div className="font-semibold text-zinc-200">Resolved artifact:</div>
-                      <pre className="mt-1 whitespace-pre-wrap break-words text-[11px] text-zinc-400">{JSON.stringify(resolvedEvidence[pillar.evidenceIds[0]], null, 2).slice(0, 600)}</pre>
+                    <div className="iv-card bg-iv-surface-alt p-2 text-[11px] text-iv-muted">
+                      <div className="font-semibold text-iv-text">Resolved artifact:</div>
+                      <pre className="iv-scroll mt-1 whitespace-pre-wrap break-words font-iv-code text-[11px] text-iv-dim">{JSON.stringify(resolvedEvidence[pillar.evidenceIds[0]], null, 2).slice(0, 600)}</pre>
                     </div>
                   )}
                 </div>
@@ -571,10 +578,10 @@ export function EvaluationForm({ sessionId, token, onSaved }: EvaluationFormProp
       </div>
 
       {/* Guardrails footer */}
-      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[10px] text-zinc-500">
-        <span className="flex items-center gap-1.5"><ShieldCheck className="h-3 w-3 text-emerald-500" /> Non-discrimination: race, gender, accent, age, disability never scored</span>
+      <div className="iv-card mt-4 flex flex-wrap items-center gap-3 bg-iv-surface-alt px-3 py-2 text-[10px] text-iv-dim">
+        <span className="flex items-center gap-1.5"><ShieldCheck strokeWidth={SW} className="h-3 w-3 text-iv-success" /> Non-discrimination: race, gender, accent, age, disability never scored</span>
         <span className="hidden sm:inline">·</span>
-        <span className="flex items-center gap-1.5"><Eye className="h-3 w-3 text-cyan-400" /> Focus telemetry is non-punitive only</span>
+        <span className="flex items-center gap-1.5"><Eye strokeWidth={SW} className="h-3 w-3 text-iv-info" /> Focus telemetry is non-punitive only</span>
         <span className="hidden sm:inline">·</span>
         <span>engineVersion: signals-engine/2026-08-v1</span>
       </div>

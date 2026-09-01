@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
+import type * as Monaco from "monaco-editor";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
@@ -970,7 +971,7 @@ export function MonacoWorkspace({
         )}
 
         {/* Editor + Right Panel Horizontal Split */}
-        <ResizablePanelGroup direction={"horizontal" as const} className="min-h-0 flex-1">
+        <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
           {/* Editor Area (~50%) */}
           <ResizablePanel defaultSize={isRightPanelCollapsed ? 100 : 65} minSize={35} className="flex min-h-0 min-w-0 flex-col">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-iv-elevated">
@@ -1047,7 +1048,7 @@ export function MonacoWorkspace({
                     quickSuggestions: { other: true, comments: false, strings: false },
                     parameterHints: { enabled: true },
                     hover: { enabled: true },
-                    lightbulb: { enabled: true, showIcon: "onCode" as const },
+                    lightbulb: { enabled: ("onCode" as Monaco.editor.ShowLightbulbIconMode) },
                     formatOnType: true,
                     formatOnPaste: true,
                     autoClosingBrackets: "always",

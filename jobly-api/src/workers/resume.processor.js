@@ -226,15 +226,15 @@ async function processResumeJob(jobData) {
       evidence: [createEvidenceRef("skills", s)],
     })),
     experience: normalizeExperience(parsed?.experience).map((e) => ({
-      title: e.title || "Software Engineer",
-      organization: e.company || "Company",
+      title: e.title || "",
+      organization: e.company || "",
       startDate: null,
       endDate: null,
       isCurrent: false,
       location: null,
       bullets: e.duration ? [e.duration] : [],
       skills: [],
-      evidence: [createEvidenceRef("experience", `${e.title} at ${e.company}`)],
+      evidence: e.title || e.company ? [createEvidenceRef("experience", `${e.title} at ${e.company}`.trim())] : [],
     })),
     projects: (Array.isArray(parsed?.projects) ? parsed.projects : []).map((p) => ({
       name: typeof p === "string" ? p : (p.name || "Project"),
@@ -246,14 +246,16 @@ async function processResumeJob(jobData) {
     })),
     education: [
       {
-        qualification: cleanText(education.degree, 160) || "Bachelor's Degree",
+        qualification: cleanText(education.degree, 160) || "",
         fieldOfStudy: null,
-        institution: cleanText(education.college, 160) || "University",
+        institution: cleanText(education.college, 160) || "",
         startDate: null,
         endDate: null,
         gpa: normalizeCgpa(education.cgpa),
         gpaScale: 10,
-        evidence: [createEvidenceRef("education", `${education.degree} from ${education.college}`)],
+        evidence: education.degree || education.college
+          ? [createEvidenceRef("education", `${education.degree} from ${education.college}`.trim())]
+          : [],
       },
     ],
     certifications: [],

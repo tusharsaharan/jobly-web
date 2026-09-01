@@ -51,21 +51,15 @@ export function NotesPanel({ roomKey, sessionId, token }: NotesPanelProps) {
   );
 
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{ fontFamily: "var(--font-iv-ui)" }}
-    >
+    <div className="flex h-full flex-col">
       <textarea
         value={content}
         onChange={handleChange}
         placeholder="Type your interview notes here..."
-        className="iv-scroll flex-1 resize-none rounded-lg border border-white/[0.06] bg-white/[0.03] p-3 text-[13px] leading-relaxed text-white/90 placeholder:text-white/20 outline-none transition focus:border-[var(--iv-accent)]/30"
-        style={{ fontFamily: "var(--font-iv-code)" }}
+        className="iv-scroll flex-1 resize-none rounded-lg border border-iv-line bg-white/[0.03] p-3 font-iv-code text-[13px] leading-relaxed text-iv-text outline-none transition placeholder:text-iv-dim focus:border-iv-accent/40"
         spellCheck={false}
       />
-      <p className="mt-2 text-[11px] text-white/30">
-        Notes are shared with all participants in real-time.
-      </p>
+      <p className="mt-2 text-[11px] text-iv-dim">Notes are shared with all participants in real-time.</p>
     </div>
   );
 }

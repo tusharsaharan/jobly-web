@@ -54,7 +54,10 @@ class AIService {
 
         if (validated.success) {
           logger.debug({ provider: provider.name }, "AI execution and schema validation succeeded");
-          return { success: true, data: validated.data, provider: provider.name };
+          // Include the raw parsed JSON so callers can distinguish fields the AI
+          // explicitly returned from schema-defaulted fields (prevents the
+          // default-wipe bug in mergeJobDraft).
+          return { success: true, data: validated.data, raw: parsed, provider: provider.name };
         } else {
           logger.warn({ provider: provider.name, errors: validated.error.errors }, "AI output failed schema validation, trying next provider in cascade");
         }
@@ -63,21 +66,13 @@ class AIService {
       }
     }
 
-    // Ultimate fallback if all cascade elements somehow fail
-    const defaultFallback = {
-      skills: ["JavaScript", "Node.js", "React"],
-      title: "Software Engineer",
-      company: "Tech Corp",
-      description: "Software engineering position.",
-      location: "Remote",
-      type: "Full-time",
-      experience: [],
-      education: { degree: "B.Tech", college: "University", cgpa: 8.0, tier: "unknown" },
-      achievements: [],
-      atsRequirements: { minCgpa: 7.0, targetCollegeTier: "any", minExperienceYears: 1, requiredDegree: "B.Tech" }
-    };
-    const fallbackParsed = schema.safeParse({}).success ? schema.parse({}) : (schema.safeParse(defaultFallback).success ? schema.parse(defaultFallback) : defaultFallback);
-    return { success: false, data: fallbackParsed, provider: "emergency-fallback" };
+    // Emergency fallback: NEVER fabricate data. Return the schema's natural
+    // empty shape (all-defaults) with an explicit degraded flag so callers
+    // can distinguish "AI said nothing" from "nothing found".
+    const fallbackParsed = schema.safeParse({}).success
+      ? schema.parse({})
+      : null;
+    return { success: false, data: fallbackParsed, provider: "emergency-fallback", degraded: true };
   }
 
   /**
@@ -85,12 +80,14 @@ class AIService {
    */
   async parseResume(pdfText, options = {}) {
     const prompt = `
-You are an expert AI Resume Parser. Analyze the provided resume text and extract the following fields. Return strictly as a JSON object:
-- "skills": Array of strings — technical/core skills found (max 15).
-- "experience": Array of objects with { "title": string, "company": string, "duration": string }.
-- "education": Object with { "degree": string, "college": string, "cgpa": number or null, "tier": "tier1" | "tier2" | "tier3" | "unknown" }.
-- "achievements": Array of strings (max 5).
-- "summary": A 2-3 sentence professional summary of the candidate.
+You are an expert resume parser for ANY profession — software, civil services, hospitality, retail, operations, manufacturing, academia, healthcare, administration, or any other occupation.
+Analyze the provided resume text and extract ONLY what is actually present. Return strictly as a JSON object:
+- "skills": Array of strings — the candidate's ACTUAL professional skills, competencies, or trade skills, whatever the domain (e.g., for a custodial role: floor maintenance, chemical handling; for an IAS officer: public administration, policy formulation). NEVER invent skills that are not evidenced in the text. Use the exact terminology the resume itself uses where possible. Max 15.
+- "experience": Array of objects with { "title": string, "company": string, "duration": string } — only actual roles listed; use "" for unknown fields.
+- "education": Object with { "degree": string, "college": string, "cgpa": number or null, "tier": "tier1" | "tier2" | "tier3" | "unknown" }. cgpa must be a plain number on a 10-point scale (convert 4-point scales by multiplying 2.5; percentages by dividing 9.5) or null when absent. tier refers to institutional prestige if determinable from the text, else "unknown".
+- "achievements": Array of strings (max 5) — only real achievements stated in the resume.
+- "summary": A 2-3 sentence professional summary grounded ONLY in the resume's actual content.
+Rules: Empty or absent information MUST be empty strings, null, or empty arrays — never placeholder or invented values. Do not use any emojis.
 Do not use any emojis in the output.
 
 Resume Text:
@@ -98,6 +95,13 @@ ${String(pdfText || "").slice(0, 15000)}
 `;
 
     const result = await this.executeWithCascade(prompt, resumeExtractionSchema, options);
+    // Propagate degradation so callers can react honestly (empty == nothing found).
+    if (result.degraded) {
+      const err = new Error("AI resume extraction unavailable — no providers succeeded");
+      err.degraded = true;
+      err.data = result.data;
+      throw err;
+    }
     return result.data;
   }
 
@@ -117,14 +121,21 @@ Adopt this clear, outcome-oriented framing and measurable responsibilities in th
 ` : "";
 
     const prompt = `
-You are an expert recruiter assistant. Update the structured job posting from the recruiter's message. Return strictly as JSON:
+You are an expert recruiter assistant for ANY industry — technology, FMCG, retail, government, hospitality, manufacturing, academia, or any other sector.
+Update the structured job posting from the recruiter's message. Return strictly as JSON:
 - "title": Job title string.
 - "company": Company name string.
 - "location": Location string.
 - "type": One of "", "Full-time", "Part-time", "Contract", "Internship".
 - "description": Job description string.
-- "skills": Array of required skills.
-- "atsRequirements": Object with minCgpa (number), targetCollegeTier ("tier1"|"tier2"|"tier3"|"any"), minExperienceYears (number), requiredDegree (string).
+- "skills": Array of required skills — whatever the role actually needs in its own domain (e.g., a custodial supervisor needs sanitation protocols and team supervision; a sales director needs P&L management and channel strategy). NEVER invent skills the recruiter did not imply.
+- "atsRequirements": Object with minCgpa (number on 10-point scale), targetCollegeTier ("tier1"|"tier2"|"tier3"|"any"), minExperienceYears (number), requiredDegree (string).
+Rules:
+- The current draft is the source of truth. Preserve every existing value unless the recruiter asks to change or remove it.
+- Never invent a company, location, skill, degree requirement, CGPA, college tier, or experience requirement.
+- A degree is optional. Only set requiredDegree when the recruiter explicitly makes it mandatory.
+- Do not turn a missing detail into a default such as "Remote" or "Full-time".
+- Absent requirements must be 0 / "any" / "" — never fabricated.
 Do not use any emojis in the output.
 ${outcomePromptSection}
 Current draft:
@@ -135,7 +146,10 @@ ${String(userPrompt || "").slice(0, 4000)}
 `;
 
     const result = await this.executeWithCascade(prompt, jobGenerationSchema, options);
-    return mergeJobDraft(currentDraft, result.data);
+    // Merge against the RAW AI JSON so schema-injected defaults (0/"any"/"")
+    // are treated as "AI didn't mention it" — never as explicit changes that
+    // would wipe the recruiter's saved criteria.
+    return mergeJobDraft(currentDraft, result.raw || result.data);
   }
 
   /**
@@ -143,14 +157,14 @@ ${String(userPrompt || "").slice(0, 4000)}
    */
   async predictCandidateQuestions(jobPayload = {}, options = {}) {
     const prompt = `
-You are a senior talent acquisition strategist. Analyze this job posting and identify 4-5 high-signal questions that qualified candidates will ask before or during interviews.
-Generate practical, transparent default answers based on the job details provided. Do not use emojis.
+You are a senior talent acquisition strategist for ANY industry or role type. Analyze this job posting and identify 4-5 high-signal questions that qualified candidates will ask before or during interviews.
+Generate practical, transparent default answers based ONLY on the job details provided. Do not use emojis. If the posting lacks detail for an answer, say so honestly in the default answer.
 
 Job Details:
-Title: ${jobPayload.title || "Software Role"}
-Company: ${jobPayload.company || "Tech Company"}
-Location: ${jobPayload.location || "Remote/Hybrid"}
-Type: ${jobPayload.type || "Full-time"}
+Title: ${jobPayload.title || "the role"}
+Company: ${jobPayload.company || "the organization"}
+Location: ${jobPayload.location || "Not specified"}
+Type: ${jobPayload.type || "Not specified"}
 Skills: ${(jobPayload.skills || []).join(", ")}
 Description:
 ${String(jobPayload.description || "").slice(0, 3000)}

@@ -277,7 +277,7 @@ export function ExcalidrawWhiteboard({
               onClick={saveSnapshot}
               className="iv-btn iv-btn-primary text-[12px]"
             >
-              <Save className="h-3.5 w-3.5" />
+              <Save className="h-4 w-4" strokeWidth={1.75} />
               Snapshot
             </button>
           )}
@@ -317,7 +317,7 @@ export function ExcalidrawWhiteboard({
               onClick={onLeave}
               className="iv-btn iv-btn-ghost text-[12px]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
               Leave Whiteboard
             </button>
           )}
@@ -329,7 +329,7 @@ export function ExcalidrawWhiteboard({
               onClick={onToggleVideo}
               className="iv-btn iv-btn-ghost text-[12px]"
             >
-              <VideoOff className="h-3.5 w-3.5" />
+              <VideoOff className="h-4 w-4" strokeWidth={1.75} />
               {isVideoHidden ? "Show Video" : "Hide Video"}
             </button>
           )}
