@@ -1,0 +1,50 @@
+name: Jobly CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: job-recommender-api/package-lock.json
+
+      - name: Install API Dependencies
+        working-directory: ./job-recommender-api
+        run: npm ci
+
+      - name: Run Backend Tests & Coverage
+        working-directory: ./job-recommender-api
+        env:
+          NODE_ENV: test
+          MONGO_URI: mongodb://localhost:27017/jobmatch_test
+          JWT_SECRET: test_secret_key_ci_cd_12345
+        run: npm test
+
+      - name: Build Docker API Container
+        run: docker build -t jobly-api:latest -f ./job-recommender-api/Dockerfile ./job-recommender-api
+
+      - name: Build Docker Worker Container
+        run: docker build -t jobly-worker:latest -f ./job-recommender-api/Dockerfile.worker ./job-recommender-api

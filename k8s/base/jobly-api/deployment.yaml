@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobly-api
+  labels:
+    app: jobly-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: jobly-api
+  template:
+    metadata:
+      labels:
+        app: jobly-api
+    spec:
+      containers:
+        - name: api
+          image: jobly-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: jobly-config
+            - secretRef:
+                name: jobly-secrets
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5

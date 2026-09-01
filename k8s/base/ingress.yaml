@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jobly-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # SSL Redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Enable WebSockets for LiveKit and Socket.IO
+    nginx.ingress.kubernetes.io/websocket-services: "jobly-api-service"
+    # Max upload size for video recordings / resumes
+    nginx.ingress.kubernetes.io/proxy-body-size: "250m"
+spec:
+  tls:
+    - hosts:
+        - jobly.local # Replace with real domain in prod
+      secretName: jobly-tls
+  rules:
+    - host: jobly.local # Replace with real domain in prod
+      http:
+        paths:
+          # API Routing
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: jobly-api-service
+                port:
+                  number: 80
+          # Socket.IO Routing
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: jobly-api-service
+                port:
+                  number: 80
+          # Static files (uploads)
+          - path: /uploads
+            pathType: Prefix
+            backend:
+              service:
+                name: jobly-api-service
+                port:
+                  number: 80
+          # Web Frontend (catch all)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jobly-web-service
+                port:
+                  number: 80

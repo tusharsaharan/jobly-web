@@ -1,0 +1,203 @@
+services:
+  # 1. Primary API Service
+  api:
+    build:
+      context: ./jobly-api
+      dockerfile: Dockerfile
+    container_name: jobly-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/jobmatch?directConnection=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=jobly-resumes
+      - S3_ACCESS_KEY_ID=minioadmin
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
+      - JWT_SECRET=${JWT_SECRET:-kX9mPq3vT8rY2nZ5bJ6hL0cF4dG7jK1aW_eR3tY8uI2oP5qS7dF9gH1jK3lM5nB7vC9xZ2}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-aB4dE6fG8hJ0kL2mN4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hJ4kL6mN8pQ0rS2}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1h}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Set LIVEKIT_PUBLIC_URL to the public wss:// endpoint in production.
+      # When omitted, the API derives a safe local/same-host development URL.
+      - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-}
+      - TERMINAL_RUNNER_URL=http://terminal-runner:4100
+    command: sh -c "npm install /packages/contracts && node src/server.js"
+    volumes:
+      - ./jobly-api:/app
+      - ./packages:/packages
+      - /app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      terminal-runner:
+        condition: service_healthy
+
+  # 1b. Isolated browser terminal runner
+  terminal-runner:
+    build:
+      context: ./jobly-api/terminal-runner
+      dockerfile: Dockerfile
+    container_name: jobly-terminal-runner
+    restart: unless-stopped
+    environment:
+      - MAX_TERMINAL_SESSIONS=50
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+      - /workspace:rw,noexec,nosuid,size=128m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4100/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # 2. Asynchronous Resume & AI Worker
+  worker:
+    build:
+      context: ./jobly-api
+      dockerfile: Dockerfile.worker
+    container_name: jobly-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo:27017/jobmatch?directConnection=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - S3_ENDPOINT=http://minio:9000
+      - S3_BUCKET=jobly-resumes
+      - S3_ACCESS_KEY_ID=minioadmin
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
+      - JWT_SECRET=${JWT_SECRET:-kX9mPq3vT8rY2nZ5bJ6hL0cF4dG7jK1aW_eR3tY8uI2oP5qS7dF9gH1jK3lM5nB7vC9xZ2}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-aB4dE6fG8hJ0kL2mN4pQ6rS8tU0vW2xY4zA6bC8dE0fG2hJ4kL6mN8pQ0rS2}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1h}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./jobly-api:/app
+      - ./packages:/packages
+      - /app/node_modules
+
+  # 3. MongoDB (Durable Datastore)
+  mongo:
+    image: mongodb/mongodb-atlas-local:latest
+    container_name: jobly-mongodb
+    # Fix replica set host issue: force hostname to 'mongo' so RS is initialized with 'mongo:27017'
+    # Without this, RS uses container ID (e.g., 81c3ed551e8f:27017) which is not resolvable via service name
+    hostname: mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # 4. Redis (Cache, Queues, Rate Limiting, Event Bus)
+  redis:
+    image: redis:7.2-alpine
+    container_name: jobly-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 5. MinIO (S3-compatible Object Storage for Resumes)
+  minio:
+    image: minio/minio:latest
+    container_name: jobly-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # 6. Prometheus (Metrics Scraper)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: jobly-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  # 7. Grafana (Observability Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: jobly-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+
+  # 8. LiveKit WebRTC Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: jobly-livekit
+    restart: unless-stopped
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      - 'LIVEKIT_KEYS=${LIVEKIT_KEYS:-devkey: secret}'
+    command: --dev
+
+volumes:
+  mongo_data:
+  mongo_config:
+  redis_data:
+  minio_data:

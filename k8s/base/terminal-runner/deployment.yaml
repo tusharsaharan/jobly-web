@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terminal-runner
+  labels:
+    app: terminal-runner
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: terminal-runner
+  template:
+    metadata:
+      labels:
+        app: terminal-runner
+    spec:
+      containers:
+        - name: runner
+          image: jobly-terminal-runner:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4100
+          env:
+            - name: MAX_TERMINAL_SESSIONS
+              value: "50"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmpfs
+              mountPath: /tmp
+            - name: workspacefs
+              mountPath: /workspace
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4100
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: tmpfs
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+        - name: workspacefs
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi

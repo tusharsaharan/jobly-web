@@ -1,0 +1,18 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: jobly-worker-scaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jobly-worker
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: redis
+      metadata:
+        # Address needs to match the redis helm release service
+        address: redis-master:6379
+        listName: bull:resume-processing:wait
+        listLength: "5"

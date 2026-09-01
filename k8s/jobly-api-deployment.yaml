@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobly-api
+  labels:
+    app: jobly-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: jobly-api
+  template:
+    metadata:
+      labels:
+        app: jobly-api
+    spec:
+      containers:
+      - name: jobly-api
+        image: jobly-api:latest
+        imagePullPolicy: Never # using local docker daemon image
+        ports:
+        - containerPort: 5000
+        env:
+        - name: PORT
+          value: "5000"
+        - name: MONGO_URI
+          value: "mongodb://mongo:27017/jobly"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        - name: JWT_SECRET
+          value: "production_secret_key"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jobly-api
+spec:
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: jobly-api
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: jobly-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jobly-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75

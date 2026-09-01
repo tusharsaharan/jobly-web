@@ -1,0 +1,13 @@
+{
+  "name": "jobly-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jobly Monorepo Orchestration",
+  "scripts": {
+    "dev": "npm run docker:up && npm run dev:web",
+    "dev:web": "npm --prefix jobly-web run dev",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  }
+}
