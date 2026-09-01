@@ -26,17 +26,42 @@ function sanitizeOffsetMs(offsetMs) {
 }
 
 /**
- * Calculate approximate loop nesting depth from clean code
+ * Calculate approximate loop nesting depth from clean code.
+ * Python (braceless): track indentation — a loop line's depth is the number
+ *   of enclosing loops whose indentation is strictly less than its own.
+ * C-family: brace-based depth (a loop's body lives inside its braces).
  */
-function calculateLoopNesting(code) {
+function calculateLoopNesting(code, language = "javascript") {
   if (!code) return 0;
+  const lang = String(language || "javascript").toLowerCase();
   const lines = code.split("\n");
-  let currentDepth = 0;
   let maxDepth = 0;
 
+  if (["python", "py"].includes(lang)) {
+    // Stack of indentation widths for enclosing loops
+    const indentStack = [];
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const indent = line.match(/^[ \t]*/)[0];
+      const indentWidth = indent.match(/\t/g) ? indent.replace(/\t/g, "    ").length : indent.length;
+      // Pop loops that have dedented past this line
+      while (indentStack.length > 0 && indentStack[indentStack.length - 1] >= indentWidth) {
+        indentStack.pop();
+      }
+      if (/\b(for|while)\s*\(|\bfor\s+\w+\s+in\b|\bwhile\s+[^:]+:/i.test(line.trim())) {
+        indentStack.push(indentWidth);
+        if (indentStack.length > maxDepth) maxDepth = indentStack.length;
+      }
+    }
+    return maxDepth;
+  }
+
+  // C-family: brace-counting. A loop occupies its braces; depth decrements
+  // when its closing brace(s) appear.
+  let currentDepth = 0;
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/\b(for|while)\s*\(|\bfor\s+\w+\s+in\b/i.test(trimmed)) {
+    if (/\b(for|while)\s*\(/.test(trimmed)) {
       currentDepth++;
       if (currentDepth > maxDepth) maxDepth = currentDepth;
     }
@@ -184,7 +209,7 @@ function extractCodeSignals({ code = "", language = "javascript", activeFile = "
   }
 
   // B. Complexity & Nesting Analysis
-  const nestingDepth = calculateLoopNesting(clean);
+  const nestingDepth = calculateLoopNesting(clean, language);
   if (nestingDepth >= 3) {
     signals.push({
       id: `sig-code-cubic-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,

@@ -2,8 +2,17 @@ const jwt = require("jsonwebtoken");
 const config = require("../../config/env");
 const logger = require("../../config/logger");
 
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || "devkey_livekit_jobly";
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || "secret_livekit_jobly_2026_superkey";
+// LiveKit credentials MUST come from the environment and MUST match the
+// running LiveKit server's keys. No silent fallbacks — a mismatched token
+// silently breaks video, which is worse than a loud config error.
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || "devkey";
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || "";
+
+function assertLiveKitConfigured() {
+  if (!LIVEKIT_API_SECRET) {
+    throw new Error("LIVEKIT_API_SECRET is not set. It must match the LiveKit server's LIVEKIT_KEYS entry.");
+  }
+}
 
 /**
  * Generate a standard LiveKit WebRTC JWT token with appropriate participant grants
@@ -17,6 +26,7 @@ function generateLiveKitToken({
   canPublishData = true,
 }) {
   try {
+    assertLiveKitConfigured();
     // Attempt official SDK if present
     const { AccessToken } = require("livekit-server-sdk");
     const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {

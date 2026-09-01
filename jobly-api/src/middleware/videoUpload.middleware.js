@@ -111,7 +111,10 @@ async function uploadLargeRecording(sessionId, key, file, userId) {
 async function getPresignedRecordingUploadUrl(sessionId, ext = "webm", expiresIn = 3600) {
   const { getPresignedUploadUrl } = require("../config/s3");
   const key = `recordings/${sessionId}/${sessionId}-${Date.now()}.${ext}`;
-  return await getPresignedUploadUrl(key, expiresIn, "video/webm");
+  const presignedUrl = await getPresignedUploadUrl(key, expiresIn, "video/webm");
+  // Return the exact key that was signed — the client must upload to and
+  // reference THIS key (a second Date.now() elsewhere would mismatch).
+  return { presignedUrl, key };
 }
 
 module.exports = {

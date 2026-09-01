@@ -18,9 +18,10 @@ const SIGNAL_WINDOW_MS = 1000;
 const COPILOT_RATE_LIMIT = 5; // max 5 copilot requests per minute
 const COPILOT_WINDOW_MS = 60 * 1000;
 const COPILOT_DEBOUNCE_MS = 800;
-// B12: per-session signal limit 100 signals/session (total per session)
+// B12: per-session signal limit — generous enough for a long, chatty demo
+// interview (a too-low cap silently starves the interviewer's signals panel).
 const sessionSignalMap = new Map(); // sessionKey (roomKey or sessionId) -> count
-const SESSION_SIGNAL_LIMIT = 100;
+const SESSION_SIGNAL_LIMIT = 300;
 
 function isSignalRateLimited(socketId) {
   const now = Date.now();
@@ -52,6 +53,14 @@ function isCopilotRateLimited(userId) {
   if (entry.count >= COPILOT_RATE_LIMIT) return true;
   entry.count += 1;
   return false;
+}
+
+// Strip answer material from a quiz question before broadcasting to players.
+// The host already knows the answers; players must not see them pre-reveal.
+function sanitizeQuizQuestion(q) {
+  if (!q || typeof q !== "object") return q;
+  const { correctAnswer, explanation, ...rest } = q;
+  return rest;
 }
 
 function setupSocketIO(server) {
@@ -356,19 +365,28 @@ function setupSocketIO(server) {
     // Real-Time Interactive Terminal Streaming — with participant verification
     socket.on("terminal_input", async ({ roomKey, terminalId, data }) => {
       try {
-        if (roomKey) {
-          // Verify participant before broadcast/exec
-          try {
-            const InterviewSession = require("../../models/InterviewSession");
-            const session = await InterviewSession.findOne({ roomKey }).select("seeker recruiter additionalInterviewers").lean();
-            if (session) {
-              const isParticipant = String(session.seeker) === userId || String(session.recruiter) === userId || (session.additionalInterviewers || []).some((id) => String(id) === userId);
-              if (!isParticipant) return;
-            }
-          } catch { return; }
-          socket.to(`interview:${roomKey}`).emit("terminal_input_received", { terminalId, data, senderId: socket.user?._id });
-        }
+        if (!terminalId || typeof data !== "string" || data.length === 0) return;
+        // Authorize against the terminal's OWN session (not a client-supplied
+        // roomKey): a stale roomKey must never grant access to another
+        // session's terminal. Fail closed when we cannot resolve ownership.
         const terminalService = require("../terminal/terminalService");
+        const termEntry = terminalService.getTerminalSession(terminalId);
+        const owningSessionId = termEntry?.sessionId;
+        if (!owningSessionId) return; // unknown terminal -> fail closed
+
+        try {
+          const InterviewSession = require("../../models/InterviewSession");
+          const s = await InterviewSession.findById(owningSessionId).select("seeker recruiter additionalInterviewers roomKey").lean();
+          if (!s) return; // session gone -> fail closed
+          const isParticipant = String(s.seeker) === userId || String(s.recruiter) === userId || (s.additionalInterviewers || []).some((id) => String(id) === userId);
+          if (!isParticipant) return;
+
+          const termRoomKey = s.roomKey || roomKey;
+          if (termRoomKey) {
+            socket.to(`interview:${termRoomKey}`).emit("terminal_input_received", { terminalId, data, senderId: socket.user?._id });
+          }
+        } catch { return; }
+
         Promise.resolve(terminalService.writeToTerminal(terminalId, data)).catch((err) => {
           logger.debug({ err: err.message, terminalId }, "Terminal input error");
         });
@@ -511,7 +529,7 @@ function setupSocketIO(server) {
           io.to(`comp_lobby:${pin}`).emit("comp_started", {
             startedAt: lobby.questionStartTime.toISOString(),
             questionIndex: 0,
-            question: lobby.quizData[0],
+            question: sanitizeQuizQuestion(lobby.quizData[0]),
             timeLimitSeconds: lobby.quizData[0].timeLimitSeconds || 20,
           });
         } else if (lobby.mode === "CP") {
@@ -601,7 +619,7 @@ function setupSocketIO(server) {
         const nextQuestion = lobby.quizData[nextIndex];
         io.to(`comp_lobby:${pin}`).emit("question_changed", {
           questionIndex: nextIndex,
-          question: nextQuestion,
+          question: sanitizeQuizQuestion(nextQuestion),
           timeLimitSeconds: nextQuestion.timeLimitSeconds || 20,
           startedAt: lobby.questionStartTime.toISOString(),
         });

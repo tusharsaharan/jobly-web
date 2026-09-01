@@ -582,6 +582,9 @@ exports.evaluateInterview = async (req, res) => {
         }
         throw saveErr;
       }
+      // Fresh replay must reflect the completed session.
+      const { invalidateReplayManifest } = require("./replay.controller");
+      await invalidateReplayManifest(session._id);
     }
 
     // Broadcast session status completion over Socket.IO
@@ -1067,8 +1070,8 @@ exports.uploadInterviewRecording = async (req, res) => {
       const ext = (req.file.originalname?.split(".").pop() || "webm").replace(/[^a-zA-Z0-9]/g, "");
       const filename = `${sessionId}-${Date.now()}.${ext}`;
       const dir = path.join(__dirname, "../../uploads/recordings");
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+      await fs.promises.mkdir(dir, { recursive: true });
+      await fs.promises.writeFile(path.join(dir, filename), req.file.buffer);
       recordingUrl = `/uploads/recordings/${filename}`;
     }
     session.recordingUrl = recordingUrl;
@@ -1154,11 +1157,11 @@ exports.getRecordingPresignedUrl = async (req, res) => {
     }
 
     const { getPresignedRecordingUploadUrl } = require("../middleware/videoUpload.middleware.js");
-    const presignedUrl = await getPresignedRecordingUploadUrl(sessionId, "webm", 7200); // 2 hours
+    const { presignedUrl, key } = await getPresignedRecordingUploadUrl(sessionId, "webm", 7200); // 2 hours
 
     return res.json({
       presignedUrl,
-      key: `recordings/${sessionId}/${sessionId}-${Date.now()}.webm`,
+      key,
       bucket: require("../config/s3").RECORDINGS_BUCKET,
       expiresIn: 7200,
     });

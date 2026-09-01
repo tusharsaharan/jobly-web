@@ -19,12 +19,13 @@ const NETWORK_ALLOWLIST = (process.env.SANDBOX_NETWORK_ALLOWLIST || "")
 
 // Blocked require/import patterns – brutally block host FS, process control, and network
 const BLOCKED_JS_PATTERNS = [
-  { pattern: /require\s*\(\s*['"]\s*fs\s*['"]\s*\)/i, reason: "require('fs') is blocked - host filesystem access denied" },
-  { pattern: /require\s*\(\s*['"]\s*child_process\s*['"]\s*\)/i, reason: "require('child_process') is blocked - process spawning denied" },
-  { pattern: /require\s*\(\s*['"]\s*net\s*['"]\s*\)/i, reason: "require('net') is blocked - network access denied" },
-  { pattern: /require\s*\(\s*['"]\s*dgram\s*['"]\s*\)/i, reason: "require('dgram') is blocked - network access denied" },
-  { pattern: /require\s*\(\s*['"]\s*http\s*['"]\s*\)/i, reason: "require('http') is blocked - network access denied" },
-  { pattern: /require\s*\(\s*['"]\s*https\s*['"]\s*\)/i, reason: "require('https') is blocked - network access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:fs|fs\/promises|fs\/constants)\s*['"]\s*\)/i, reason: "require('fs') is blocked - host filesystem access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:child_process)\s*['"]\s*\)/i, reason: "require('child_process') is blocked - process spawning denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:net)\s*['"]\s*\)/i, reason: "require('net') is blocked - network access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:dgram)\s*['"]\s*\)/i, reason: "require('dgram') is blocked - network access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:http)\s*['"]\s*\)/i, reason: "require('http') is blocked - network access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:https)\s*['"]\s*\)/i, reason: "require('https') is blocked - network access denied" },
+  { pattern: /require\s*\(\s*['"]\s*(?:node:)?(?:worker_threads|vm|v8|cluster|repl|process)\s*['"]\s*\)/i, reason: "require('worker_threads/vm') is blocked" },
   // Allow process.exit(0) / process.exit(1) for clean readline termination in tests; block bare process.exit() or non-zero weird usage still via timeout watchdog
   // { pattern: /\bprocess\s*\.\s*exit\s*\(/i, reason: "process.exit is blocked - process termination denied" },
   { pattern: /\bchild_process\b/i, reason: "child_process is blocked" },
@@ -36,8 +37,12 @@ const BLOCKED_JS_PATTERNS = [
   { pattern: /\bsocket\b.*\bconnect\b/i, reason: "socket usage is blocked" },
   // Dynamic require / import bypasses
   { pattern: /require\s*\(.*Buffer\.from/i, reason: "Dynamic require via Buffer is blocked" },
-  { pattern: /global\s*\.\s*process|this\s*\.\s*constructor|Function\s*\(/i, reason: "Global process/function constructor escape is blocked" },
-  { pattern: /\bimport\s*\(\s*['"]fs['"]\s*\)|\bimport\s*\(\s*['"]child_process['"]\s*\)/i, reason: "Dynamic import of fs/child_process blocked" },
+  // Escape hatches — anchored to real constructor escapes. A bare anonymous
+  // `function(){}` callback is normal code and must NOT be rejected.
+  { pattern: /\bnew\s+Function\s*\(/i, reason: "Function constructor escape is blocked" },
+  { pattern: /\beval\s*\(/i, reason: "eval is blocked" },
+  { pattern: /global\s*\.\s*process|this\s*\.\s*constructor|\bconstructor\s*\[/i, reason: "Global process/prototype escape is blocked" },
+  { pattern: /\bimport\s*\(\s*['"](?:node:)?(?:fs|child_process)['"]\s*\)/i, reason: "Dynamic import of fs/child_process blocked" },
   { pattern: /__import__\s*\(\s*['"]os['"]\s*\)|getattr\s*\(\s*__import__/i, reason: "Python dynamic import escape blocked" },
 ];
 const BLOCKED_PY_PATTERNS = [
@@ -401,8 +406,11 @@ async function runTestCases({ language, code, testCases = [] }) {
   const results = [];
   let allPassed = true;
 
-  for (let i = 0; i < testCases.length; i++) {
-    const tc = testCases[i];
+  // Hard cap: 50 tests x 5s = bounded worst case (~250s) regardless of caller.
+  const boundedTestCases = Array.isArray(testCases) ? testCases.slice(0, 50) : [];
+
+  for (let i = 0; i < boundedTestCases.length; i++) {
+    const tc = boundedTestCases[i];
     const exec = await executeCodeSandbox({
       language,
       code,

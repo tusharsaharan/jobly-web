@@ -6,6 +6,19 @@ const WhiteboardSnapshot = require("../models/WhiteboardSnapshot");
 const cacheService = require("../infrastructure/cache/cache.service");
 
 /**
+ * Invalidate the cached replay manifest for a session — called whenever the
+ * session completes/changes so the replay shows fresh data, not a stale copy.
+ */
+async function invalidateReplayManifest(sessionId) {
+  try {
+    await cacheService.del(`replay:manifest:${String(sessionId)}`);
+  } catch {
+    // Cache invalidation must never block the completion flow.
+  }
+}
+exports.invalidateReplayManifest = invalidateReplayManifest;
+
+/**
  * Authorize participant
  */
 async function authorizeParticipant(sessionIdOrRoomKey, user) {
@@ -48,14 +61,20 @@ async function authorizeParticipant(sessionIdOrRoomKey, user) {
 exports.getReplayManifest = async (req, res) => {
   try {
     const { sessionId } = req.params;
+
+    // AUTHORIZATION FIRST — the cached manifest must never be readable by a
+    // non-participant (cache-before-auth was an IDOR).
+    const session = await authorizeParticipant(sessionId, req.user);
+    if (!session) {
+      return res.status(404).json({ msg: "Interview session not found" });
+    }
+
     const cacheKey = `replay:manifest:${sessionId}`;
 
     const cached = await cacheService.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
-
-    const session = await authorizeParticipant(sessionId, req.user);
 
     const timelineEvents = await TimelineEvent.find({ session: session._id })
       .populate("participant", "name role")

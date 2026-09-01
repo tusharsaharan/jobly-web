@@ -10,33 +10,13 @@ exports.generateQuiz = async (req, res) => {
     if (!topic || typeof topic !== "string" || !topic.trim()) return res.status(400).json({ error: "Topic is required" });
     const cleanTopic = String(topic).trim().slice(0, 200);
     if (cleanTopic.length < 2) return res.status(400).json({ error: "Topic must be at least 2 characters" });
-    // Off-topic guard: burger, Hindi, junk etc. — quiz is for CS / System Design only
-    const lower = cleanTopic.toLowerCase();
-    const isOffTopic = (() => {
-      // If it matches taxonomy, it's always valid
-      if (TOPIC_TAXONOMY[cleanTopic]) return false;
-      if (matchTopicsFromText(cleanTopic).length > 0) return false;
-      // Allow if it contains obvious CS keywords even if not in taxonomy (e.g. "binary search", "kafka")
-      const csHints = ["array","string","tree","graph","dp","dynamic","recursion","sort","search","hash","heap","stack","queue","linked","bit","trie","segment","os","operating","dbms","database","sql","network","tcp","udp","http","dns","oop","solid","design pattern","load balancing","caching","shard","queue","kafka","microservice","cap","consistency","availability","rate limit","consistent hash","message","system design","lld","hld","java","python","c++","javascript","interview","algorithm","data structure"];
-      if (csHints.some(h => lower.includes(h))) return false;
-      // Check for pure non-CS junk: Hindi, food, single random word with no CS hint
-      const offHints = ["burger","pasta","recipe","cricket","food","cook","tujhe","kuch","nhi","aata","yeh","kya","hai","samjhao"];
-      if (offHints.some(h => lower.includes(h))) return true;
-      // Very short or pure symbols/numbers: let it pass to AI but will be caught by RAG later; for quiz, be strict if no taxonomy hit and no CS hint
-      if (cleanTopic.split(/\s+/).length <= 2 && !csHints.some(h => lower.includes(h))) {
-        // Check if it's at least 3 chars and looks like a CS topic (heuristic)
-        const hasCsChar = /[a-z]{3,}/.test(lower);
-        if (!hasCsChar) return true;
-        // If no taxonomy and no CS hint, treat as off-topic
-        return true;
-      }
-      return false;
-    })();
-    if (isOffTopic) {
+    // Topic gate is OPEN to any domain (CS, polity, culinary, any profession).
+    // Gemini generates domain-correct questions for whatever the user asks;
+    // we only reject strings that cannot be a topic at all (pure symbols/digits).
+    if (!/[a-z\u00C0-\u024F\u0900-\u097F\u4E00-\u9FFF]/i.test(cleanTopic)) {
       return res.status(400).json({
-        error: `Topic "${cleanTopic}" is outside the study catalog. Please choose a CS / System Design topic.`,
+        error: "Topic must contain at least some letters.",
         suggestions: getTopicNames().slice(0, 10),
-        hint: "Try: Arrays, Dynamic Programming, Operating Systems, DBMS, System Design Case Studies, etc."
       });
     }
     let parsedCount = parseInt(count, 10);
@@ -94,16 +74,39 @@ exports.startSession = async (req, res) => {
     if (parsedDuration > 240) parsedDuration = 240;
 
     const userId = req.user._id || req.user.id;
+
+    // QUIZ sessions: the server ALWAYS generates the quiz from the topic.
+    // Client-supplied quizData is ignored (trust boundary — a client that
+    // authors its own quiz+answers could otherwise self-award points).
+    let serverQuizData = null;
+    if (String(type) === "QUIZ") {
+      try {
+        const count = Array.isArray(quizData) ? Math.min(quizData.length, 20) : 5;
+        serverQuizData = await aiService.generateFocusQuiz(cleanTopic, null, {
+          difficulty: "Mixed",
+          count: Math.max(3, count),
+        });
+      } catch (err) {
+        logger.warn({ err: err.message, topic: cleanTopic }, "Server quiz generation failed");
+        return res.status(503).json({ error: "Quiz generation is temporarily unavailable. Try again." });
+      }
+    }
+
     const session = await FocusSession.create({
       user: userId,
       type: String(type),
       topic: cleanTopic,
       durationMinutes: parsedDuration,
-      quizData: String(type) === "QUIZ" ? quizData : null,
+      quizData: serverQuizData,
       status: "ACTIVE"
     });
 
-    res.status(201).json(session);
+    // Never echo correctAnswer to the client on session start.
+    const safeQuiz = (serverQuizData || []).map((q) => {
+      const { correctAnswer, ...rest } = q || {};
+      return rest;
+    });
+    res.status(201).json({ ...session.toObject(), quizData: safeQuiz });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(400).json({ error: error.message });
@@ -154,30 +157,27 @@ exports.completeSession = async (req, res) => {
     session.endTime = new Date();
 
     // ── QUIZ scoring: server-verified when answers provided ──
-    // If client sent `answers`, recompute score from stored quizData (trust boundary).
-    // Otherwise fall back to client `score` for backwards compat (legacy callers).
+    // Server-verified scoring ONLY. A QUIZ session is scored against the
+    // server-generated quizData stored at startSession — a client score is
+    // never trusted for points (gamification cheat vector).
     let verifiedScore = null;
     if (session.type === "QUIZ") {
-      if (answers !== undefined && session.quizData && Array.isArray(session.quizData) && session.quizData.length > 0) {
-        const ansMap = Array.isArray(answers) ? answers : answers;
-        let correct = 0;
-        let total = session.quizData.length;
-        session.quizData.forEach((q, idx) => {
-          const chosen = Array.isArray(answers) ? answers[idx] : ansMap[String(idx)] ?? ansMap[idx];
-          if (chosen !== undefined && chosen !== null && Number(chosen) === Number(q.correctAnswer)) correct++;
-        });
-        verifiedScore = total > 0 ? Math.round((correct / total) * 100) : 0;
-        session.score = verifiedScore;
-        session.submittedAnswers = ansMap; // audit trail
-      } else if (score !== undefined) {
-        const parsedScore = Number(score);
-        if (Number.isNaN(parsedScore) || parsedScore < 0 || parsedScore > 100) {
-          return res.status(400).json({ error: "Score must be between 0 and 100" });
-        }
-        // Cap client-submitted score — still store but flag as unverified
-        session.score = parsedScore;
-        verifiedScore = parsedScore;
+      if (!session.quizData || !Array.isArray(session.quizData) || session.quizData.length === 0) {
+        return res.status(400).json({ error: "This quiz session has no server-generated questions to score." });
       }
+      if (answers === undefined || answers === null) {
+        return res.status(400).json({ error: "Answers are required to complete a quiz session" });
+      }
+      const ansMap = Array.isArray(answers) ? answers : answers;
+      let correct = 0;
+      const total = session.quizData.length;
+      session.quizData.forEach((q, idx) => {
+        const chosen = Array.isArray(answers) ? answers[idx] : ansMap[String(idx)] ?? ansMap[idx];
+        if (chosen !== undefined && chosen !== null && Number(chosen) === Number(q.correctAnswer)) correct++;
+      });
+      verifiedScore = total > 0 ? Math.round((correct / total) * 100) : 0;
+      session.score = verifiedScore;
+      session.submittedAnswers = ansMap; // audit trail
     }
     await session.save();
 
@@ -197,33 +197,33 @@ exports.completeSession = async (req, res) => {
       }
     }
 
-    // Gamification Points — use verified score if available
-    const effectiveScore = verifiedScore !== null ? verifiedScore : (score || 0);
+    // Gamification Points — atomic increments (no lost updates under concurrency)
+    const effectiveScore = verifiedScore !== null ? verifiedScore : 0;
     const pointsAwarded = session.type === "QUIZ" ? effectiveScore : session.durationMinutes;
-    
-    const user = await User.findById(userId).select("-password");
-    if (user) {
-      user.focusPoints = (user.focusPoints || 0) + pointsAwarded;
-      
-      const now = new Date();
-      const lastDate = user.lastFocusDate;
-      
-      if (lastDate) {
-        const diffHours = (now - lastDate) / (1000 * 60 * 60);
-        if (diffHours < 48 && diffHours > 4) {
-          user.currentStreak = (user.currentStreak || 0) + 1;
-        } else if (diffHours >= 48) {
-          user.currentStreak = 1;
-        }
-      } else {
-        user.currentStreak = 1;
-      }
-      
-      user.lastFocusDate = now;
-      await user.save();
+
+    const user = await User.findById(userId).select("lastFocusDate currentStreak");
+    const now = new Date();
+    const lastDate = user?.lastFocusDate;
+    let streakDelta = 0;
+    if (lastDate) {
+      const diffHours = (now - lastDate) / (1000 * 60 * 60);
+      if (diffHours < 48 && diffHours > 4) streakDelta = 1;
+      else if (diffHours >= 48) streakDelta = -(user.currentStreak || 0) + 1;
+    } else {
+      streakDelta = 1;
     }
 
-    res.json({ success: true, pointsAwarded, newTotal: user?.focusPoints || 0, newStreak: user?.currentStreak || 0, autoResolvedCount, verifiedScore, session });
+    await User.findByIdAndUpdate(
+      userId,
+      {
+        $inc: { focusPoints: pointsAwarded, currentStreak: streakDelta },
+        $set: { lastFocusDate: now },
+      },
+      { new: true }
+    );
+    const updatedUser = await User.findById(userId).select("-password");
+
+    res.json({ success: true, pointsAwarded, newTotal: updatedUser?.focusPoints || 0, newStreak: updatedUser?.currentStreak || 0, autoResolvedCount, verifiedScore, session });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(400).json({ error: error.message });

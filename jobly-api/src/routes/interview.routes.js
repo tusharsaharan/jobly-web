@@ -9,6 +9,7 @@ const {
   scheduleInterviewSchema,
   updateStageSchema,
   executeCodeSchema,
+  runTestsSchema,
 } = require("../middleware/validation.middleware");
 const executeLimiter = generalLimiter;
 
@@ -46,15 +47,17 @@ router.post(
 );
 
 // Run code against multiple test cases (VS Code / LeetCode style)
-const { runTestsSchema } = require("../middleware/validation.middleware");
 router.post(
   "/:sessionId/run-tests",
   rateLimitMiddleware(executeLimiter, (req) => req.user?._id?.toString() || req.ip),
+  validateBody(runTestsSchema),
   interviewController.runTestsInSession
 );
 
-// Inject mock socket event (for e2e testing only)
-router.post("/:sessionId/test-inject-socket", interviewController.injectTestSocketEvent);
+// Inject mock socket event (for e2e testing only — never available in production)
+if (process.env.NODE_ENV !== "production") {
+  router.post("/:sessionId/test-inject-socket", interviewController.injectTestSocketEvent);
+}
 
 // AI Co-Interviewer real-time suggestion (Recruiter only)
 router.post("/:sessionId/ai-suggest", roleMiddleware("recruiter"), interviewController.getAiSuggestion);

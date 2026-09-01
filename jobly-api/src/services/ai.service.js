@@ -432,31 +432,31 @@ exports.generateFocusQuiz = async (topic, userProfile, { difficulty = "Medium", 
       : "";
 
     const prompt = `
-You are an expert technical interviewer and principal CS educator. You create precise, non-generic, interview-grade quizzes.
-Generate a ${questionCount}-question multiple-choice quiz on the topic of "${topic}".
+You are an expert interviewer and educator in ANY domain — computer science, civil services (UPSC/IAS), law, medicine, finance, culinary arts, operations, facilities management, or any other subject.
+Create a precise, non-generic, interview-grade quiz on the topic of "${topic}".
 ${topicContext}${difficultyGuide}
 ${userProfile ? `Consider the user's background: ${JSON.stringify(userProfile)}` : ""}
 ${recentQText}
 
 NON-NEGOTIABLE PRECISION RULES (violating = failed):
-1. Each question MUST reference a concrete sub-concept, API, complexity, trade-off, or real-system example of "${topic}" — never generic "What is the core concept behind X?" or "Which is true about X?".
-2. Each question MUST have a technically accurate explanation (2-3 sentences) that says WHY correct is correct and WHY each distractor is wrong (name the misconception).
-3. Options must be specific technical statements (not single words like "Speed"). Distractors = common interview pitfalls for "${topic}".
-4. No two questions may test the same alias/sub-area. Spread across distinct subtopics of "${topic}" (use aliases above).
-5. For Easy: precise definitions, syntax, invariants. For Medium: trade-offs, patterns, pitfalls, complexity. For Hard: internals, edge cases, concurrency, performance, failure modes.
+1. Each question MUST reference a concrete sub-concept, fact, mechanism, trade-off, or real-world example of "${topic}" — never generic "What is the core concept behind X?" or "Which is true about X?". If "${topic}" belongs to a non-technical domain, ask genuine domain questions (e.g., for "Indian Polity": constitutional articles, federal structure, emergency provisions).
+2. Each question MUST have an accurate explanation (2-3 sentences) that says WHY correct is correct and WHY each distractor is wrong (name the misconception).
+3. Options must be specific statements (not single words like "Speed"). Distractors = common pitfalls or plausible-but-wrong facts about "${topic}".
+4. No two questions may test the same alias/sub-area. Spread across distinct subtopics of "${topic}" (use aliases above when provided).
+5. For Easy: precise definitions and fundamentals. For Medium: practical application, trade-offs, pitfalls. For Hard: edge cases, internals, real-world failure modes.
 6. Shuffle correctAnswer uniformly among 0-3 (not always 0).
-7. Prefer questions that include a tiny code snippet / scenario / complexity when relevant.
+7. Include a tiny snippet / scenario / example when the domain naturally supports it.
 
 Return strictly as a JSON array of objects. Each object must follow this exact schema:
 [
   {
     "question": "The question text — must mention a concrete sub-concept of ${topic}",
-    "options": ["Option A — specific technical statement", "Option B — specific", "Option C — specific", "Option D — specific"],
+    "options": ["Option A — specific statement", "Option B — specific", "Option C — specific", "Option D — specific"],
     "correctAnswer": 0,
     "explanation": "Why correct is correct and why each other option is a specific misconception about ${topic}."
   }
 ]
- `;
+  `;
 
     const response = await getAI().models.generateContent({
       model: "gemini-flash-lite-latest",
@@ -465,12 +465,20 @@ Return strictly as a JSON array of objects. Each object must follow this exact s
     });
 
     let text = response.text;
-    if (text.startsWith("```")) {
+    if (typeof text !== "string") throw new Error("AI returned no text");
+    if (text.startsWith("\`\`\`")) {
       text = text.replace(/^```(json)?\n/, "").replace(/\n```$/, "");
     }
 
-    const parsed = JSON.parse(text);
-    
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // AI occasionally wraps the array in an object or adds prose — try to recover.
+      const arrMatch = text.match(/\[[\s\S]*\]/);
+      parsed = arrMatch ? JSON.parse(arrMatch[0]) : null;
+    }
+
     // Validate response structure
     if (!Array.isArray(parsed) || parsed.length === 0) {
       throw new Error("Invalid quiz format from AI");
@@ -654,10 +662,18 @@ fn main() {
       validatedCode[lang] = initialCode[lang] || template;
     }
     
+    // Always-valid fallback test cases (topic-agnostic reverse-a-string)
+    const fallbackTestCases = [
+      { input: "hello", expectedOutput: "olleh" },
+      { input: "jobly", expectedOutput: "ylboj" },
+    ];
+
     return {
       problemStatement: parsed.problemStatement || `Solve a problem related to ${topic}.`,
       initialCode: validatedCode,
-      testCases: Array.isArray(parsed.testCases) ? parsed.testCases.slice(0, 5) : defaultTemplates.testCases,
+      testCases: Array.isArray(parsed.testCases) && parsed.testCases.length > 0
+        ? parsed.testCases.slice(0, 5).filter((t) => t && typeof t.input !== "undefined" && typeof t.expectedOutput !== "undefined")
+        : fallbackTestCases,
     };
   } catch (error) {
     console.error("AI CP Gen Error:", error?.status, error?.message);

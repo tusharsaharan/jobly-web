@@ -7,6 +7,31 @@ function generatePin() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+/**
+ * Strip answer keys from a lobby for non-host eyes. The host needs full
+ * quizData to run the game; players must never receive correctAnswer or
+ * hidden CP test cases before the reveal.
+ */
+function sanitizeLobbyForViewer(lobbyDoc, viewerId) {
+  if (!lobbyDoc) return lobbyDoc;
+  const uid = String(viewerId || "");
+  const isHost = String(lobbyDoc.hostId) === uid;
+  if (isHost) return lobbyDoc;
+
+  const obj = lobbyDoc.toObject ? lobbyDoc.toObject() : { ...lobbyDoc };
+  if (Array.isArray(obj.quizData)) {
+    obj.quizData = obj.quizData.map((q) => {
+      const { correctAnswer, explanation, ...rest } = q || {};
+      return rest;
+    });
+  }
+  if (obj.cpData) {
+    const { testCases, ...cpRest } = obj.cpData;
+    obj.cpData = cpRest;
+  }
+  return obj;
+}
+
 exports.createLobby = async (req, res) => {
   try {
     const { topic, mode, difficulty = "Mixed", questionCount = 5, timeLimitSeconds = 20 } = req.body;
@@ -66,11 +91,11 @@ exports.createLobby = async (req, res) => {
       cpData = await aiService.generateCPProblem(cleanTopic, { difficulty: cleanDifficulty });
     }
 
-    const hostId = req.user._id || req.user.id;
+    const hostId2 = req.user._id || req.user.id;
     try {
       const lobby = await CompetitionLobby.create({
         pin,
-        hostId,
+        hostId: hostId2,
         topic: cleanTopic,
         mode,
         difficulty: cleanDifficulty,
@@ -78,19 +103,19 @@ exports.createLobby = async (req, res) => {
         quizData: mode === "QUIZ" ? quizData : undefined,
         cpData: mode === "CP" ? cpData : undefined,
         players: [{
-          userId: hostId,
+          userId: hostId2,
           name: req.user.name,
           isHost: true
         }]
       });
-      return res.status(201).json({ lobby });
+      return res.status(201).json({ lobby: sanitizeLobbyForViewer(lobby, hostId2) });
     } catch (createErr) {
       if (createErr.code === 11000) {
         // PIN collision race, retry once with new PIN
         const retryPin = generatePin();
         const lobby = await CompetitionLobby.create({
           pin: retryPin,
-          hostId,
+          hostId: hostId2,
           topic: cleanTopic,
           mode,
           difficulty: cleanDifficulty,
@@ -98,12 +123,12 @@ exports.createLobby = async (req, res) => {
           quizData: mode === "QUIZ" ? quizData : undefined,
           cpData: mode === "CP" ? cpData : undefined,
           players: [{
-            userId: hostId,
+            userId: hostId2,
             name: req.user.name,
             isHost: true
           }]
         });
-        return res.status(201).json({ lobby });
+        return res.status(201).json({ lobby: sanitizeLobbyForViewer(lobby, hostId2) });
       }
       throw createErr;
     }
@@ -138,13 +163,13 @@ exports.joinLobby = async (req, res) => {
         { $push: { players: { userId, name: req.user.name, isHost: false } } },
         { new: true }
       );
-      if (updated) return res.json({ lobby: updated });
+      if (updated) return res.json({ lobby: sanitizeLobbyForViewer(updated, userId) });
       // If not updated, someone else joined concurrently or already joined
       const refreshed = await CompetitionLobby.findOne({ pin: cleanPin });
-      return res.json({ lobby: refreshed });
+      return res.json({ lobby: sanitizeLobbyForViewer(refreshed, userId) });
     }
 
-    res.json({ lobby });
+    res.json({ lobby: sanitizeLobbyForViewer(lobby, userId) });
   } catch (error) {
     logger.error("Error joining lobby", error);
     res.status(500).json({ error: "Failed to join lobby" });
@@ -162,7 +187,7 @@ exports.getLobby = async (req, res) => {
     const isMember = (lobby.players || []).some((p) => String(p.userId) === uid) || String(lobby.hostId) === uid;
     if (!isMember) return res.status(403).json({ error: "Access denied. Not a lobby member." });
 
-    res.json({ lobby });
+    res.json({ lobby: sanitizeLobbyForViewer(lobby, uid) });
   } catch (error) {
     if (error.name === "CastError") return res.status(400).json({ error: "Invalid lobby ID format" });
     logger.error("Error fetching lobby", error);

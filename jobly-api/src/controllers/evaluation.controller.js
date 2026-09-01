@@ -188,6 +188,9 @@ exports.createEvaluation = async (req, res) => {
       session.stage = "COMPLETED";
       session.actualEnd = new Date();
       await session.save();
+      // Fresh replay must reflect the completed session.
+      const { invalidateReplayManifest } = require("./replay.controller");
+      await invalidateReplayManifest(session._id);
     }
 
     // Asynchronously extract candidate weaknesses into CandidateTopicWeakness
