@@ -16,3 +16,4 @@ packages/contracts/node_modules/
 packages/contracts/dist/
 *.png
 *.jpeg
+.demo-seed-tmp.js
