@@ -1,6 +1,7 @@
 import { Link, useRouterState, useRouter } from "@tanstack/react-router";
 import { LogOut, Menu, UserRound, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
@@ -141,9 +142,75 @@ export function PublicNav({ dark = false }: { dark?: boolean }) {
       right={
         <Link to={user ? "/dashboard" : "/auth"} className="pill-mint text-sm">
           {user ? "Open dashboard" : "Get started"}
-       </Link>
+        </Link>
       }
     />
+  );
+}
+
+interface LandingNavProps {
+  light: boolean;
+  revealed: boolean;
+}
+
+/** Beagle-style landing nav: slides down after the preloader and crossfades
+ *  its logo + links between the light and dark scene themes while scrolling. */
+export function LandingNav({ light, revealed }: LandingNavProps) {
+  const { user } = useAuth();
+
+  return (
+    <motion.header
+      className={cn(
+        "fixed top-0 z-40 w-full transition-colors duration-500",
+        light ? "text-ink" : "text-cream",
+      )}
+      initial={{ y: -96 }}
+      animate={{ y: revealed ? 0 : -96 }}
+      transition={{ duration: 0.8, ease: [0.5, 0, 0.5, 1] }}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
+        <span className="relative inline-flex items-center gap-2.5" aria-hidden="true">
+          <span
+            className={cn(
+              "absolute inset-0 flex items-center transition-opacity duration-500",
+              light ? "opacity-100" : "opacity-0",
+            )}
+          >
+            <Logo size="sm" />
+          </span>
+          <span
+            className={cn(
+              "absolute inset-0 flex items-center transition-opacity duration-500",
+              light ? "opacity-0" : "opacity-100",
+            )}
+          >
+            <Logo size="sm" variant="inverse" />
+          </span>
+          <span className="invisible flex items-center gap-2.5">
+            <Logo size="sm" />
+          </span>
+        </span>
+
+        <div className="flex items-center gap-3 sm:gap-5">
+          <Link
+            to={user ? "/dashboard" : "/auth"}
+            className={cn(
+              "hidden text-[13px] font-semibold transition-colors sm:inline",
+              light ? "text-ink/80 hover:text-ink" : "text-cream/80 hover:text-cream",
+            )}
+          >
+            {user ? "Dashboard" : "Log in"}
+          </Link>
+          <Link
+            to="/auth"
+            search={{ mode: "signup" }}
+            className="inline-flex min-h-10 items-center rounded-full bg-mint px-5 text-[13px] font-bold text-ink transition-colors hover:bg-mint-hover"
+          >
+            Sign up
+          </Link>
+        </div>
+      </div>
+    </motion.header>
   );
 }
 

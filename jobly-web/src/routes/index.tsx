@@ -1,1174 +1,1000 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   motion,
-  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useTransform,
 } from "framer-motion";
-import type { MotionValue } from "framer-motion";
-import { PublicNav } from "@/components/Nav";
+import { LandingNav } from "@/components/Nav";
+import { Preloader } from "@/components/landing/Preloader";
+import { SignupMorph } from "@/components/landing/SignupMorph";
 import heroImg from "@/assets/hero.jpg";
-import step1 from "@/assets/step1.jpg";
-import step2 from "@/assets/step2.jpg";
-import step3 from "@/assets/step3.jpg";
 import step4 from "@/assets/step4.jpg";
-
-const WorkflowCanvas = lazy(() =>
-  import("@/components/WorkflowCanvas").then(({ WorkflowCanvas: Component }) => ({
-    default: Component,
-  })),
-);
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Jobly | Find your next good fit" },
+      { title: "Jobly | Great hires start with great interviews" },
       {
         name: "description",
-        content: "A calmer, clearer job-matching space for candidates and recruiters.",
+        content: "A live, evidence-grounded interview room for technical hiring.",
       },
-      { property: "og:title", content: "Jobly | Find your next good fit" },
+      { property: "og:title", content: "Jobly | Great hires start with great interviews" },
       {
         property: "og:description",
-        content: "A brighter way to explore opportunities and keep hiring conversations moving.",
+        content: "Collaborative coding, whiteboarding, and evidence-based scorecards in one calm room.",
       },
     ],
   }),
   component: Landing,
 });
 
-const STEPS = [
-  {
-    accent: "#b8ddd2",
-    eyebrow: "Your starting point",
-    image: step1,
-    number: "01",
-    title: "Bring your story.",
-    description:
-      "Add your resume once, then take a look at the skills and experience already doing the talking for you.",
-  },
-  {
-    accent: "#a3cfc2",
-    eyebrow: "Good-fit signals",
-    image: step2,
-    number: "02",
-    title: "Spot the good matches.",
-    description:
-      "See how a role lines up with your profile before you spend time applying. No mystery numbers, just helpful context.",
-  },
-  {
-    accent: "#86b4a6",
-    eyebrow: "A clearer look",
-    image: step3,
-    number: "03",
-    title: "Choose with confidence.",
-    description:
-      "Keep the requirements, match details, and next steps together, so every decision feels easier to make.",
-  },
-  {
-    accent: "#628c80",
-    eyebrow: "Stay connected",
-    image: step4,
-    number: "04",
-    title: "Keep the conversation going.",
-    description:
-      "Apply, follow your progress, and keep recruiter conversations close to the role that started them.",
-  },
-] as const;
+/* ─────────────────────────────────────────────────────────────
+   Scene model — one entry per scroll scene (Beagle structure)
+   ───────────────────────────────────────────────────────────── */
 
-const WORKSPACE_TILES = [
-  "Role brief",
-  "Hiring plan",
-  "Candidate notes",
-  "Shortlist",
-  "Work samples",
-  "Interview team",
-] as const;
+type SceneTheme = "dark" | "light" | "mint";
 
-const INTRO_STAGES = ["Welcome", "A clearer way forward"] as const;
-const OPPORTUNITY_STAGES = ["Message", "Shape", "Application", "Folder", "Next"] as const;
+interface SceneMeta {
+  id: string;
+  label: string;
+  theme: SceneTheme;
+}
+
+const SCENES: SceneMeta[] = [
+  { id: "introducing", label: "Welcome", theme: "dark" },
+  { id: "belief", label: "Why interviews", theme: "dark" },
+  { id: "schedule", label: "Schedule", theme: "mint" },
+  { id: "live-room", label: "Live room", theme: "light" },
+  { id: "signals", label: "Signals", theme: "dark" },
+  { id: "collaborate", label: "Decide", theme: "light" },
+  { id: "done", label: "Wrap up", theme: "dark" },
+];
+
+const DARK = "#302f2c";
+const PANEL_DARK = "#353431";
+const MINT_PANEL = "#a3cfc2";
+const MINT_FLAP = "#b8ddd2";
+const MINT_DEEP = "#628c80";
+const INK_SOFT = "#2f302d";
+const PAPER = "#fffefd";
+const PAPER_LINE = "#d9ddd9";
+
+const serifClass = "font-serif";
+const displayClass = "font-display font-extrabold";
+
+/* ─────────────────────────────────────────────────────────────
+   Landing shell — preloader, nav, scenes, sidenav, finale
+   ───────────────────────────────────────────────────────────── */
 
 function Landing() {
+  const [revealed, setRevealed] = useState(false);
+  const [activeScene, setActiveScene] = useState(0);
+  const [navLight, setNavLight] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (revealed) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [revealed]);
+
+  useEffect(() => {
+    const root = mainRef.current;
+    if (!root) return;
+    const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-scene]"));
+    const finaleEl = document.getElementById("signup");
+    if (finaleEl) sections.push(finaleEl);
+    const visible = new Map<string, number>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            visible.set(entry.target.id, entry.intersectionRatio);
+          } else {
+            visible.delete(entry.target.id);
+          }
+        }
+        let bestId: string | null = null;
+        let bestRatio = -1;
+        for (const [id, ratio] of visible) {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestId = id;
+          }
+        }
+        if (bestId) {
+          if (bestId === "signup") {
+            /* Finale: light features panel on the left under the nav. */
+            setNavLight(true);
+            return;
+          }
+          const index = SCENES.findIndex((scene) => scene.id === bestId);
+          if (index >= 0) {
+            setActiveScene((current) => (current === index ? current : index));
+            setNavLight(SCENES[index].theme === "light");
+          }
+        }
+      },
+      { threshold: [0.25, 0.5, 0.75] },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
+  const activeTheme = SCENES[activeScene]?.theme ?? "dark";
+
   return (
     <main className="bg-cream text-ink">
-      <PublicNav dark />
-      <IntroSequence />
-      <StatementPanel />
-      <JourneySection />
-      <OpportunitySequence />
-      <ClosingCall />
+      {!revealed ? <Preloader onDone={() => setRevealed(true)} /> : null}
+      <LandingNav light={navLight} revealed={revealed} />
+      <div ref={mainRef}>
+        <IntroducingScene />
+        <BeliefScene />
+        <ScheduleScene />
+        <LiveRoomScene />
+        <SignalsScene />
+        <CollaborateScene />
+        <DoneScene />
+      </div>
+      <FinaleSection activeTheme={activeTheme} />
+      <SideNav activeIndex={activeScene} />
     </main>
   );
 }
 
-function IntroSequence() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const shouldReduceMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
-  const backdropOpacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 0.95], [1, 0.8, 0.5, 0]);
-  const backdropScale = useTransform(scrollYProgress, [0, 0.7, 0.95], [1, 1.03, 1.06]);
-  const veilOpacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 0.95], [0.45, 0.35, 0.2, 0]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.2, 0.35], [1, 1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -38]);
-  const stageOpacity = useTransform(scrollYProgress, [0.2, 0.4, 0.75, 0.95], [0, 1, 1, 0]);
-  const stageScale = useTransform(scrollYProgress, [0.2, 0.45, 0.75, 0.95], [1.2, 1, 1, 0.94]);
-  const stageY = useTransform(scrollYProgress, [0.2, 0.45, 0.75, 0.95], [84, 0, 0, -72]);
-  const mainRotateY = useTransform(scrollYProgress, [0.2, 0.6], [-14, 0]);
-  const mainRotateX = useTransform(scrollYProgress, [0.2, 0.6], [10, 0]);
-  const leftX = useTransform(scrollYProgress, [0.2, 0.65], [-180, 0]);
-  const leftRotateY = useTransform(scrollYProgress, [0.2, 0.65], [30, -8]);
-  const leftOpacity = useTransform(scrollYProgress, [0.2, 0.35, 0.75, 0.95], [0, 1, 1, 0]);
-  const rightX = useTransform(scrollYProgress, [0.2, 0.65], [180, 0]);
-  const rightRotateY = useTransform(scrollYProgress, [0.2, 0.65], [-30, 8]);
-  const rightOpacity = useTransform(scrollYProgress, [0.2, 0.35, 0.75, 0.95], [0, 1, 1, 0]);
-  const reduce = Boolean(shouldReduceMotion);
+/* ─────────────────────────────────────────────────────────────
+   Scene 1 — Introducing (dark photo, title + serif subtitle)
+   ───────────────────────────────────────────────────────────── */
 
-  useMotionValueEvent(scrollYProgress, "change", (latest: number) => {
-    const nextIndex = Math.min(INTRO_STAGES.length - 1, Math.floor(latest * INTRO_STAGES.length));
-    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+function IntroducingScene() {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
   });
+  const photoScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+  const photoOpacity = useTransform(scrollYProgress, [0, 0.7, 1], [1, 0.7, 0.35]);
+  const copyY = useTransform(scrollYProgress, [0, 0.6], [0, -90]);
+  const copyOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   return (
-    <section id="hero" ref={sectionRef} className="relative bg-[#302f2c]">
-      {reduce ? (
-        <div className="hidden md:block">
-          <IntroFallback />
-        </div>
-      ) : (
-        <div className="relative hidden h-[220vh] md:block">
-          <div className="sticky top-0 h-screen overflow-hidden" style={{ perspective: "1500px" }}>
-            <motion.img
-              src={heroImg}
-              alt="Two people working together at a table"
-              className="absolute inset-0 h-full w-full object-cover object-center"
-              style={{ opacity: backdropOpacity, scale: backdropScale }}
-            />
-            <motion.div
-              className="absolute inset-0 bg-[#1f2724]"
-              aria-hidden="true"
-              style={{ opacity: veilOpacity }}
-            />
-            <motion.div
-              className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto"
-              style={{ opacity: heroOpacity, y: heroY }}
-            >
-              <HeroMessage />
-            </motion.div>
-            <motion.div
-              className="absolute left-1/2 top-1/2 z-20 h-[74vh] w-[min(66vw,780px)] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{
-                opacity: stageOpacity,
-                scale: stageScale,
-                y: stageY,
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <motion.figure
-                className="absolute left-[-24%] top-[31%] z-20 h-[31%] w-[36%] overflow-hidden bg-white shadow-[0_28px_60px_-26px_rgb(47_48_45_/_0.42)]"
-                style={{
-                  opacity: leftOpacity,
-                  x: leftX,
-                  rotateY: leftRotateY,
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                <img src={step2} alt="" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-[#1f2724]/45" />
-              </motion.figure>
-              <motion.figure
-                className="absolute inset-0 z-30 overflow-hidden bg-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] pointer-events-auto"
-                style={{
-                  rotateX: reduce ? 0 : mainRotateX,
-                  rotateY: reduce ? 0 : mainRotateY,
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                <img src={heroImg} alt="" className="h-full w-full object-cover object-center" />
-                <div className="absolute inset-0 bg-[#1f2724]/45" />
-                <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 text-center text-white sm:inset-x-16">
-                  <p className="marker-num text-mint-light">Meet Jobly</p>
-                  <h2 className="font-display mt-5 text-[clamp(2.5rem,5.5vw,5.8rem)] font-extrabold text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]">
-                    Find your next good fit.
-                  </h2>
-                  <p className="mt-5 max-w-2xl mx-auto text-sm leading-relaxed text-white/88 sm:text-base">
-                    A more thoughtful place to turn experience into opportunity, whether you are
-                    looking for a role or building a team.
-                  </p>
-                  <div className="mt-12 sm:mt-14 flex flex-col items-center justify-center gap-7 sm:gap-8 relative z-50">
-                    <Link to="/auth" className="pill-mint text-sm gap-2 cursor-pointer relative z-50 pointer-events-auto">
-                      Get started
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                    <a
-                      href="#statement"
-                      aria-label="Explore Jobly"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10 cursor-pointer relative z-50 pointer-events-auto"
-                    >
-                      <ArrowDown className="h-4 w-4" aria-hidden="true" />
-                    </a>
-                  </div>
-                </div>
-              </motion.figure>
-              <motion.figure
-                className="absolute right-[-25%] top-[14%] z-40 h-[54%] w-[35%] overflow-hidden bg-white shadow-[0_28px_60px_-26px_rgb(47_48_45_/_0.42)]"
-                style={{
-                  opacity: rightOpacity,
-                  x: rightX,
-                  rotateY: rightRotateY,
-                  transformStyle: "preserve-3d",
-                }}
-              >
-                <img src={step3} alt="" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-[#1f2724]/45" />
-              </motion.figure>
-            </motion.div>
-            <ScrollProgressDots stages={INTRO_STAGES} activeIndex={activeIndex} tone="light" />
-          </div>
-        </div>
-      )}
-      <div className="md:hidden">
-        <IntroFallback />
+    <section
+      id={SCENES[0].id}
+      data-scene
+      ref={sectionRef}
+      className="relative h-[160vh] bg-[#302f2c]"
+    >
+      <div className="sticky top-0 flex h-screen items-center justify-center overflow-hidden">
+        <motion.img
+          src={heroImg}
+          alt="Two people working together at a table"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          style={
+            reduce
+              ? undefined
+              : { scale: photoScale, opacity: photoOpacity }
+          }
+        />
+        <div className="absolute inset-0 bg-[#1f2724]/55" aria-hidden="true" />
+        <motion.div
+          className="relative z-10 px-6 text-center text-white"
+          style={reduce ? undefined : { y: copyY, opacity: copyOpacity }}
+        >
+          <motion.h2
+            className={`${displayClass} text-[clamp(2.8rem,7vw,6.5rem)] leading-[0.98]`}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15 }}
+          >
+            Introducing Jobly
+          </motion.h2>
+          <motion.p
+            className={`${serifClass} mt-5 text-lg text-white/85 sm:text-2xl`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+          >
+            The live interview room for fair technical hiring
+          </motion.p>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-function HeroMessage() {
-  return (
-    <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-20 pt-28 text-center sm:px-10 z-30">
-      <motion.p
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55 }}
-        className="marker-num text-mint-light"
-      >
-        Meet Jobly
-      </motion.p>
-      <motion.h1
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.08 }}
-        className="font-display mt-5 max-w-5xl text-[clamp(3.3rem,7vw,7.6rem)] font-extrabold text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]"
-      >
-        Find your next good fit.
-      </motion.h1>
-      <motion.p
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.18 }}
-        className="mt-5 max-w-2xl text-lg leading-relaxed text-white/88 sm:text-xl"
-      >
-        A more thoughtful place to turn experience into opportunity, whether you are looking for a
-        role or building a team.
-      </motion.p>
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.28 }}
-        className="mt-12 sm:mt-14 flex flex-col items-center justify-center gap-7 sm:gap-8 relative z-50"
-      >
-        <Link to="/auth" className="pill-mint-lg gap-2 cursor-pointer relative z-50 pointer-events-auto">
-          Get started
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-        <a
-          href="#statement"
-          aria-label="Explore Jobly"
-          className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/80 text-white transition-transform duration-200 hover:translate-y-1 hover:bg-white/10 cursor-pointer relative z-50 pointer-events-auto"
-        >
-          <ArrowDown className="h-5 w-5" aria-hidden="true" />
-        </a>
-      </motion.div>
-    </div>
-  );
-}
+/* ─────────────────────────────────────────────────────────────
+   Scene 2 — Belief statement (pattern panel, staggered lines)
+   ───────────────────────────────────────────────────────────── */
 
-function IntroFallback() {
-  return (
-    <div>
-      <div className="relative flex min-h-[720px] items-center justify-center overflow-hidden bg-[#1f2724]">
-        <img
-          src={heroImg}
-          alt="Two people working together at a table"
-          className="absolute inset-0 h-full w-full object-cover object-[center_48%]"
-        />
-        <div className="absolute inset-0 bg-[#1f2724]/45" aria-hidden="true" />
-        <HeroMessage />
-      </div>
-      <div className="relative overflow-hidden bg-[#eef0ee] px-6 py-20">
-        <img
-          src={heroImg}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-35"
-        />
-        <div className="relative mx-auto max-w-sm" style={{ perspective: "900px" }}>
-          <figure className="relative z-20 overflow-hidden bg-[#2f302d] shadow-[0_26px_52px_-26px_rgb(47_48_45_/_0.52)]">
-            <img
-              src={heroImg}
-              alt="People considering their next steps together"
-              className="aspect-[4/5] w-full object-cover opacity-80"
-            />
-            <div className="absolute inset-0 bg-[#1f2724]/45" />
-            <figcaption className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-white flex flex-col items-center">
-              <p className="marker-num text-mint-light">Meet Jobly</p>
-              <p className="font-display mt-3 text-4xl font-extrabold">Find your next good fit.</p>
-              <p className="mt-3 text-sm leading-relaxed text-white/88 max-w-md">
-                A more thoughtful place to turn experience into opportunity.
-              </p>
-              <Link to="/auth" className="pill-mint text-sm gap-2 mt-5">
-                Get started
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </figcaption>
-          </figure>
-          <figure className="absolute -left-10 top-[30%] z-10 h-40 w-32 overflow-hidden shadow-soft">
-            <img src={step2} alt="" className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-[#1f2724]/45" />
-          </figure>
-          <figure className="absolute -right-10 top-[12%] z-30 h-52 w-32 overflow-hidden shadow-soft">
-            <img src={step3} alt="" className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-[#1f2724]/45" />
-          </figure>
-        </div>
-      </div>
-    </div>
-  );
-}
+function BeliefScene() {
+  const reduce = Boolean(useReducedMotion());
 
-function StatementPanel() {
   return (
     <section
-      id="statement"
-      className="relative overflow-hidden bg-[#302f2c] px-6 py-24 text-white sm:px-10 sm:py-32"
+      id={SCENES[1].id}
+      data-scene
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#302f2c] px-6 py-24 sm:px-10"
     >
       <div
         aria-hidden="true"
-        className="absolute left-[8%] top-[19%] h-24 w-24 rotate-[20deg] border-[9px] border-black/15"
+        className="absolute left-[7%] top-[16%] h-24 w-24 rotate-[20deg] border-[9px] border-black/15"
       />
       <div
         aria-hidden="true"
-        className="absolute right-[13%] top-[16%] h-24 w-24 rotate-[38deg] border-[9px] border-black/15"
+        className="absolute right-[12%] top-[14%] h-24 w-24 rotate-[38deg] border-[9px] border-black/15"
       />
       <div
         aria-hidden="true"
-        className="absolute bottom-[13%] left-[15%] h-14 w-14 rotate-[17deg] border-[8px] border-black/15"
+        className="absolute bottom-[14%] left-[14%] h-14 w-14 rotate-[17deg] border-[8px] border-black/15"
       />
       <div
         aria-hidden="true"
-        className="absolute bottom-[12%] right-[11%] h-20 w-20 rounded-full border-[10px] border-black/15"
+        className="absolute bottom-[12%] right-[10%] h-20 w-20 rounded-full border-[10px] border-black/15"
       />
-      <div className="relative mx-auto flex min-h-[540px] max-w-5xl items-center justify-center border border-white/5 bg-[#353431] px-6 py-16 text-center shadow-[0_34px_80px_-38px_rgb(0_0_0_/_0.65)] sm:px-16">
-        <div className="max-w-4xl">
-          <p className="font-serif text-2xl text-white/84 sm:text-3xl">
-            Because the next move matters
-          </p>
-          <h2 className="font-display mt-8 text-[clamp(3rem,8vw,7.5rem)] font-extrabold leading-[0.93]">
-            Good work
-          </h2>
-          <p className="font-serif mt-6 text-2xl text-white/84 sm:text-3xl">starts with</p>
-          <h2 className="font-display mt-6 text-[clamp(3rem,8vw,7.5rem)] font-extrabold leading-[0.93]">
-            a clear picture.
-          </h2>
-          <p className="mt-12 text-lg text-white/60">
-            Your experience, the role, and the people behind it.
-          </p>
-        </div>
+
+      <div className="relative mx-auto max-w-4xl text-center text-white">
+        {reduce ? (
+          <BeliefLines />
+        ) : (
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.5 }}
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.22 } },
+            }}
+          >
+            <BeliefLines />
+          </motion.div>
+        )}
+        <p className="mt-16 text-lg text-white/60 sm:text-xl">
+          Here&rsquo;s how Jobly works:
+        </p>
       </div>
     </section>
   );
 }
 
-function JourneySection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [canvasReady, setCanvasReady] = useState(false);
-  const isDesktop = useDesktopCanvas();
-  const shouldReduceMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
-
-  useMotionValueEvent(scrollYProgress, "change", (latest: number) => {
-    const nextIndex = Math.min(STEPS.length - 1, Math.floor(latest * STEPS.length));
-    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
-  });
-
-  const activeStep = STEPS[activeIndex];
+function BeliefLines() {
+  const line = (children: React.ReactNode, big = false) =>
+    big ? (
+      <motion.h2
+        className={`${displayClass} text-[clamp(3rem,8vw,7.5rem)] leading-[0.93]`}
+        variants={{ hidden: { opacity: 0, y: 34 }, visible: { opacity: 1, y: 0 } }}
+        transition={{ duration: 0.6 }}
+      >
+        {children}
+      </motion.h2>
+    ) : (
+      <motion.p
+        className={`${serifClass} text-2xl text-white/84 sm:text-3xl`}
+        variants={{ hidden: { opacity: 0, y: 26 }, visible: { opacity: 1, y: 0 } }}
+        transition={{ duration: 0.55 }}
+      >
+        {children}
+      </motion.p>
+    );
 
   return (
-    <section id="journey" ref={sectionRef} className="relative bg-cream">
-      <div className="relative hidden h-[400vh] md:block">
-        <div className="sticky top-0 h-screen overflow-hidden">
-          <WorkflowFallback visible={!isDesktop || !canvasReady} />
-          {isDesktop ? (
-            <div
-              className="pointer-events-none absolute inset-y-0 left-[42%] right-0"
+    <>
+      {line("Because we believe")}
+      <div className="mt-8">{line("Great Hires", true)}</div>
+      <div className="mt-6">{line("Start With")}</div>
+      <div className="mt-8">{line("Great Interviews", true)}</div>
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Shared scroll-scene machinery for the five product scenes
+   ───────────────────────────────────────────────────────────── */
+
+interface ProductSceneProps {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  className?: string;
+  paperClassName?: string;
+  copyClassName?: string;
+  backgroundImage?: string;
+}
+
+function ProductScene({
+  id,
+  eyebrow,
+  title,
+  description,
+  children,
+  className = "",
+  paperClassName = "",
+  copyClassName = "",
+  backgroundImage,
+}: ProductSceneProps) {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const paperY = useTransform(scrollYProgress, [0.1, 0.45], ["62vh", "0vh"]);
+  const paperRotateX = useTransform(scrollYProgress, [0.1, 0.45], [16, 0]);
+  const paperScale = useTransform(scrollYProgress, [0.1, 0.45], [0.86, 1]);
+  const paperOpacity = useTransform(scrollYProgress, [0.08, 0.22], [0, 1]);
+
+  const copyOpacity = useTransform(scrollYProgress, [0.3, 0.45, 0.85, 0.95], [0, 1, 1, 0]);
+  const copyY = useTransform(scrollYProgress, [0.3, 0.5], [40, 0]);
+
+  return (
+    <section
+      id={id}
+      data-scene
+      ref={sectionRef}
+      className={`relative h-[260vh] ${className}`}
+    >
+      <div
+        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
+        style={{ perspective: "1500px" }}
+      >
+        {backgroundImage ? (
+          <>
+            <img
+              src={backgroundImage}
+              alt=""
               aria-hidden="true"
-            >
-              <Suspense fallback={null}>
-                <WorkflowCanvas
-                  onReady={() => setCanvasReady(true)}
-                  reducedMotion={shouldReduceMotion ?? false}
-                  scrollProgress={scrollYProgress}
-                  steps={STEPS}
-                />
-              </Suspense>
-            </div>
-          ) : null}
+              className="absolute inset-0 h-full w-full object-cover opacity-30"
+            />
+            <div className="absolute inset-0 bg-black/45" aria-hidden="true" />
+          </>
+        ) : null}
 
-          <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-between px-6 pb-10 pt-28 sm:px-10">
-            <div className="max-w-md">
-              <p className="marker-num text-ink/60">Your four-step flow</p>
-              <motion.div
-                key={activeStep.number}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                className="mt-6"
-              >
-                <p className="marker-num text-warm">
-                  Step {activeStep.number} | {activeStep.eyebrow}
-                </p>
-                <h2 className="font-display mt-4 text-[clamp(2.5rem,4.5vw,4.8rem)] text-ink">
-                  {activeStep.title}
-                </h2>
-                <p className="mt-5 max-w-sm text-lg leading-relaxed text-ink/72">
-                  {activeStep.description}
-                </p>
-              </motion.div>
-            </div>
+        <motion.div
+          className={`relative z-10 mx-auto w-full max-w-lg ${paperClassName}`}
+          style={
+            reduce
+              ? undefined
+              : {
+                  y: paperY,
+                  rotateX: paperRotateX,
+                  scale: paperScale,
+                  opacity: paperOpacity,
+                  transformStyle: "preserve-3d",
+                }
+          }
+          initial={reduce ? { opacity: 0 } : undefined}
+          whileInView={reduce ? { opacity: 1 } : undefined}
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          {children}
+        </motion.div>
 
-            <div className="flex items-end justify-between gap-10">
-              <ol className="grid max-w-3xl grid-cols-4 gap-x-5 border-t border-ink/20 pt-4">
-                {STEPS.map((step, index) => (
-                  <li
-                    key={step.number}
-                    className={index === activeIndex ? "text-ink" : "text-ink/45"}
-                  >
-                    <span className="marker-num block">{step.number}</span>
-                    <span className="mt-1 block text-sm font-semibold leading-snug">
-                      {step.eyebrow}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <div className="hidden text-right lg:block">
-                <p className="marker-num text-ink/55">Scroll to follow the story</p>
-                <div className="mt-3 h-px w-32 bg-ink/20">
-                  <motion.div
-                    className="h-px origin-left bg-ink"
-                    style={{ scaleX: scrollYProgress }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <ScrollProgressDots
-            stages={STEPS.map((step) => `Step ${step.number}`)}
-            activeIndex={activeIndex}
-            tone="dark"
-          />
-        </div>
-      </div>
-
-      <div className="px-6 py-20 sm:px-10 md:hidden">
-        <p className="marker-num text-ink/60">Your four-step flow</p>
-        <h2 className="font-display mt-5 max-w-lg text-[clamp(2.4rem,11vw,4rem)] text-ink">
-          A job search that feels more like you.
-        </h2>
-        <ol className="mt-12 border-t border-ink/15">
-          {STEPS.map((step) => (
-            <li key={step.number} className="border-b border-ink/15 py-8">
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <p className="marker-num text-warm">Step {step.number}</p>
-                  <h3 className="font-display mt-3 text-3xl text-ink">{step.title}</h3>
-                </div>
-                <span className="marker-num pt-1 text-right text-ink/55">{step.eyebrow}</span>
-              </div>
-              <p className="mt-4 text-base leading-relaxed text-ink/72">{step.description}</p>
-              <div className="mt-6 overflow-hidden border border-border bg-white p-2 shadow-soft">
-                <img
-                  src={step.image}
-                  alt=""
-                  loading="lazy"
-                  className="aspect-[4/3] w-full object-cover"
-                />
-                <div className="mt-2 h-1" style={{ backgroundColor: step.accent }} />
-              </div>
-            </li>
-          ))}
-        </ol>
+        <motion.div
+          className={`absolute z-20 max-w-md px-6 ${copyClassName}`}
+          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
+        >
+          <p className="marker-num opacity-80">{eyebrow}</p>
+          <h2 className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] leading-[0.98]`}>
+            {title}
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed opacity-80">{description}</p>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-function WorkflowFallback({ visible }: { visible: boolean }) {
-  const positions = [
-    "left-[52%] top-[23%] z-20 -rotate-[4deg]",
-    "right-[9%] top-[15%] z-10 rotate-[8deg] scale-90",
-    "right-[17%] bottom-[9%] z-0 rotate-[14deg] scale-75",
-    "left-[43%] bottom-[14%] z-10 -rotate-[11deg] scale-90",
+/* ─────────────────────────────────────────────────────────────
+   Scene 3 — Schedule (mint theme, schedule-card paper)
+   ───────────────────────────────────────────────────────────── */
+
+function ScheduleScene() {
+  return (
+    <ProductScene
+      id={SCENES[2].id}
+      eyebrow="Set the stage"
+      title="Schedule in one click."
+      description="Pick the role, pick the candidate, and Jobly mints a live room with the problem, the tools, and the team already in place."
+      className="bg-[#a3cfc2]"
+      copyClassName="left-6 top-[10%] text-ink sm:left-[7%] lg:left-[10%]"
+    >
+      <div className="relative aspect-[4/5] border border-[#86b4a6] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.55)] sm:p-9">
+        <p className="text-sm text-[#2f302d]/45">Jobly interview</p>
+        <p className={`${displayClass} mt-2 text-3xl sm:text-4xl`}>Senior React Developer</p>
+        <p className="mt-2 text-sm text-[#2f302d]/60">with Ari Patel</p>
+
+        <div className="mt-8 space-y-3">
+          <div className="h-2 w-full bg-[#2f302d]/15" />
+          <div className="h-2 w-4/5 bg-[#2f302d]/11" />
+          <div className="h-2 w-3/5 bg-[#2f302d]/11" />
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 gap-3">
+          <div className="border border-[#d9ddd9] p-3">
+            <p className="text-xs text-[#2f302d]/48">Room</p>
+            <p className="mt-2 font-num text-sm font-bold">live-4f2a</p>
+          </div>
+          <div className="border border-[#d9ddd9] p-3">
+            <p className="text-xs text-[#2f302d]/48">When</p>
+            <p className="mt-2 font-num text-sm font-bold">Tomorrow · 10:00</p>
+          </div>
+        </div>
+
+        <div className="absolute bottom-7 left-7 right-7 flex items-center justify-between border-t border-[#d9ddd9] pt-5">
+          <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
+            Ready
+          </span>
+          <span className="font-num text-xs text-[#2f302d]/45">Scheduled by Sarah</span>
+        </div>
+      </div>
+    </ProductScene>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Scene 4 — Live room (paper theme, IDE paper rising)
+   ───────────────────────────────────────────────────────────── */
+
+function LiveRoomScene() {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
+  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [14, 0]);
+  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.88, 1]);
+  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
+
+  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
+  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
+
+  const tabHighlight = useTransform(scrollYProgress, [0.45, 0.55], [0, 1]);
+  const codeLineProgress = useTransform(scrollYProgress, [0.4, 0.75], [0, 1]);
+
+  return (
+    <section
+      id={SCENES[3].id}
+      data-scene
+      ref={sectionRef}
+      className="relative h-[260vh] bg-[#f2f2f2]"
+    >
+      <div
+        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
+        style={{ perspective: "1500px" }}
+      >
+        <motion.div
+          className="relative z-10 mx-auto w-full max-w-2xl"
+          style={
+            reduce
+              ? undefined
+              : {
+                  y: paperY,
+                  rotateX: paperRotateX,
+                  scale: paperScale,
+                  opacity: paperOpacity,
+                  transformStyle: "preserve-3d",
+                }
+          }
+          initial={reduce ? { opacity: 0 } : undefined}
+          whileInView={reduce ? { opacity: 1 } : undefined}
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          <div className="overflow-hidden border border-[#d9ddd9] bg-[#fffefd] text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)]">
+            <div className="flex items-center justify-between border-b border-[#d9ddd9] bg-[#f7f8f6] px-4 py-2.5">
+              <div className="flex items-center gap-1">
+                {["solution.py", "tests", "notes"].map((tab, index) => (
+                  <span
+                    key={tab}
+                    className={`rounded-md px-3 py-1 font-num text-xs ${
+                      index === 0 ? "bg-[#302f2c] text-white" : "text-[#2f302d]/55"
+                    }`}
+                  >
+                    {tab}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#86b4a6]" />
+                <span className="h-2 w-2 rounded-full bg-[#b8ddd2]" />
+                <span className="h-2 w-2 rounded-full bg-[#2f302d]/20" />
+              </div>
+            </div>
+
+            <div className="flex">
+              <div className="w-8 border-r border-[#d9ddd9] py-4 text-right">
+                <div className="space-y-2.5 pr-2">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <span key={index} className="font-num block text-[10px] text-[#2f302d]/30">
+                      {index + 1}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 space-y-2.5 py-4 pl-4 font-num text-xs leading-relaxed">
+                <motion.div
+                  className="h-2 w-11/12 bg-[#2f302d]/18"
+                  style={reduce ? undefined : { scaleX: codeLineProgress, originX: 0 }}
+                />
+                <div className="h-2 w-9/12 bg-[#2f302d]/11" />
+                <div className="h-2 w-10/12 bg-[#2f302d]/11" />
+                <div className="ml-4 h-2 w-8/12 bg-[#628c80]/35" />
+                <div className="ml-4 h-2 w-7/12 bg-[#628c80]/28" />
+                <div className="h-2 w-10/12 bg-[#2f302d]/11" />
+                <div className="h-2 w-5/12 bg-[#2f302d]/11" />
+                <div className="ml-4 h-2 w-9/12 bg-[#628c80]/28" />
+                <div className="h-2 w-6/12 bg-[#2f302d]/11" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-[#d9ddd9] bg-[#f7f8f6] px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-[#302f2c] px-2.5 py-1 font-num text-xs font-bold text-white">
+                  Run
+                </span>
+                <span className="font-num text-xs text-[#2f302d]/50">python 3.12</span>
+              </div>
+              <motion.span
+                className="font-num text-xs text-[#40685e]"
+                style={reduce ? undefined : { opacity: tabHighlight }}
+              >
+                All tests passing
+              </motion.span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="absolute left-6 top-[10%] z-20 max-w-md sm:left-[7%] lg:left-[10%]"
+          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
+        >
+          <p className="marker-num text-[#628c80]">Run the live room</p>
+          <h2
+            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-ink leading-[0.98]`}
+          >
+            One room. Every tool.
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-ink/70">
+            Shared IDE, whiteboard, video, and terminal — everything synced in real time for
+            both sides of the table.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Scene 5 — Signals (dark theme + accent, timeline paper)
+   ───────────────────────────────────────────────────────────── */
+
+function SignalsScene() {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
+  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [16, 0]);
+  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.86, 1]);
+  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
+
+  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
+  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
+
+  const markerTravel = useTransform(scrollYProgress, [0.4, 0.8], ["0%", "86%"]);
+
+  const EVENTS = [
+    { time: "00:42", label: "Clarifying question", tone: "mint" },
+    { time: "04:15", label: "Hash map chosen", tone: "mint" },
+    { time: "07:30", label: "Tests all passing", tone: "mint" },
+    { time: "09:58", label: "Tradeoff explained", tone: "mint" },
   ];
 
   return (
-    <div
-      aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${visible ? "opacity-100" : "opacity-0"}`}
+    <section
+      id={SCENES[4].id}
+      data-scene
+      ref={sectionRef}
+      className="relative h-[260vh] bg-[#302f2c]"
     >
-      {STEPS.map((step, index) => (
-        <figure
-          key={step.number}
-          className={`absolute h-[360px] w-[270px] border border-border bg-white p-3 shadow-soft lg:h-[420px] lg:w-[315px] ${positions[index]}`}
-        >
-          <img src={step.image} alt="" className="h-[calc(100%-26px)] w-full object-cover" />
-          <figcaption className="mt-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: step.accent }} />
-            <span className="marker-num text-ink/50">Step {step.number}</span>
-          </figcaption>
-        </figure>
-      ))}
-    </div>
-  );
-}
-
-function OpportunitySequence() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [sceneFrame, setSceneFrame] = useState(0);
-  const shouldReduceMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end end"] });
-
-  /* ── Grid tile scatter ── */
-  const gridTopY = useTransform(scrollYProgress, [0, 0.14, 0.2, 0.28], [0, 0, -66, -280]);
-  const gridBottomY = useTransform(scrollYProgress, [0, 0.14, 0.2, 0.28], [0, 0, 48, 268]);
-  const gridTopX = useTransform(scrollYProgress, [0, 0.14, 0.2, 0.28], [0, 0, -26, -150]);
-  const gridBottomX = useTransform(scrollYProgress, [0, 0.14, 0.2, 0.28], [0, 0, 32, 158]);
-
-  /* ── Opening text ── */
-  const openingCopyY = useTransform(scrollYProgress, [0.09, 0.16], [0, -28]);
-
-  /* ── "Hiring plan" tile in grid: fades out as card appears ── */
-  const hiringTileOpacity = useTransform(scrollYProgress, [0, 0.06, 0.1], [1, 1, 0]);
-
-  /* ── Floating card: position, scale, rotation ── */
-  const cardOpacity = useTransform(scrollYProgress, [0, 0.06, 0.12], [0, 0, 1]);
-  const cardX = useTransform(
-    scrollYProgress,
-    [0, 0.16, 0.26, 0.36, 0.46, 0.65, 0.73, 0.86, 1],
-    [0, 0, 0, -305, -305, -305, -305, -290, -290],
-  );
-  const cardY = useTransform(
-    scrollYProgress,
-    [0, 0.16, 0.26, 0.36, 0.46, 0.65, 0.72, 0.8, 0.88, 1],
-    [0, 0, 0, -10, -56, -52, 0, 44, 68, 80],
-  );
-  const cardScaleX = useTransform(
-    scrollYProgress,
-    [0, 0.06, 0.12, 0.24, 0.36, 0.46, 0.65, 0.8, 1],
-    [0.62, 0.62, 0.78, 0.96, 1, 1, 1, 0.72, 0.56],
-  );
-  const cardScaleY = useTransform(
-    scrollYProgress,
-    [0, 0.06, 0.12, 0.24, 0.36, 0.46, 0.65, 0.8, 1],
-    [0.3, 0.3, 0.52, 0.72, 0.98, 1, 1, 0.68, 0.52],
-  );
-  const cardRotateY = useTransform(scrollYProgress, [0, 0.24, 0.46, 0.72, 1], [0, -3, 0, -2, -8]);
-  const cardRotateX = useTransform(scrollYProgress, [0, 0.26, 0.52, 0.78, 1], [2, 0, 0, 5, 9]);
-
-  /* ── Card inner content fades ── */
-  const messageContentY = useTransform(scrollYProgress, [0.14, 0.18], [0, -18]);
-  const applicationContentY = useTransform(scrollYProgress, [0.26, 0.32], [24, 0]);
-
-  /* ── Right-side copy ── */
-  const rightCopyY = useTransform(scrollYProgress, [0.39, 0.43], [32, 0]);
-
-  /* ── Folder entrance ── */
-  const folderX = useTransform(
-    scrollYProgress,
-    [0.57, 0.63, 0.71, 0.8, 1],
-    [-80, -154, -258, -292, -292],
-  );
-  const folderY = useTransform(scrollYProgress, [0.57, 0.63, 0.71, 0.8, 1], [270, 185, 80, 20, 20]);
-  const folderScale = useTransform(
-    scrollYProgress,
-    [0.57, 0.63, 0.71, 0.8, 1],
-    [0.4, 0.58, 0.83, 1, 1],
-  );
-  const folderRotateY = useTransform(
-    scrollYProgress,
-    [0.57, 0.63, 0.71, 0.8, 1],
-    [16, 11, 4, 0, 0],
-  );
-  const folderRotateX = useTransform(scrollYProgress, [0.57, 0.63, 0.71, 0.8, 1], [10, 6, 2, 0, 0]);
-
-  /* ── Card slides into folder (peeks from top) ── */
-  const cardIntoFolderY = useTransform(scrollYProgress, [0.78, 0.86, 0.94], [0, -60, -120]);
-  const cardIntoFolderScale = useTransform(scrollYProgress, [0.78, 0.86, 0.94], [1, 0.68, 0.52]);
-  const cardIntoFolderOpacity = useTransform(scrollYProgress, [0.9, 0.97], [1, 0]);
-
-  /* ── Folder copy text ── */
-  const folderCopyY = useTransform(scrollYProgress, [0.9, 0.94], [28, 0]);
-
-  const reduce = Boolean(shouldReduceMotion);
-  const showWorkspace = sceneFrame < 3;
-  const showGrid = sceneFrame < 4;
-  const showMessage = sceneFrame >= 2 && sceneFrame < 4;
-  const showApplication = sceneFrame >= 4 && sceneFrame < 12;
-  const showApplicationCopy = sceneFrame >= 5 && sceneFrame < 10;
-  const showFolder = sceneFrame >= 7;
-  const showFolderCopy = sceneFrame >= 12;
-  const showCardInFolder = sceneFrame >= 10;
-
-  useMotionValueEvent(scrollYProgress, "change", (latest: number) => {
-    const nextIndex = Math.min(
-      OPPORTUNITY_STAGES.length - 1,
-      Math.floor(latest * OPPORTUNITY_STAGES.length),
-    );
-    const nextFrame = Math.min(13, Math.floor(latest * 14));
-    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
-    setSceneFrame((current) => (current === nextFrame ? current : nextFrame));
-  });
-
-  return (
-    <section id="opportunity-sequence" ref={sectionRef} className="relative bg-[#f6f6f4]">
-      {reduce ? (
-        <div className="hidden md:block">
-          <CollaborationScene />
-          <ApplicationScene />
-          <FolderScene />
-        </div>
-      ) : (
-        <div className="relative hidden h-[660vh] md:block">
-          <div className="sticky top-0 h-screen overflow-hidden" style={{ perspective: "1600px" }}>
-            <div className="absolute inset-0 bg-[#f6f6f4]" />
-            <motion.img
-              src={step4}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover object-center"
-              style={{ opacity: showWorkspace ? 1 : 0 }}
-            />
-            <motion.div
-              className="absolute inset-0 bg-[#17201e]/80"
-              style={{ opacity: showWorkspace ? 1 : 0 }}
-            />
-
-            <motion.div
-              className="absolute inset-x-0 top-0 z-10 mx-auto max-w-7xl px-10 pt-28"
-              style={{ opacity: showWorkspace ? 1 : 0, y: openingCopyY }}
-            >
-              <p className="marker-num text-mint-light">A shared hiring space</p>
-              <h2 className="font-display mt-4 max-w-xl text-[clamp(2.45rem,4.4vw,4.75rem)] leading-[0.98] text-white">
-                One message can start a good application.
-              </h2>
-            </motion.div>
-
-            {/* Grid of 6 equal workspace tiles */}
-            <motion.div
-              className="absolute inset-x-0 bottom-0 top-[52%] z-10 mx-auto grid max-w-7xl grid-cols-3 gap-4 px-10"
-              style={{ opacity: showGrid ? 1 : 0 }}
-            >
-              {WORKSPACE_TILES.map((title, index) => (
-                <motion.article
-                  key={title}
-                  className="min-h-32 border border-white/15 bg-[#f7f8f6]/95 p-5 text-[#2f302d] shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)]"
-                  style={{
-                    x: index < 3 ? gridTopX : gridBottomX,
-                    y: index < 3 ? gridTopY : gridBottomY,
-                    opacity: index === 1 ? hiringTileOpacity : 1,
-                  }}
-                >
-                  <p className="text-sm font-semibold">{title}</p>
-                  <div className="mt-6 space-y-2.5">
-                    <div className="h-2 w-4/5 bg-[#2f302d]/15" />
-                    <div className="h-2 w-full bg-[#2f302d]/10" />
-                    <div className="h-2 w-3/5 bg-[#2f302d]/10" />
-                  </div>
-                </motion.article>
-              ))}
-            </motion.div>
-
-            {/* Floating card — starts invisible, fades in as Hiring plan tile fades out */}
-            <motion.div
-              className="absolute left-1/2 top-[58%] z-30 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-[#d9ddd9] bg-[#fffefd] text-[#2f302d] shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)]"
-              style={{
-                opacity: showCardInFolder ? cardIntoFolderOpacity : cardOpacity,
-                x: cardX,
-                y: showCardInFolder ? cardIntoFolderY : cardY,
-                scaleX: cardScaleX,
-                scaleY: showCardInFolder ? cardIntoFolderScale : cardScaleY,
-                rotateY: cardRotateY,
-                rotateX: cardRotateX,
-                transformOrigin: "center center",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <motion.div
-                className="absolute inset-0 flex flex-col justify-center p-9"
-                style={{ opacity: showMessage ? 1 : 0, y: messageContentY }}
-              >
-                <p className="marker-num text-[#628c80]">Candidate message</p>
-                <p className="mt-3 text-2xl font-semibold">Ari Patel</p>
-                <p className="mt-4 max-w-md text-xl leading-relaxed text-[#2f302d]/72">
-                  The fit looks strong. I would love to hear more about the product work.
-                </p>
-              </motion.div>
-              <motion.div
-                className="absolute inset-0 p-9"
-                style={{
-                  opacity: showApplication || showCardInFolder ? 1 : 0,
-                  y: applicationContentY,
-                }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="marker-num text-[#628c80]">Jobly application</p>
-                    <p className="font-display mt-2 text-4xl">Ari Patel</p>
-                  </div>
-                  <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
-                    Submitted
-                  </span>
-                </div>
-                <p className="mt-3 text-base text-[#2f302d]/64">Senior React Developer</p>
-                <div className="mt-7 space-y-3">
-                  <div className="h-2 w-full bg-[#2f302d]/15" />
-                  <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-                  <div className="h-2 w-3/5 bg-[#2f302d]/11" />
-                </div>
-                <div className="mt-7 grid grid-cols-2 gap-3">
-                  <div className="border border-[#d9ddd9] p-3">
-                    <p className="text-xs text-[#2f302d]/48">Match</p>
-                    <p className="mt-2 text-xl font-bold">Strong</p>
-                  </div>
-                  <div className="border border-[#d9ddd9] p-3">
-                    <p className="text-xs text-[#2f302d]/48">Status</p>
-                    <p className="mt-2 text-xl font-bold">Applied</p>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Right-side copy: "Turn a good signal…" */}
-            <motion.div
-              className="absolute left-[62%] top-[25%] z-20 w-[min(28vw,390px)]"
-              style={{ opacity: showApplicationCopy ? 1 : 0, y: rightCopyY }}
-            >
-              <p className="marker-num text-[#628c80]">A message becomes a move</p>
-              <h2 className="font-display mt-5 text-[clamp(2.65rem,4vw,4.7rem)] leading-[0.98]">
-                Turn a good signal into a complete application.
-              </h2>
-              <p className="mt-6 text-lg leading-relaxed text-ink/68">
-                The role, the reason it fits, and the work behind the candidate stay together from
-                the first note to the submitted application.
-              </p>
-            </motion.div>
-
-            {/* Folder — back panel */}
-            <motion.div
-              className="absolute left-1/2 top-1/2 z-20 h-[500px] w-[590px] -translate-x-1/2 -translate-y-1/2"
-              style={{
-                opacity: showFolder ? 1 : 0,
-                x: folderX,
-                y: folderY,
-                scale: folderScale,
-                rotateY: folderRotateY,
-                rotateX: folderRotateX,
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <div className="absolute bottom-0 left-[7%] right-[4%] h-[55%] border border-[#86b4a6] bg-[#a3cfc2] shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]">
-                <div className="absolute -top-10 left-8 h-10 w-[42%] rounded-t-sm border border-b-0 border-[#86b4a6] bg-[#a3cfc2]" />
-              </div>
-            </motion.div>
-            {/* Folder — front flap (overlays card as it slides in) */}
-            <motion.div
-              className="pointer-events-none absolute left-1/2 top-1/2 z-40 h-[500px] w-[590px] -translate-x-1/2 -translate-y-1/2"
-              style={{
-                opacity: showFolder ? 1 : 0,
-                x: folderX,
-                y: folderY,
-                scale: folderScale,
-                rotateY: folderRotateY,
-                rotateX: folderRotateX,
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <div
-                className="absolute bottom-0 left-[7%] right-[4%] h-[49%] border border-[#86b4a6] bg-[#b8ddd2]"
-                style={{ clipPath: "polygon(0 13%, 100% 0, 100% 100%, 0 100%)" }}
-              />
-            </motion.div>
-
-            {/* Folder copy text: "File the application…" */}
-            <motion.div
-              className="absolute left-[62%] top-[25%] z-50 w-[min(28vw,390px)]"
-              style={{ opacity: showFolderCopy ? 1 : 0, y: folderCopyY }}
-            >
-              <p className="marker-num text-[#628c80]">Keep the momentum</p>
-              <h2 className="font-display mt-5 text-[clamp(2.65rem,4vw,4.7rem)] leading-[0.98]">
-                File the application without losing the story.
-              </h2>
-              <p className="mt-6 text-lg leading-relaxed text-ink/68">
-                Every application stays linked to the role, the conversation, and the evidence that
-                made it relevant in the first place.
-              </p>
-            </motion.div>
-
-            <ScrollProgressDots
-              stages={OPPORTUNITY_STAGES}
-              activeIndex={activeIndex}
-              tone={activeIndex === 0 ? "light" : "dark"}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="md:hidden">
-        <CollaborationScene />
-        <ApplicationScene />
-        <FolderScene />
-      </div>
-    </section>
-  );
-}
-
-function CollaborationScene() {
-  return (
-    <div className="relative isolate flex h-full min-h-[720px] items-center overflow-hidden bg-[#202826] px-6 py-16 text-white sm:px-10 sm:py-20">
-      <img
-        src={step4}
-        alt=""
-        className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-35"
-      />
-      <div className="absolute inset-0 -z-10 bg-[#17201e]/72" aria-hidden="true" />
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="max-w-2xl">
-          <p className="marker-num text-mint-light">A shared hiring space</p>
-          <h2 className="font-display mt-4 text-[clamp(2.6rem,5vw,5.3rem)]">
-            One message can start a good application.
-          </h2>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/75">
-            Keep the role, candidate notes, and the next conversation close enough that a clear
-            signal can become a clear next step.
-          </p>
-        </div>
-        <div className="relative mt-9 grid gap-4 md:grid-cols-3 lg:mt-12">
-          {WORKSPACE_TILES.map((title, index) => (
-            <article
-              key={title}
-              className="min-h-36 border border-white/15 bg-[#f7f8f6]/90 p-5 text-[#2f302d] shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)] lg:min-h-40 lg:p-6"
-            >
-              <p className="text-sm font-semibold">{title}</p>
-              <div className="mt-5 space-y-2.5">
-                <div className="h-2 w-4/5 bg-[#2f302d]/15" />
-                <div className="h-2 w-full bg-[#2f302d]/10" />
-                <div className="h-2 w-3/5 bg-[#2f302d]/10" />
-              </div>
-              {index === 3 ? (
-                <div className="mt-6 grid grid-cols-3 gap-2">
-                  <div className="h-8 bg-[#b8ddd2]" />
-                  <div className="h-8 bg-[#d7ebe4]" />
-                  <div className="h-8 bg-[#86b4a6]" />
-                </div>
-              ) : null}
-              {index === 5 ? (
-                <div className="mt-6 flex gap-2">
-                  {Array.from({ length: 4 }).map((_, avatarIndex) => (
-                    <span key={avatarIndex} className="h-8 w-8 rounded-full bg-[#b8ddd2]" />
-                  ))}
-                </div>
-              ) : null}
-            </article>
-          ))}
-          <aside className="relative z-10 mx-auto -mt-4 w-full max-w-xl border-t-8 border-[#86b4a6] bg-white p-6 text-[#2f302d] shadow-[0_28px_60px_-26px_rgb(0_0_0_/_0.55)] md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:p-7">
-            <p className="marker-num text-[#628c80]">Candidate message</p>
-            <p className="font-semibold">Ari Patel</p>
-            <p className="mt-2 text-lg text-[#2f302d]/72">
-              The fit looks strong. I would love to hear more about the product work.
-            </p>
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ApplicationScene() {
-  return (
-    <div className="relative flex h-full min-h-[720px] items-center overflow-hidden bg-[#f6f6f4] px-6 py-16 sm:px-10 sm:py-20">
       <div
-        aria-hidden="true"
-        className="absolute bottom-0 left-0 h-[46%] w-[42%] bg-[#353430]"
-        style={{ clipPath: "polygon(0 36%, 100% 0, 100% 100%, 0 100%)" }}
-      />
-      <div className="relative mx-auto grid max-w-7xl gap-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.75fr)] lg:items-center">
+        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
+        style={{ perspective: "1500px" }}
+      >
         <div
-          className="relative mx-auto h-[470px] w-full max-w-[500px] sm:h-[540px]"
-          style={{ perspective: "1400px" }}
+          aria-hidden="true"
+          className="absolute bottom-[10%] left-[6%] h-16 w-16 rotate-[18deg] border-[8px] border-black/20"
+        />
+
+        <motion.div
+          className="relative z-10 mx-auto w-full max-w-lg"
+          style={
+            reduce
+              ? undefined
+              : {
+                  y: paperY,
+                  rotateX: paperRotateX,
+                  scale: paperScale,
+                  opacity: paperOpacity,
+                  transformStyle: "preserve-3d",
+                }
+          }
+          initial={reduce ? { opacity: 0 } : undefined}
+          whileInView={reduce ? { opacity: 1 } : undefined}
+          viewport={{ once: true, amount: 0.3 }}
         >
-          <div
-            aria-hidden="true"
-            className="absolute left-[6%] top-6 h-[82%] w-[80%] rotate-[-8deg] border border-[#d9ddd9] bg-white/50 shadow-[0_30px_60px_-34px_rgb(47_48_45_/_0.42)]"
-          />
-          <article className="absolute left-[16%] top-12 z-10 h-[84%] w-[80%] overflow-hidden border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)] sm:p-9">
-            <div className="flex items-start justify-between gap-4">
+          <div className="border border-[#4d4c49] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.7)] sm:p-9">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="marker-num text-[#628c80]">Jobly application</p>
-                <h3 className="font-display mt-2 text-[clamp(2rem,3vw,3rem)]">Ari Patel</h3>
+                <p className="text-sm text-[#2f302d]/45">Live timeline</p>
+                <p className={`${displayClass} mt-2 text-2xl`}>Every signal, kept</p>
               </div>
               <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
-                Submitted
+                Recording
               </span>
             </div>
-            <p className="mt-3 text-base text-[#2f302d]/64">Senior React Developer</p>
-            <div className="mt-8 space-y-3">
-              <div className="h-2 w-full bg-[#2f302d]/15" />
-              <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-              <div className="h-2 w-3/5 bg-[#2f302d]/11" />
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="border border-[#d9ddd9] p-3">
-                <p className="text-xs text-[#2f302d]/48">Match</p>
-                <p className="mt-2 text-xl font-bold">Strong</p>
-              </div>
-              <div className="border border-[#d9ddd9] p-3">
-                <p className="text-xs text-[#2f302d]/48">Status</p>
-                <p className="mt-2 text-xl font-bold">Applied</p>
-              </div>
-            </div>
-            <img
-              src={step1}
-              alt=""
-              className="absolute bottom-0 left-0 h-[27%] w-full object-cover opacity-45"
-            />
-          </article>
-        </div>
-        <div className="max-w-xl lg:pl-8">
-          <p className="marker-num">A message becomes a move</p>
-          <h2 className="font-display mt-5 text-[clamp(2.8rem,5vw,5.4rem)]">
-            Turn a good signal into a complete application.
-          </h2>
-          <p className="mt-6 text-lg leading-relaxed text-ink/68">
-            The role, the reason it fits, and the work behind the candidate stay together from the
-            first note to the submitted application.
-          </p>
-          <Link to="/auth" className="pill-mint mt-8 gap-2">
-            Start your profile
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-type FolderSceneProps = {
-  applicationX?: MotionValue<number>;
-  applicationY?: MotionValue<number>;
-  applicationScale?: MotionValue<number>;
-  applicationOpacity?: MotionValue<number>;
-  folderLift?: MotionValue<number>;
-};
-
-function FolderScene({
-  applicationX,
-  applicationY,
-  applicationScale,
-  applicationOpacity,
-  folderLift,
-}: FolderSceneProps) {
-  return (
-    <div className="relative flex h-full min-h-[720px] items-center overflow-hidden bg-[#edf1ef] px-6 py-16 sm:px-10 sm:py-20">
-      <div
-        aria-hidden="true"
-        className="absolute right-[-8%] top-[-10%] h-80 w-80 rounded-full border-[34px] border-[#b8ddd2]/35"
-      />
-      <div className="relative mx-auto grid max-w-7xl gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.75fr)] lg:items-center">
-        <div className="relative mx-auto h-[460px] w-full max-w-[540px] sm:h-[530px]">
-          <motion.div
-            className="absolute bottom-[9%] left-[8%] right-[5%] z-10 h-[48%] border border-[#86b4a6] bg-[#a3cfc2] shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]"
-            style={{ y: folderLift ?? 0 }}
-          >
-            <div className="absolute -top-9 left-8 h-9 w-[42%] rounded-t-sm border border-b-0 border-[#86b4a6] bg-[#a3cfc2]" />
-          </motion.div>
-          <motion.article
-            className="absolute left-[12%] top-[10%] z-20 h-[58%] w-[62%] border border-[#d9ddd9] bg-[#fffefd] p-6 text-[#2f302d] shadow-[0_30px_60px_-30px_rgb(47_48_45_/_0.5)]"
-            style={{
-              x: applicationX ?? 0,
-              y: applicationY ?? 0,
-              scale: applicationScale ?? 1,
-              opacity: applicationOpacity ?? 1,
-            }}
-          >
-            <p className="marker-num text-[#628c80]">Application</p>
-            <p className="font-display mt-3 text-3xl">Ari Patel</p>
-            <p className="mt-2 text-sm text-[#2f302d]/62">Senior React Developer</p>
-            <div className="mt-7 space-y-2.5">
-              <div className="h-2 w-full bg-[#2f302d]/15" />
-              <div className="h-2 w-4/5 bg-[#2f302d]/10" />
-              <div className="h-2 w-3/5 bg-[#2f302d]/10" />
+            <div className="relative mt-8 pb-2">
+              <div className="h-[3px] w-full rounded-full bg-[#2f302d]/12" />
+              <motion.div
+                className="absolute top-0 h-[3px] w-full origin-left rounded-full bg-[#2a9d7b]"
+                style={reduce ? undefined : { scaleX: markerTravel }}
+              />
+              <motion.div
+                className="absolute -top-[5px] h-3.5 w-3.5 rounded-full border-2 border-[#fffefd] bg-[#2a9d7b] shadow-[0_2px_8px_rgb(42_157_123_/_0.6)]"
+                style={reduce ? undefined : { left: markerTravel }}
+              />
             </div>
-          </motion.article>
-          <div
-            aria-hidden="true"
-            className="absolute bottom-[9%] left-[8%] right-[5%] z-30 h-[27%] border border-[#86b4a6] bg-[#b8ddd2]"
-            style={{ clipPath: "polygon(0 18%, 100% 0, 100% 100%, 0 100%)" }}
-          />
-        </div>
-        <div className="max-w-xl lg:pl-8">
-          <p className="marker-num">Keep the momentum</p>
-          <h2 className="font-display mt-5 text-[clamp(2.8rem,5vw,5.4rem)]">
-            File the application without losing the story.
-          </h2>
-          <p className="mt-6 text-lg leading-relaxed text-ink/68">
-            As work moves forward, every application stays connected to the role, the conversation,
-            and the evidence that made it relevant.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function ProfileScene() {
-  return (
-    <div className="flex h-full min-h-[720px] items-center bg-[#f7f7f5] px-6 py-16 sm:px-10 sm:py-20">
-      <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(300px,0.7fr)] lg:items-center">
-        <div className="relative mx-auto w-full max-w-[460px] shadow-[0_30px_64px_-32px_rgb(47_48_45_/_0.5)] lg:max-w-[500px]">
-          <img
-            src={step1}
-            alt="Resume on a desk"
-            className="aspect-[4/5] w-full object-cover opacity-80"
-          />
-          <div className="absolute inset-0 bg-[#f6f8f6]/50" />
-          <div
-            aria-hidden="true"
-            className="absolute left-[13%] top-[12%] h-14 w-14 rounded-full border-[10px] border-[#86b4a6]/75"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute right-[14%] top-[20%] h-9 w-9 rotate-[10deg] border-[8px] border-[#86b4a6]/75"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute bottom-[24%] right-[13%] h-0 w-0 border-b-[28px] border-l-[22px] border-r-[22px] border-b-[#86b4a6]/75 border-l-transparent border-r-transparent"
-          />
-          <div className="absolute inset-x-[12%] top-[35%] border-[8px] border-[#86b4a6] bg-[#86b4a6]/90 px-6 py-10 text-center text-white sm:px-10">
-            <p className="font-serif text-lg">Your profile</p>
-            <p className="font-display mt-4 text-[clamp(2.3rem,5vw,4.8rem)]">Your next chapter</p>
-            <p className="mt-4 text-sm text-white/85">
-              Keep the work you are proud of close to the roles that deserve it.
-            </p>
+            <ol className="mt-6 space-y-3">
+              {EVENTS.map((event) => (
+                <li
+                  key={event.time}
+                  className="flex items-center justify-between border-b border-[#d9ddd9]/70 pb-3 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="h-2 w-2 rounded-full bg-[#2a9d7b]" />
+                    <span className="text-sm font-semibold">{event.label}</span>
+                  </div>
+                  <span className="font-num text-xs text-[#2f302d]/45">{event.time}</span>
+                </li>
+              ))}
+            </ol>
           </div>
-        </div>
-        <div className="max-w-md">
-          <p className="marker-num">The details stay yours</p>
-          <h2 className="font-display mt-5 text-[clamp(2.6rem,5vw,5rem)]">
-            One profile. A better starting point.
-          </h2>
-          <p className="mt-6 text-lg leading-relaxed text-ink/68">
-            Jobly keeps your resume, fit evidence, applications, and recruiter conversations in the
-            same calm workspace.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+        </motion.div>
 
-function ScrollProgressDots({
-  stages,
-  activeIndex,
-  tone,
-}: {
-  stages: readonly string[];
-  activeIndex: number;
-  tone: "light" | "dark";
-}) {
-  const isLight = tone === "light";
-
-  return (
-    <ol
-      aria-label="Scroll progress"
-      className="absolute right-8 top-1/2 z-50 hidden -translate-y-1/2 gap-3 lg:grid"
-    >
-      {stages.map((stage, index) => {
-        const isActive = index === activeIndex;
-        const labelClass = isLight
-          ? "text-white/0 group-hover:text-white/70"
-          : "text-ink/0 group-hover:text-ink/60";
-        const dotClass = isActive
-          ? isLight
-            ? "scale-125 border-white bg-white shadow-[0_0_0_5px_rgb(255_255_255_/_0.18)]"
-            : "scale-125 border-ink bg-ink shadow-[0_0_0_5px_rgb(47_48_45_/_0.12)]"
-          : isLight
-            ? "border-white/50 bg-white/25"
-            : "border-ink/30 bg-ink/30";
-
-        return (
-          <li
-            key={stage}
-            aria-current={isActive ? "step" : undefined}
-            className="group relative flex justify-end"
+        <motion.div
+          className="absolute right-6 top-[10%] z-20 max-w-md text-right sm:right-[7%] lg:right-[10%]"
+          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
+        >
+          <p className="marker-num text-mint-light">Evidence, not memory</p>
+          <h2
+            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-white leading-[0.98]`}
           >
-            <span
-              className={`pointer-events-none absolute right-6 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold transition-colors duration-200 ${labelClass}`}
-            >
-              {stage}
-            </span>
-            <span
-              className={`h-2.5 w-2.5 rounded-full border transition-all duration-300 ${dotClass}`}
-            />
-          </li>
-        );
-      })}
-    </ol>
+            Capture every signal.
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-white/70">
+            Checkpoints, transcripts, and code runs stream into one timeline — the interview
+            writes its own record.
+          </p>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
-function ClosingCall() {
+/* ─────────────────────────────────────────────────────────────
+   Scene 6 — Collaborate / decide (photo bg, scorecard paper)
+   ───────────────────────────────────────────────────────────── */
+
+function CollaborateScene() {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
+  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [14, 0]);
+  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.88, 1]);
+  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
+
+  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
+  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
+
+  const barFill = useTransform(scrollYProgress, [0.4, 0.7], ["12%", "88%"]);
+
   return (
     <section
-      id="cta"
-      className="relative overflow-hidden bg-[#302f2c] px-6 py-20 text-white sm:px-10 sm:py-28"
+      id={SCENES[5].id}
+      data-scene
+      ref={sectionRef}
+      className="relative h-[260vh] bg-[#f2f2f2]"
     >
-      <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)] lg:items-end">
-        <div className="relative mx-auto h-[520px] w-full max-w-sm">
-          <PaperMockup
-            className="absolute left-0 top-8 h-[450px] w-[88%] rotate-[-6deg] opacity-35"
-            label="Jobly"
-            title="Your profile"
-          />
-          <PaperMockup
-            className="absolute right-0 top-0 z-10 h-[470px] w-[88%] shadow-[0_28px_64px_-28px_rgb(0_0_0_/_0.75)]"
-            label="Jobly"
-            title="A good next move"
-            image={step4}
-          />
-        </div>
-        <div className="max-w-2xl lg:pb-8">
-          <p className="marker-num text-mint-light">Start where you are</p>
-          <h2 className="font-display mt-5 text-[clamp(3rem,6vw,6rem)]">
-            Make the next move a good one.
+      <div
+        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
+        style={{ perspective: "1500px" }}
+      >
+        <img
+          src={step4}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-[#f2f2f2]/55" aria-hidden="true" />
+
+        <motion.div
+          className="relative z-10 mx-auto w-full max-w-lg"
+          style={
+            reduce
+              ? undefined
+              : {
+                  y: paperY,
+                  rotateX: paperRotateX,
+                  scale: paperScale,
+                  opacity: paperOpacity,
+                  transformStyle: "preserve-3d",
+                }
+          }
+          initial={reduce ? { opacity: 0 } : undefined}
+          whileInView={reduce ? { opacity: 1 } : undefined}
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          <div className="border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] sm:p-9">
+            <p className="text-sm text-[#2f302d]/45">Scorecard</p>
+            <p className={`${displayClass} mt-2 text-2xl`}>Four pillars, cited</p>
+
+            <div className="mt-7 space-y-4">
+              {["Problem solving", "Code quality", "System design", "Communication"].map(
+                (pillar, index) => (
+                  <div key={pillar}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold">{pillar}</span>
+                      <span className="font-num text-xs text-[#2f302d]/50">{4 + (index % 2)} / 5</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#2f302d]/12">
+                      <motion.div
+                        className="h-full rounded-full bg-[#628c80]"
+                        style={
+                          reduce ? { width: "80%" } : { width: barFill }
+                        }
+                      />
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+
+            <div className="mt-7 flex items-center gap-2 border-t border-[#d9ddd9] pt-5">
+              <span className="h-2 w-2 rounded-full bg-[#2a9d7b]" />
+              <span className="text-xs text-[#2f302d]/55">
+                Every score cites timeline evidence
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="absolute left-6 top-[10%] z-20 max-w-md sm:left-[7%] lg:left-[10%]"
+          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
+        >
+          <p className="marker-num text-[#628c80]">Decide together</p>
+          <h2
+            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-ink leading-[0.98]`}
+          >
+            Decide with evidence.
           </h2>
-          <p className="mt-6 text-lg leading-relaxed text-white/70">
-            Build a profile that does you justice, find roles with real context, or bring a hiring
-            team into one shared view.
+          <p className="mt-5 text-lg leading-relaxed text-ink/70">
+            The scorecard links back to the exact moment it happened, so the whole team can
+            see the why behind the hire.
           </p>
-          <div className="mt-9 flex flex-wrap gap-4">
-            <Link to="/auth" search={{ mode: "signup" }} className="pill-mint-lg gap-2">
-              Create your Jobly account
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-            <Link
-              to="/auth"
-              className="inline-flex min-h-12 items-center px-3 text-sm font-semibold text-white/85 transition-colors hover:text-mint"
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Scene 7 — Done (dark, replay paper)
+   ───────────────────────────────────────────────────────────── */
+
+function DoneScene() {
+  const reduce = Boolean(useReducedMotion());
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
+
+  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
+  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [16, 0]);
+  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.86, 1]);
+  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
+
+  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
+  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
+
+  const scrubTravel = useTransform(scrollYProgress, [0.42, 0.78], ["0%", "72%"]);
+
+  return (
+    <section
+      id={SCENES[6].id}
+      data-scene
+      ref={sectionRef}
+      className="relative h-[260vh] bg-[#302f2c]"
+    >
+      <div
+        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
+        style={{ perspective: "1500px" }}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute right-[10%] top-[14%] h-24 w-24 rotate-[24deg] border-[9px] border-black/18"
+        />
+
+        <motion.div
+          className="relative z-10 mx-auto w-full max-w-lg"
+          style={
+            reduce
+              ? undefined
+              : {
+                  y: paperY,
+                  rotateX: paperRotateX,
+                  scale: paperScale,
+                  opacity: paperOpacity,
+                  transformStyle: "preserve-3d",
+                }
+          }
+          initial={reduce ? { opacity: 0 } : undefined}
+          whileInView={reduce ? { opacity: 1 } : undefined}
+          viewport={{ once: true, amount: 0.3 }}
+        >
+          <div className="border border-[#4d4c49] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.7)] sm:p-9">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-[#2f302d]/45">Replay</p>
+                <p className={`${displayClass} mt-2 text-2xl`}>Rewind the room</p>
+              </div>
+              <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
+                18:24
+              </span>
+            </div>
+
+            <div className="relative mt-8">
+              <div className="h-[3px] w-full rounded-full bg-[#2f302d]/12" />
+              {[18, 34, 52, 71, 86].map((left) => (
+                <span
+                  key={left}
+                  className="absolute -top-[3px] h-[9px] w-[2px] rounded bg-[#628c80]"
+                  style={{ left: `${left}%` }}
+                />
+              ))}
+              <motion.div
+                className="absolute -top-[5px] h-3.5 w-3.5 rounded-full border-2 border-[#fffefd] bg-[#302f2c]"
+                style={reduce ? undefined : { left: scrubTravel }}
+              />
+            </div>
+
+            <div className="mt-7 flex items-center gap-1.5">
+              <span className="rounded-full bg-[#302f2c] px-3 py-1.5 font-num text-xs font-bold text-white">
+                Play
+              </span>
+              {["0.5x", "1x", "2x"].map((speed, index) => (
+                <span
+                  key={speed}
+                  className={`rounded-full px-2.5 py-1.5 font-num text-xs ${
+                    index === 1 ? "bg-[#d7ebe4] text-[#40685e] font-bold" : "text-[#2f302d]/45"
+                  }`}
+                >
+                  {speed}
+                </span>
+              ))}
+            </div>
+
+            <p className="mt-7 border-t border-[#d9ddd9]/70 pt-5 text-sm leading-relaxed text-[#2f302d]/60">
+              Candidates get a practice plan. Recruiters get the evidence. Both sides leave
+              with the same story.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="absolute right-6 top-[10%] z-20 max-w-md text-right sm:right-[7%] lg:right-[10%]"
+          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
+        >
+          <p className="marker-num text-mint-light">After the room</p>
+          <h2
+            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-white leading-[0.98]`}
+          >
+            Done? Replay it.
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-white/70">
+            Time-travel through the code, the conversation, and the calls that shaped the
+            decision.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Finale — features + morph signup (Beagle footer)
+   ───────────────────────────────────────────────────────────── */
+
+function FinaleSection({ activeTheme }: { activeTheme: SceneTheme }) {
+  return (
+    <section
+      id="signup"
+      className="relative bg-[#302f2c]"
+      aria-label="Sign up for Jobly"
+    >
+      <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
+        <div className="flex items-center justify-center px-6 py-20 sm:px-10 lg:py-32">
+          <div className="max-w-md text-[#302f2c]">
+            <div
+              className={`transition-colors duration-500 ${
+                activeTheme === "light" ? "text-[#302f2c]" : "text-[#302f2c]"
+              }`}
             >
-              Log in
-            </Link>
+              <h2 className={`${displayClass} text-4xl leading-[1.05] sm:text-5xl`}>
+                Create your own great interviews now
+              </h2>
+              <ul className="mt-10 space-y-6">
+                <FeatureItem title="Free" lines={["during", "beta"]} />
+                <FeatureItem title="Unlimited" lines={["interview rooms"]} />
+                <FeatureItem
+                  title="Plans"
+                  lines={["for teams large", "and small (after beta)"]}
+                />
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-center bg-[#353431] px-6 py-16 sm:px-10 lg:py-32">
+          <div className="mx-auto w-full max-w-md">
+            <h3 className="text-xl font-bold text-white">
+              Sign up for the free beta
+              <small className="mt-3 block text-sm font-normal text-white/50">
+                Already have an account?{" "}
+                <Link to="/auth" className="underline underline-offset-2 hover:text-white">
+                  Sign in
+                </Link>
+              </small>
+            </h3>
+
+            <div className="mt-10">
+              <SignupMorph />
+            </div>
+
+            <div className="mt-16 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/40">
+              <Link to="/auth" className="transition-colors hover:text-white">
+                Log in
+              </Link>
+              <span aria-hidden="true">·</span>
+              <a href="#main" className="transition-colors hover:text-white">
+                Back to top
+              </a>
+              <span aria-hidden="true">·</span>
+              <span>Jobly — fair technical hiring</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1176,57 +1002,67 @@ function ClosingCall() {
   );
 }
 
-function PaperMockup({
-  className = "",
-  image,
-  label,
-  title,
-}: {
-  className?: string;
-  image?: string;
-  label: string;
-  title: string;
-}) {
+function FeatureItem({ title, lines }: { title: string; lines: string[] }) {
   return (
-    <div
-      className={`overflow-hidden border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] ${className}`}
-    >
-      <p className="text-sm text-[#2f302d]/45">{label}</p>
-      <p className="font-display mt-2 text-[clamp(1.7rem,3vw,2.7rem)]">{title}</p>
-      <div className="mt-9 space-y-3">
-        <div className="h-2 w-full bg-[#2f302d]/15" />
-        <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-        <div className="h-2 w-3/5 bg-[#2f302d]/11" />
-      </div>
-      <p className="mt-8 text-sm font-semibold">What matters most</p>
-      <div className="mt-4 space-y-2.5">
-        <div className="h-2 w-full bg-[#2f302d]/12" />
-        <div className="h-2 w-[92%] bg-[#2f302d]/10" />
-        <div className="h-2 w-2/3 bg-[#2f302d]/10" />
-      </div>
-      {image ? (
-        <img
-          src={image}
-          alt=""
-          className="absolute bottom-0 left-0 h-[34%] w-full object-cover opacity-65"
-        />
-      ) : (
-        <div className="absolute bottom-8 left-7 right-7 h-20 bg-[#b8ddd2]" />
-      )}
-    </div>
+    <li className="flex items-start gap-4">
+      <span
+        aria-hidden="true"
+        className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-current"
+      >
+        <span className="h-3.5 w-3.5 rounded-sm bg-current" />
+      </span>
+      <p className="text-lg font-semibold leading-snug">
+        {title}
+        <br />
+        <span className="font-normal opacity-75">{lines.join(" ")}</span>
+      </p>
+    </li>
   );
 }
 
-function useDesktopCanvas() {
-  const [isDesktop, setIsDesktop] = useState(false);
+/* ─────────────────────────────────────────────────────────────
+   Sidenav — Beagle dots (right edge, hover labels)
+   ───────────────────────────────────────────────────────────── */
 
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px)");
-    const update = () => setIsDesktop(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+function SideNav({ activeIndex }: { activeIndex: number }) {
+  const activeTheme = SCENES[activeIndex]?.theme;
+  /* Dots sit on light surfaces (paper/mint scenes) vs dark ones. */
+  const onLight = activeTheme === "light" || activeTheme === "mint";
 
-  return isDesktop;
+  return (
+    <nav
+      aria-label="Scene progress"
+      className="fixed right-8 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
+    >
+      <ol className="space-y-2">
+        {SCENES.map((scene, index) => {
+          const isActive = index === activeIndex;
+
+          return (
+            <li key={scene.id} className="group relative flex justify-end">
+              <span
+                className={`pointer-events-none absolute right-6 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold transition-all duration-200 ${
+                  onLight ? "text-ink/0 group-hover:text-ink/60" : "text-white/0 group-hover:text-white/70"
+                } ${isActive ? (onLight ? "!text-ink/80" : "!text-white/90") : ""}`}
+              >
+                {scene.label}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`h-[6px] w-[6px] rounded-full transition-all duration-300 ${
+                  isActive
+                    ? onLight
+                      ? "scale-125 bg-ink shadow-[0_0_0_4px_rgb(47_48_45_/_0.15)]"
+                      : "scale-125 bg-white shadow-[0_0_0_4px_rgb(255_255_255_/_0.18)]"
+                    : onLight
+                      ? "bg-ink/30"
+                      : "bg-white/35"
+                }`}
+              />
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
 }

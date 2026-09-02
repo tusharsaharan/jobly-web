@@ -109,7 +109,10 @@ async function processResumeJob(jobData) {
 
     // Properly parse PDF; distinguish encrypted vs image-only
     try {
-      const parsedData = await pdfParse(buffer);
+      // pdf-parse's bundled pdf.js fails with "bad XRef entry" when handed a
+      // raw Buffer on modern Node (typed-array internal handling). Passing a
+      // Uint8Array view of the same bytes parses reliably.
+      const parsedData = await pdfParse(new Uint8Array(buffer));
       text = parsedData.text || "";
     } catch (parseErr) {
       pdfParseError = parseErr;

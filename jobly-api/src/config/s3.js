@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const config = require("./env");
 const logger = require("./logger");
@@ -12,6 +12,25 @@ const s3Client = new S3Client({
   },
   forcePathStyle: config.S3_FORCE_PATH_STYLE,
 });
+
+// Idempotent lazy bucket creation — MinIO starts with NO buckets, so a fresh
+// environment would otherwise 404 every upload. Runs once per bucket.
+const ensuredBuckets = new Set();
+async function ensureBucket(bucketName) {
+  if (!bucketName || ensuredBuckets.has(bucketName)) return;
+  try {
+    await s3Client.send(new HeadBucketCommand({ Bucket: bucketName }));
+    ensuredBuckets.add(bucketName);
+  } catch {
+    try {
+      await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
+      logger.info({ bucket: bucketName }, "Created missing S3 bucket");
+      ensuredBuckets.add(bucketName);
+    } catch (err) {
+      logger.warn({ err: err.message, bucket: bucketName }, "S3 bucket ensure failed (continuing)");
+    }
+  }
+}
 
 // Normalize S3 key: strip leading slashes, collapse duplicate slashes, avoid double slash when concatenating
 function normalizeKey(key) {
@@ -43,6 +62,7 @@ function parseRecordingUrl(recordingUrl) {
 async function uploadFileBuffer(buffer, key, contentType = "application/pdf") {
   const normalizedKey = normalizeKey(key);
   try {
+    await ensureBucket(config.S3_BUCKET);
     const command = new PutObjectCommand({
       Bucket: config.S3_BUCKET,
       Key: normalizedKey,
@@ -118,14 +138,15 @@ async function getPresignedM3U8Url(key, expiresIn = 3600) {
 async function uploadFileStream(key, stream, contentType = "video/webm") {
   const normalizedKey = normalizeKey(key);
   try {
+    await ensureBucket(RECORDINGS_BUCKET);
     const command = new PutObjectCommand({
-      Bucket: config.S3_BUCKET,
+      Bucket: RECORDINGS_BUCKET,
       Key: normalizedKey,
       Body: stream,
       ContentType: contentType,
     });
     await s3Client.send(command);
-    return { bucket: config.S3_BUCKET, key: normalizedKey };
+    return { bucket: RECORDINGS_BUCKET, key: normalizedKey };
   } catch (err) {
     logger.error({ err: err.message, key: normalizedKey }, "S3 stream upload failed");
     throw err;
@@ -148,6 +169,7 @@ function getHLSKey(sessionId) {
 
 module.exports = {
   s3Client,
+  ensureBucket,
   uploadFileBuffer,
   getFileStream,
   getPresignedDownloadUrl,

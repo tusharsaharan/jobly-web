@@ -8,6 +8,10 @@
     "dev:web": "npm --prefix jobly-web run dev",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "demo:up": "node scripts/demo-up.js",
+    "demo:preflight": "node scripts/demo-up.js --preflight-only",
+    "demo:seed": "node scripts/demo-seed.js",
+    "test:api": "npm --prefix jobly-api test"
   }
 }

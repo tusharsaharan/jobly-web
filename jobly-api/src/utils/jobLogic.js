@@ -9,11 +9,24 @@ function asRecord(value) {
 
 function cleanText(value, fallback = "") {
   if (typeof value !== "string") return fallback;
-  const sanitized = sanitizeHtml(value, {
+  const stripped = sanitizeHtml(value, {
     allowedTags: [], // Strip all HTML tags
     allowedAttributes: {},
   });
-  return sanitized.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim();
+  // sanitize-html escapes entities ("P&L" -> "P&amp;L"). For plain-text
+  // fields (titles, skills, descriptions) we want tags GONE but the
+  // original text preserved — decode the entities it introduced.
+  let decoded = stripped
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&#x2F;|&#47;/g, "/");
+  // Defensive: decode exactly once more in case the input was pre-escaped
+  // ("P&amp;L" typed by a user stays "P&L", never double-decodes to "P&L"->same)
+  decoded = decoded.replace(/&amp;amp;/g, "&amp;");
+  return decoded.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim();
 }
 
 function cleanInlineText(value, fallback = "") {

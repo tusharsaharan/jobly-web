@@ -434,6 +434,7 @@ exports.generateFocusQuiz = async (topic, userProfile, { difficulty = "Medium", 
     const prompt = `
 You are an expert interviewer and educator in ANY domain — computer science, civil services (UPSC/IAS), law, medicine, finance, culinary arts, operations, facilities management, or any other subject.
 Create a precise, non-generic, interview-grade quiz on the topic of "${topic}".
+Return EXACTLY ${questionCount} questions — no fewer, no more.
 ${topicContext}${difficultyGuide}
 ${userProfile ? `Consider the user's background: ${JSON.stringify(userProfile)}` : ""}
 ${recentQText}
@@ -484,11 +485,11 @@ Return strictly as a JSON array of objects. Each object must follow this exact s
       throw new Error("Invalid quiz format from AI");
     }
     
-    // Validate each question + filter generic/random phrasing
+    let validated;
     const genericRe = /core concept behind|what is .*?(core|basic|main).*concept|which statement.*true about/i;
-    const validated = parsed.slice(0, questionCount).map((q, i) => {
+    const validateQuestions = (arr) => arr.slice(0, questionCount).map((q, i) => {
       const isGeneric = !q.question || q.question.length < 18 || genericRe.test(q.question) || (q.options && q.options.some(o => /^(Speed|Reliability|Abstraction|Complexity)$/.test(String(o).trim())));
-      if (isGeneric || !Array.isArray(q.options) || q.options.length !== 4 || 
+      if (isGeneric || !Array.isArray(q.options) || q.options.length !== 4 ||
           typeof q.correctAnswer !== "number" || q.correctAnswer < 0 || q.correctAnswer > 3 ||
           !q.explanation || q.explanation.length < 20) {
         console.warn(`Invalid/generic question at index ${i}, using precise fallback`);
@@ -504,13 +505,37 @@ Return strictly as a JSON array of objects. Each object must follow this exact s
           explanation: `Offline precise fallback for "${topic}" — correct is the specific definition; distractors are interview pitfalls. Configure GEMINI_API_KEY for fully LLM-generated, subtopic-spread questions.`
         };
       }
-      // Enforce specificity: question must mention topic or an alias term
-      if (!q.question.toLowerCase().includes(topic.toLowerCase().slice(0,4))) {
-        // allow but log — taxonomy alias may differ, so not strict fail
-        console.warn(`Question ${i} does not explicitly mention topic "${topic}"`);
-      }
       return q;
     });
+
+    validated = validateQuestions(parsed);
+
+    // If the AI returned fewer than requested, one targeted top-up request
+    // (common with strict JSON + count constraints). Never loop more than once.
+    if (validated.length < questionCount) {
+      try {
+        const missing = questionCount - validated.length;
+        const topUp = await getAI().models.generateContent({
+          model: "gemini-flash-lite-latest",
+          contents: `${prompt}\n\nIMPORTANT: You previously returned only ${validated.length} questions. Generate exactly ${missing} MORE distinct questions on "${topic}" (do not repeat these):\n${validated.map((q) => "- " + String(q.question).slice(0, 80)).join("\n")}`,
+          config: { responseMimeType: "application/json" },
+        });
+        let topText = topUp.text;
+        if (typeof topText === "string" && topText.startsWith("```")) {
+          topText = topText.replace(/^```(json)?\n/, "").replace(/\n```$/, "");
+        }
+        let topParsed;
+        try { topParsed = JSON.parse(topText); } catch {
+          const m = String(topText || "").match(/\[[\s\S]*\]/);
+          topParsed = m ? JSON.parse(m[0]) : null;
+        }
+        if (Array.isArray(topParsed)) {
+          validated = validated.concat(validateQuestions(topParsed)).slice(0, questionCount);
+        }
+      } catch (topUpErr) {
+        console.warn("Quiz top-up failed:", topUpErr.message);
+      }
+    }
     
     return validated;
   } catch (error) {
