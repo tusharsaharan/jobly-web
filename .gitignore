@@ -16,3 +16,6 @@ packages/contracts/node_modules/
 packages/contracts/dist/
 *.png
 *.jpeg
+.git.backup/
+test_*.js
+test-*.pdf
