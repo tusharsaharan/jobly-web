@@ -35,24 +35,27 @@ exports.uploadResume = async (req, res) => {
     const uploadId = `upl-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
     const sha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
 
-    // Duplicate SHA dedupe: check existing upload with same sha256 for this user
-    const existingDuplicate = await ResumeUpload.findOne({ sha256, userId: req.user._id });
-    if (existingDuplicate) {
-      return res.status(409).json({ msg: "Duplicate resume detected - identical file already uploaded", existingUploadId: existingDuplicate.uploadId, sha256 });
+    // Create durable ResumeUpload state record (owner mirrors userId for {sha256, owner} unique index).
+    // Duplicate-key under concurrency (double-clicked upload) is a 409, not a 500.
+    try {
+      await ResumeUpload.create({
+        uploadId,
+        userId: req.user._id,
+        owner: req.user._id,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        sha256,
+        state: "scanning",
+        progress: 15,
+        messageCode: "upload_received",
+      });
+    } catch (createErr) {
+      if (createErr.code === 11000 || /duplicate key/i.test(String(createErr.message || ""))) {
+        const winner = await ResumeUpload.findOne({ sha256, userId: req.user._id });
+        return res.status(409).json({ msg: "Duplicate resume detected - identical file already uploaded", existingUploadId: winner?.uploadId || uploadId, sha256 });
+      }
+      throw createErr;
     }
-
-    // Create durable ResumeUpload state record (owner mirrors userId for {sha256, owner} unique index)
-    await ResumeUpload.create({
-      uploadId,
-      userId: req.user._id,
-      owner: req.user._id,
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
-      sha256,
-      state: "scanning",
-      progress: 15,
-      messageCode: "upload_received",
-    });
 
     const s3Key = `resumes/${req.user._id}/${crypto.randomUUID()}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
 

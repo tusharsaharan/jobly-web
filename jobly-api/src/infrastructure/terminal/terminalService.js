@@ -46,7 +46,8 @@ function getDefaultShell() {
  * Create a new pseudo-terminal session for an interview
  */
 function createTerminalSession(sessionId, cols = 80, rows = 24, onDataCallback) {
-  if (terminalRunnerUrl) return createRemoteTerminalSession(sessionId, cols, rows, onDataCallback);
+  // Tests are hermetic: never reach a real runner even if TERMINAL_RUNNER_URL
+  // is present in the environment (demo .env sets it).
   if (process.env.NODE_ENV === "test") {
     // Allow in-memory pty for unit tests but with restricted env/cwd
     const terminalId = `term_${crypto.randomUUID()}`;
@@ -70,6 +71,7 @@ function createTerminalSession(sessionId, cols = 80, rows = 24, onDataCallback) 
     logger.info({ terminalId, sessionId }, "Test terminal session created (restricted)");
     return terminalId;
   }
+  if (terminalRunnerUrl) return createRemoteTerminalSession(sessionId, cols, rows, onDataCallback);
   throw new Error("Interactive terminal is unavailable: TERMINAL_RUNNER_URL is not configured. Refusing to expose a host shell.");
 }
 

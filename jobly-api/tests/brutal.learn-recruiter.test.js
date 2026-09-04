@@ -136,12 +136,22 @@ describe("Brutal Learn Side - Recruiter", () => {
       expect(res.status).toBe(200);
       expect(res.body.session.status).toBe("COMPLETED");
     });
-    test("should complete QUIZ with score", async () => {
-      const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${recruiterToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: [] });
+    test("should complete QUIZ with server-verified score", async () => {
+      const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${recruiterToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
       const qSession = qRes.body;
-      const res = await request(app).post(`/api/learn/session/${qSession._id}/complete`).set("Authorization", `Bearer ${recruiterToken}`).send({ score: 80 });
+      expect(qRes.status).toBe(201);
+      // Quiz is server-generated; fallback questions have correctAnswer 0
+      const answers = (qSession.quizData || []).map(() => 0);
+      const res = await request(app).post(`/api/learn/session/${qSession._id}/complete`).set("Authorization", `Bearer ${recruiterToken}`).send({ answers });
       expect(res.status).toBe(200);
-      expect(res.body.pointsAwarded).toBe(80);
+      expect(res.body.verifiedScore).toBe(100);
+      expect(res.body.pointsAwarded).toBe(100);
+    });
+    test("should reject QUIZ complete with client-claimed score (no answers)", async () => {
+      const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${recruiterToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
+      const res = await request(app).post(`/api/learn/session/${qRes.body._id}/complete`).set("Authorization", `Bearer ${recruiterToken}`).send({ score: 80 });
+      // Client-claimed scores are no longer trusted — answers are required
+      expect(res.status).toBe(400);
     });
     test("should reject complete already failed session", async () => {
       await request(app).post(`/api/learn/session/${session._id}/fail`).set("Authorization", `Bearer ${recruiterToken}`);

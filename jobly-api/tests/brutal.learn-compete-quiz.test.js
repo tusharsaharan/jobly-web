@@ -373,34 +373,31 @@ describe("Brutal Compete & Quiz — 1Lakh Scale", () => {
 
   // ========== QUIZ SESSION FLOW (Take Quiz) ==========
   describe("Take Quiz Flow — Learn Session QUIZ", () => {
-    test("should start QUIZ session with quizData and complete with score", async () => {
-      // Generate quiz
-      const gen = await request(app).post("/api/learn/generate-quiz").set("Authorization", `Bearer ${seekerToken}`).send({ topic: "Arrays", difficulty: "Medium", count: 5 });
-      expect(gen.status).toBe(200);
-      validateQuiz(gen.body.quiz, 5, "Arrays");
-
-      // Start session
-      const start = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: gen.body.quiz });
+    test("should start QUIZ session with SERVER-generated quizData and complete with verified score", async () => {
+      // Start session — quiz is generated server-side; client quizData is ignored
+      const start = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: [{ question: "client-injected?" }] });
       expect(start.status).toBe(201);
       expect(start.body.quizData).toBeDefined();
-      expect(start.body.quizData.length).toBe(5);
+      expect(start.body.quizData.length).toBeGreaterThanOrEqual(3);
+      // Client-injected question must NOT appear; correctAnswer must NOT be exposed
+      expect(start.body.quizData.some(q => /client-injected/i.test(q.question))).toBe(false);
+      start.body.quizData.forEach(q => expect(q.correctAnswer).toBeUndefined());
 
-      // Complete with score
-      const complete = await request(app).post(`/api/learn/session/${start.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 80 });
+      // Complete with answers against the server quiz (fallback correctAnswer is 0)
+      const answers = start.body.quizData.map(() => 0);
+      const complete = await request(app).post(`/api/learn/session/${start.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers });
       expect(complete.status).toBe(200);
       expect(complete.body.session.status).toBe("COMPLETED");
-      expect(complete.body.pointsAwarded).toBe(80);
+      expect(complete.body.verifiedScore).toBe(100);
+      expect(complete.body.pointsAwarded).toBe(100);
     });
 
     test("should handle quiz with all difficulties", async () => {
       for (const diff of ["Easy", "Medium", "Hard"]) {
-        const gen = await request(app).post("/api/learn/generate-quiz").set("Authorization", `Bearer ${seekerToken}`).send({ topic: "Graphs", difficulty: diff, count: 3 });
-        expect(gen.status).toBe(200);
-        validateQuiz(gen.body.quiz, 3, "Graphs");
-        const start = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Graphs", durationMinutes: 10, quizData: gen.body.quiz });
+        const start = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Graphs", durationMinutes: 10, difficulty: diff });
         expect(start.status).toBe(201);
-        const score = diff === "Easy" ? 90 : diff === "Medium" ? 70 : 50;
-        const complete = await request(app).post(`/api/learn/session/${start.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score });
+        const answers = start.body.quizData.map(() => 0);
+        const complete = await request(app).post(`/api/learn/session/${start.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers });
         expect(complete.status).toBe(200);
       }
     });
@@ -425,36 +422,34 @@ describe("Brutal Compete & Quiz — 1Lakh Scale", () => {
     });
 
     test("should handle concurrent quiz sessions 10 (1Lakh scale)", async () => {
-      const genPromises = Array.from({ length: 10 }, () => 
-        request(app).post("/api/learn/generate-quiz").set("Authorization", `Bearer ${seekerToken}`).send({ topic: "Arrays", count: 5 })
-      );
-      const gens = await Promise.all(genPromises);
-      gens.forEach(g => {
-        expect(g.status).toBe(200);
-        validateQuiz(g.body.quiz, 5, "Arrays");
-      });
-      const startPromises = gens.map(g => 
-        request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: g.body.quiz })
+      const startPromises = Array.from({ length: 10 }, () =>
+        request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 })
       );
       const starts = await Promise.all(startPromises);
       starts.forEach(s => expect(s.status).toBe(201));
-      const completePromises = starts.map(s => 
-        request(app).post(`/api/learn/session/${s.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 75 })
-      );
+      const completePromises = starts.map(s => {
+        const answers = s.body.quizData.map(() => 0);
+        return request(app).post(`/api/learn/session/${s.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers });
+      });
       const completes = await Promise.all(completePromises);
       completes.forEach(c => expect(c.status).toBe(200));
     });
 
-    test("should handle quiz with score 0 and 100 boundaries", async () => {
-      const gen = await request(app).post("/api/learn/generate-quiz").set("Authorization", `Bearer ${seekerToken}`).send({ topic: "Arrays", count: 3 });
-      const start1 = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: gen.body.quiz });
-      const c1 = await request(app).post(`/api/learn/session/${start1.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 0 });
+    test("should handle quiz score boundaries: all-wrong 0 vs all-correct 100 (server-verified)", async () => {
+      // All WRONG answers => 0 points
+      const start1 = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
+      const wrongAnswers = start1.body.quizData.map(() => 3); // fallback correct is 0, so 3 is wrong
+      const c1 = await request(app).post(`/api/learn/session/${start1.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers: wrongAnswers });
       expect(c1.status).toBe(200);
+      expect(c1.body.verifiedScore).toBe(0);
       expect(c1.body.pointsAwarded).toBe(0);
 
-      const start2 = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: gen.body.quiz });
-      const c2 = await request(app).post(`/api/learn/session/${start2.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 100 });
+      // All CORRECT answers => 100 points
+      const start2 = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
+      const rightAnswers = start2.body.quizData.map(() => 0);
+      const c2 = await request(app).post(`/api/learn/session/${start2.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers: rightAnswers });
       expect(c2.status).toBe(200);
+      expect(c2.body.verifiedScore).toBe(100);
       expect(c2.body.pointsAwarded).toBe(100);
     });
   });

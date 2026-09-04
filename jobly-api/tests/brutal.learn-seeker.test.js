@@ -156,24 +156,27 @@ describe("Brutal Learn Side - Seeker", () => {
       const res = await request(app).post(`/api/learn/session/${sessionId}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({});
       expect(res.status).toBe(400);
     });
-    test("should complete QUIZ with score", async () => {
-      const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10, quizData: [] });
+    test("should complete QUIZ with server-verified score", async () => {
+      const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
       const qId = qRes.body._id;
-      const res = await request(app).post(`/api/learn/session/${qId}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 85 });
+      // Server-generated quiz; offline fallback questions have correctAnswer 0
+      const answers = (qRes.body.quizData || []).map(() => 0);
+      const res = await request(app).post(`/api/learn/session/${qId}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ answers });
       expect(res.status).toBe(200);
-      expect(res.body.session.score).toBe(85);
+      expect(res.body.session.score).toBe(100);
     });
-    test("should handle score out of range 999", async () => {
+    test("should handle score out of range 999 (client claim ignored)", async () => {
       const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
       const qId = qRes.body._id;
       const res = await request(app).post(`/api/learn/session/${qId}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: 999 });
+      // Client-claimed score without answers is rejected (anti-cheat)
+      expect(res.status).toBe(400);
       expect(res.status).not.toBe(500);
-      // Should be 400 or 200 with cap? Check validation max 100
-      expect([200,400,500]).toContain(res.status);
     });
-    test("should handle negative score", async () => {
+    test("should handle negative score (client claim ignored)", async () => {
       const qRes = await request(app).post("/api/learn/session").set("Authorization", `Bearer ${seekerToken}`).send({ type: "QUIZ", topic: "Arrays", durationMinutes: 10 });
       const res = await request(app).post(`/api/learn/session/${qRes.body._id}/complete`).set("Authorization", `Bearer ${seekerToken}`).send({ score: -10 });
+      expect(res.status).toBe(400);
       expect(res.status).not.toBe(500);
     });
     test("should handle concurrent complete", async () => {

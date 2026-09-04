@@ -1,4 +1,14 @@
 require("dotenv").config();
+// Re-neutralize external services AFTER dotenv (dotenv loads the dev .env
+// which contains real Gemini/terminal-runner/S3 credentials — tests must
+// remain hermetic and offline-safe).
+delete process.env.GEMINI_API_KEY;
+delete process.env.TERMINAL_RUNNER_URL;
+process.env.S3_ENDPOINT = process.env.S3_ENDPOINT || "http://127.0.0.1:1";
+// Deterministic LiveKit test keypair (never real credentials)
+process.env.LIVEKIT_API_KEY = "testkey";
+process.env.LIVEKIT_API_SECRET = "test-secret-value-1";
+delete process.env.LIVEKIT_PUBLIC_URL;
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const mongoose = require("mongoose");
 
