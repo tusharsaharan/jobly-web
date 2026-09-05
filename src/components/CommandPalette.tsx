@@ -133,11 +133,12 @@ export function CommandPalette() {
                       className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm text-ink aria-selected:bg-mint-soft aria-selected:text-ink"
                     >
                       <item.icon className="h-4 w-4 text-ink/55" aria-hidden />
-                      <span className="flex-1">{item.label</span>
+                      <span className="flex-1">{item.label}</span>
                       <span className="font-mono text-[10px] text-ink/35">
                         Go
                      </span>
                    </Command.Item>
+                   
                   ))}
              </Command.Group>
             ))}

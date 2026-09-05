@@ -24,18 +24,21 @@ import {
   Beaker,
   ArrowLeft,
   VideoOff as VideoOffIcon,
+  Video,
+  GitBranch,
+  AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { apiCall } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
-import { ExecutionPanel } from "./ExecutionPanel";
-import { CheckpointTimeline } from "./CheckpointTimeline";
-import { TerminalPanel } from "../terminal/TerminalPanel";
-import { TestCasePanel } from "./TestCasePanel";
 import { ProblemStatement } from "./ProblemStatement";
 import { FileExplorer, WorkspaceFile, getFileIcon } from "./FileExplorer";
 import { ActivityBar, ActivityType } from "./ActivityBar";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { TitleBar } from "./TitleBar";
+import { BottomPanel, BottomPanelTab } from "./BottomPanel";
+import { CheckpointItem } from "./CheckpointTimeline";
+// ResizablePanelGroup removed — using custom CSS drag split
 
 interface MonacoWorkspaceProps {
   roomKey: string;
@@ -192,8 +195,14 @@ export function MonacoWorkspace({
   const { user, token } = useAuth();
   const [language, setLanguage] = useState<string>(initialLanguage);
   const [customInput, setCustomInput] = useState<string>("");
-  const [rightPanelTab, setRightPanelTab] = useState<"OUTPUT" | "TESTS" | "TERMINAL" | "CHECKPOINTS" | "AI">("OUTPUT");
-  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const [bottomPanelTab, setBottomPanelTab] = useState<BottomPanelTab>("OUTPUT");
+  const [isBottomPanelOpen, setIsBottomPanelOpen] = useState<boolean>(true);
+  const [isBottomPanelMaximized, setIsBottomPanelMaximized] = useState<boolean>(false);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(true);
+  const [bottomPanelHeight, setBottomPanelHeight] = useState<number>(220);
+  const isDraggingDividerRef = useRef<boolean>(false);
+  const dragStartYRef = useRef<number>(0);
+  const dragStartHeightRef = useRef<number>(220);
   const [executing, setExecuting] = useState<boolean>(false);
   const [synced, setSynced] = useState<boolean>(false);
   const [activePeers, setActivePeers] = useState<Array<{ name: string; color: string }>>([]);
@@ -742,8 +751,8 @@ export function MonacoWorkspace({
 
     setExecuting(true);
     setExecutionOutput(null);
-    setIsRightPanelCollapsed(false);
-    setRightPanelTab("OUTPUT");
+    setIsBottomPanelOpen(true);
+    setBottomPanelTab("OUTPUT");
 
     try {
       const res = await apiCall<{ execution: any }>(
@@ -836,9 +845,9 @@ export function MonacoWorkspace({
     }
   };
 
-  const openRightPanelTab = (tab: "OUTPUT" | "TESTS" | "TERMINAL" | "CHECKPOINTS" | "AI") => {
-    setRightPanelTab(tab);
-    setIsRightPanelCollapsed(false);
+  const openBottomPanelTab = (tab: BottomPanelTab) => {
+    setBottomPanelTab(tab);
+    setIsBottomPanelOpen(true);
   };
 
   // Expose restore handler to parent via ref
@@ -865,105 +874,71 @@ export function MonacoWorkspace({
       }
 
       setExecutionOutput(remoteExecution);
-      setIsRightPanelCollapsed(false);
-      setRightPanelTab("OUTPUT");
+      setIsBottomPanelOpen(true);
+      setBottomPanelTab("OUTPUT");
     }
   }, [remoteExecution?.executionId]);
 
-  // Activity bar click toggles explorer visibility
+  // Activity bar click toggles activity panel visibility
   const handleActivityChange = (activity: ActivityType) => {
-    if (activity === "EXPLORER") {
-      if (activeActivity === "EXPLORER" && isExplorerOpen) {
-        setIsExplorerOpen(false);
-      } else {
-        setIsExplorerOpen(true);
-      }
+    if (activeActivity === activity) {
+      setIsExplorerOpen((prev) => !prev);
+    } else {
+      setActiveActivity(activity);
+      setIsExplorerOpen(true);
     }
-    setActiveActivity(activity);
   };
+
+  // Global keyboard shortcuts (Ctrl+J/Ctrl+` for bottom panel, Ctrl+B for explorer)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "j" || e.key === "`")) {
+        e.preventDefault();
+        setIsBottomPanelOpen((prev) => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsExplorerOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalShortcuts);
+    return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+  }, []);
 
   return (
     <div
       ref={containerRef}
-      className="flex h-full flex-col overflow-hidden"
+      className="flex h-full flex-col overflow-hidden select-none"
       style={{ background: "var(--iv-bg)", color: "var(--iv-text)", fontFamily: "var(--font-iv-ui)" }}
     >
-      {/* Top Header & Main Toolbar */}
-      <div
-        className="flex items-center justify-between border-b px-3 py-1.5 flex-shrink-0 select-none"
-        style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--iv-text-muted)" }}>
-            <span className={`h-2 w-2 rounded-full ${synced ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : "bg-amber-400 animate-pulse"}`} />
-            <span className="hidden sm:inline">{synced ? "Synced" : "Connecting..."}</span>
-          </div>
+      {/* VS Code Title Bar */}
+      <TitleBar
+        roomKey={roomKey}
+        activeFileName={activeFilePath.split("/").pop() || "solution"}
+        language={language}
+        allowedLanguages={allowedLanguages}
+        onLanguageChange={handleLanguageChange}
+        synced={synced}
+        activePeersCount={activePeers.length}
+        executing={executing}
+        readOnly={readOnly}
+        onRunCode={handleRunCode}
+        onFormatDocument={handleFormatDocument}
+        onResetCode={handleReset}
+        onLeaveEditor={onLeaveEditor}
+        isBottomPanelOpen={isBottomPanelOpen}
+        onToggleBottomPanel={() => setIsBottomPanelOpen((prev) => !prev)}
+        isRightSidebarOpen={isRightSidebarOpen}
+        onToggleRightSidebar={() => setIsRightSidebarOpen((prev) => !prev)}
+        hasRightSidebarContent={!!(videoElement || (showAiTab && aiPanel))}
+      />
 
-          {activePeers.length > 0 && (
-            <div className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]" style={{ background: "var(--iv-accent-surface)", color: "var(--iv-accent-glow)" }}>
-              <Users className="h-2.5 w-2.5" />
-              <span>{activePeers.length} peer(s)</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleFormatDocument}
-            disabled={readOnly || executing}
-            title="Format document"
-            className="iv-btn iv-btn-ghost text-[11px] disabled:opacity-45"
-          >
-            <Wand2 className="h-3 w-3" />
-            Format
-          </button>
-
-          <select
-            value={language}
-            onChange={(e) => handleLanguageChange(e.target.value)}
-            disabled={readOnly || executing}
-            aria-label="Active language"
-            className="rounded-md border py-1 pl-2.5 pr-6 text-[12px] font-semibold text-white outline-none transition"
-            style={{
-              borderColor: "var(--iv-border)",
-              background: "var(--iv-surface-elevated)",
-              fontFamily: "var(--font-iv-ui)",
-            }}
-          >
-            {allowedLanguages.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang.toUpperCase()}
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={handleReset}
-            disabled={readOnly || executing}
-            title="Reset code template"
-            className="iv-btn iv-btn-ghost p-1 disabled:opacity-45"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            onClick={handleRunCode}
-            disabled={executing || readOnly}
-            className="iv-btn iv-btn-primary text-[12px] disabled:opacity-50"
-          >
-            <Play className="h-3 w-3 fill-current" />
-            Run Code
-          </button>
-        </div>
-      </div>
-
-      {/* Main workspace: Activity Bar + Explorer + Editor + Right Panel */}
+      {/* Main Workspace Body: Activity Bar + Sidebars + Editor & Bottom Panel Split */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Activity Bar */}
+        {/* VS Code Left Activity Bar */}
         <ActivityBar active={activeActivity} onChange={handleActivityChange} />
 
-        {/* File Explorer */}
+        {/* Primary Left Sidebars (Explorer, Problem Statement, Search, Settings) */}
         {isExplorerOpen && activeActivity === "EXPLORER" && (
           <FileExplorer
             files={files}
@@ -975,296 +950,411 @@ export function MonacoWorkspace({
           />
         )}
 
-        {/* Editor + Right Panel Horizontal Split */}
-        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          {/* Editor Area (~50%) */}
-          <ResizablePanel defaultSize={isRightPanelCollapsed ? 100 : 65} minSize={35} className="flex flex-col min-h-0 min-w-0">
-            <div className="flex-1 flex flex-col overflow-hidden min-h-0" style={{ background: "var(--iv-surface-elevated)" }}>
-              {/* Open Tabs Bar */}
-              <div
-                className="flex items-center h-8 overflow-x-auto px-1 gap-0.5 flex-shrink-0 select-none border-b"
-                style={{
-                  background: "var(--iv-surface)",
-                  borderColor: "var(--iv-border-subtle)",
-                  scrollbarWidth: "none",
-                }}
-              >
-                {openTabs.map((tabPath) => {
-                  const filename = tabPath.split("/").pop() || "untitled";
-                  const isActive = activeFilePath === tabPath;
-                  return (
-                    <div
-                      key={tabPath}
-                      onClick={() => {
-                        const targetFile = files.find((f) => f.path === tabPath) || {
-                          type: "file",
-                          path: tabPath,
-                          name: filename,
-                        };
-                        handleSelectFile(targetFile as WorkspaceFile);
-                      }}
-                      className="group flex items-center gap-1.5 px-3 py-1 text-[11px] rounded-t cursor-pointer border-t-2 transition flex-shrink-0"
-                      style={{
-                        fontFamily: "var(--font-iv-ui)",
-                        ...(isActive
-                          ? { background: "var(--iv-surface-elevated)", color: "#fff", borderColor: "var(--iv-accent)" }
-                          : { background: "var(--iv-surface)", color: "var(--iv-text-muted)", borderColor: "transparent" }),
-                      }}
-                    >
-                      {getFileIcon(filename)}
-                      <span className="truncate max-w-[120px]">{filename}</span>
-                      {openTabs.length > 1 && (
-                        <button
-                          onClick={(e) => handleCloseTab(tabPath, e)}
-                          title="Close Tab"
-                          className="p-0.5 rounded transition"
-                          style={{ color: "var(--iv-text-dim)" }}
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+        {isExplorerOpen && activeActivity === "PROBLEM" && (
+          <div
+            className="w-80 flex flex-col h-full overflow-y-auto iv-scroll border-r flex-shrink-0"
+            style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
+          >
+            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70 flex-shrink-0" style={{ borderColor: "var(--iv-border)" }}>
+              Problem Statement
+            </div>
+            <div className="p-3">
+              <ProblemStatement
+                title={activeProblem?.title}
+                description={activeProblem?.description}
+                examples={activeProblem?.examples as any}
+                difficulty={activeProblem?.difficulty}
+              />
+            </div>
+          </div>
+        )}
 
-              {/* Breadcrumb */}
-              <div
-                className="h-5 flex items-center px-3 border-b text-[11px] flex-shrink-0 gap-1"
-                style={{
-                  fontFamily: "var(--font-iv-code)",
-                  background: "var(--iv-surface-alt)",
-                  borderColor: "var(--iv-border-subtle)",
-                  color: "var(--iv-text-dim)",
-                }}
-              >
-                <span style={{ color: "var(--iv-text-muted)" }}>src</span>
-                <span style={{ color: "var(--iv-text-dim)" }}>/</span>
-                <span style={{ color: "var(--iv-text)" }}>{activeFilePath.split("/").pop()}</span>
-              </div>
+        {isExplorerOpen && activeActivity === "SEARCH" && (
+          <div
+            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none"
+            style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
+          >
+            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70" style={{ borderColor: "var(--iv-border)" }}>
+              Search Workspace
+            </div>
+            <div className="p-3 flex flex-col gap-2">
+              <input
+                type="text"
+                placeholder="Search text in files..."
+                className="w-full h-7 rounded border px-2 text-xs bg-black/30 text-white placeholder:text-white/30 outline-none focus:border-[var(--iv-accent)]"
+                style={{ borderColor: "var(--iv-border)" }}
+              />
+              <p className="text-[11px] text-white/40 italic">
+                Press Enter to search within current files.
+              </p>
+            </div>
+          </div>
+        )}
 
-              {/* Monaco Editor */}
-              <div className="flex-1 relative overflow-hidden min-h-0">
-                <Editor
-                  height="100%"
-                  language={getMonacoLanguage(language)}
-                  theme="vs-dark"
-                  onMount={handleEditorMount}
-                  options={{
-                    readOnly,
-                    fontSize: 14,
-                    fontFamily: "Fira Code, Cascadia Code, JetBrains Mono, Menlo, monospace",
-                    fontLigatures: true,
-                    lineHeight: 22,
-                    minimap: { enabled: true, scale: 1, showSlider: "mouseover" },
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    tabSize: 2,
-                    cursorBlinking: "smooth",
-                    smoothScrolling: true,
-                    padding: { top: 14, bottom: 14 },
-                    wordWrap: "on",
-                    wrappingStrategy: "advanced",
-                    bracketPairColorization: { enabled: true },
-                    guides: { bracketPairs: true, indentation: true, bracketPairsHorizontal: true },
-                    suggest: { showKeywords: true, showSnippets: true },
-                    quickSuggestions: { other: true, comments: false, strings: false },
-                    parameterHints: { enabled: true },
-                    hover: { enabled: true },
-                    lightbulb: { enabled: true },
-                    formatOnType: true,
-                    formatOnPaste: true,
-                    autoClosingBrackets: "always",
-                    autoClosingQuotes: "always",
-                    autoSurround: "languageDefined",
-                    folding: true,
-                    foldingHighlight: true,
-                    unfoldOnClickAfterEndOfLine: true,
-                    renderLineHighlight: "all",
-                    renderWhitespace: "selection",
-                    rulers: [80, 100],
-                    stickyScroll: { enabled: true },
-                  }}
-                />
+        {isExplorerOpen && activeActivity === "SETTINGS" && (
+          <div
+            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none"
+            style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
+          >
+            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70" style={{ borderColor: "var(--iv-border)" }}>
+              IDE Preferences
+            </div>
+            <div className="p-4 space-y-4 text-xs text-white/80">
+              <div>
+                <label className="block text-[11px] text-white/50 mb-1">Editor Font Size</label>
+                <div className="px-2 py-1 rounded bg-black/20 border border-white/10">14px (Fira Code)</div>
+              </div>
+              <div>
+                <label className="block text-[11px] text-white/50 mb-1">Tab Size</label>
+                <div className="px-2 py-1 rounded bg-black/20 border border-white/10">2 spaces</div>
+              </div>
+              <div>
+                <label className="block text-[11px] text-white/50 mb-1">Theme</label>
+                <div className="px-2 py-1 rounded bg-black/20 border border-white/10">VS Dark Modern</div>
               </div>
             </div>
-          </ResizablePanel>
+          </div>
+        )}
 
-          {/* Resizable Handle */}
-          {!isRightPanelCollapsed && (
-            <ResizableHandle
-              withHandle
-              className="transition-colors w-px data-[panel-group-direction=horizontal]:w-px"
-              style={{ background: "var(--iv-border)" }}
-            />
+        {/* Main IDE Workspace: Editor (top) + Bottom Panel (down) — pure flex-col, no ResizablePanelGroup */}
+        <div
+          className="flex-1 flex flex-col min-w-0 relative"
+          style={{ minHeight: 0, overflow: "hidden" }}
+          onMouseMove={(e) => {
+            if (!isDraggingDividerRef.current) return;
+            const delta = dragStartYRef.current - e.clientY;
+            const newH = Math.max(80, Math.min(dragStartHeightRef.current + delta, window.innerHeight - 200));
+            setBottomPanelHeight(newH);
+          }}
+          onMouseUp={() => { isDraggingDividerRef.current = false; }}
+          onMouseLeave={() => { isDraggingDividerRef.current = false; }}
+        >
+          {/* Editor Area (Tabs + Breadcrumbs + Monaco) — takes all remaining height */}
+          <div
+            className="flex flex-col min-w-0"
+            style={{
+              flex: "1 1 0%",
+              minHeight: 0,
+              overflow: "hidden",
+              background: "var(--iv-surface-elevated)",
+            }}
+          >
+            {/* Open Tabs Bar */}
+            <div
+              className="flex items-center h-8 overflow-x-auto px-1 gap-0.5 flex-shrink-0 select-none border-b"
+              style={{
+                background: "var(--iv-surface)",
+                borderColor: "var(--iv-border-subtle)",
+                scrollbarWidth: "none",
+              }}
+            >
+              {openTabs.map((tabPath) => {
+                const filename = tabPath.split("/").pop() || "untitled";
+                const isActive = activeFilePath === tabPath;
+                return (
+                  <div
+                    key={tabPath}
+                    onClick={() => {
+                      const targetFile = files.find((f) => f.path === tabPath) || {
+                        type: "file",
+                        path: tabPath,
+                        name: filename,
+                      };
+                      handleSelectFile(targetFile as WorkspaceFile);
+                    }}
+                    className="group flex items-center gap-1.5 px-3 py-1 text-[11px] rounded-t cursor-pointer border-t-2 transition flex-shrink-0"
+                    style={{
+                      fontFamily: "var(--font-iv-ui)",
+                      ...(isActive
+                        ? { background: "var(--iv-surface-elevated)", color: "#fff", borderColor: "var(--iv-accent)" }
+                        : { background: "var(--iv-surface)", color: "var(--iv-text-muted)", borderColor: "transparent" }),
+                    }}
+                  >
+                    {getFileIcon(filename)}
+                    <span className="truncate max-w-[120px]">{filename}</span>
+                    {openTabs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleCloseTab(tabPath, e)}
+                        title="Close Tab"
+                        className="p-0.5 rounded transition hover:text-white"
+                        style={{ color: "var(--iv-text-dim)" }}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Breadcrumb */}
+            <div
+              className="h-5 flex items-center px-3 border-b text-[11px] flex-shrink-0 gap-1"
+              style={{
+                fontFamily: "var(--font-iv-code)",
+                background: "var(--iv-surface-alt)",
+                borderColor: "var(--iv-border-subtle)",
+                color: "var(--iv-text-dim)",
+              }}
+            >
+              <span style={{ color: "var(--iv-text-muted)" }}>src</span>
+              <span style={{ color: "var(--iv-text-dim)" }}>/</span>
+              <span style={{ color: "var(--iv-text)" }}>{activeFilePath.split("/").pop()}</span>
+            </div>
+
+            {/* Monaco Editor */}
+            <div style={{ flex: "1 1 0%", position: "relative", overflow: "hidden", minHeight: 0 }}>
+              <Editor
+                height="100%"
+                language={getMonacoLanguage(language)}
+                theme="vs-dark"
+                onMount={handleEditorMount}
+                options={{
+                  readOnly,
+                  fontSize: 14,
+                  fontFamily: "Fira Code, Cascadia Code, JetBrains Mono, Menlo, monospace",
+                  fontLigatures: true,
+                  lineHeight: 22,
+                  minimap: { enabled: true, scale: 1, showSlider: "mouseover" },
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  tabSize: 2,
+                  cursorBlinking: "smooth",
+                  smoothScrolling: true,
+                  padding: { top: 14, bottom: 14 },
+                  wordWrap: "on",
+                  wrappingStrategy: "advanced",
+                  bracketPairColorization: { enabled: true },
+                  guides: { bracketPairs: true, indentation: true, bracketPairsHorizontal: true },
+                  suggest: { showKeywords: true, showSnippets: true },
+                  quickSuggestions: { other: true, comments: false, strings: false },
+                  parameterHints: { enabled: true },
+                  hover: { enabled: true },
+                  lightbulb: { enabled: true },
+                  formatOnType: true,
+                  formatOnPaste: true,
+                  autoClosingBrackets: "always",
+                  autoClosingQuotes: "always",
+                  autoSurround: "languageDefined",
+                  folding: true,
+                  foldingHighlight: true,
+                  unfoldOnClickAfterEndOfLine: true,
+                  renderLineHighlight: "all",
+                  renderWhitespace: "selection",
+                  rulers: [80, 100],
+                  stickyScroll: { enabled: true },
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Drag Divider between Editor and Bottom Panel */}
+          {isBottomPanelOpen && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              className="flex-shrink-0 flex items-center justify-center cursor-row-resize group"
+              style={{
+                height: 5,
+                background: "var(--iv-border)",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--iv-accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--iv-border)"; }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                isDraggingDividerRef.current = true;
+                dragStartYRef.current = e.clientY;
+                dragStartHeightRef.current = isBottomPanelMaximized ? window.innerHeight * 0.75 : bottomPanelHeight;
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 3,
+                  borderRadius: 2,
+                  background: "rgba(255,255,255,0.2)",
+                }}
+              />
+            </div>
           )}
 
-          {/* Right Panel (~25%) — Video + Leave/Hide + Tabs */}
-          {!isRightPanelCollapsed && (
-            <ResizablePanel defaultSize={35} minSize={20} maxSize={50} className="flex flex-col min-h-0 min-w-0" style={{ background: "var(--iv-surface)" }}>
-              {/* Compact Video Preview + Actions */}
-              <div className="flex-shrink-0 border-b" style={{ borderColor: "var(--iv-border)" }}>
-                {/* Video preview */}
-                {videoElement && !isVideoHidden && (
-                  <div className="iv-video-compact m-2" style={{ height: 120 }}>
-                    {videoElement}
-                  </div>
-                )}
+          {/* VS Code Bottom Panel — fixed pixel height, docked at bottom */}
+          {isBottomPanelOpen && (
+            <div
+              className="flex-shrink-0 flex flex-col"
+              style={{
+                height: isBottomPanelMaximized ? "75%" : bottomPanelHeight,
+                minHeight: 80,
+                overflow: "hidden",
+              }}
+            >
+              <BottomPanel
+                activeTab={bottomPanelTab}
+                onTabChange={setBottomPanelTab}
+                onClose={() => setIsBottomPanelOpen(false)}
+                isMaximized={isBottomPanelMaximized}
+                onToggleMaximize={() => setIsBottomPanelMaximized((prev) => !prev)}
+                executing={executing}
+                executionOutput={executionOutput}
+                language={language}
+                customInput={customInput}
+                setCustomInput={setCustomInput}
+                onRunCode={handleRunCode}
+                readOnly={readOnly}
+                sessionId={sessionId}
+                roomKey={roomKey}
+                token={token ?? undefined}
+                getCode={() => editorRef.current?.getValue() || ""}
+                activeProblem={activeProblem || undefined}
+                onRestoreComplete={handleRestoreComplete}
+                showAiTab={showAiTab}
+                aiPanel={aiPanel}
+              />
+            </div>
+          )}
 
-                {/* Leave Editor + Hide Video buttons */}
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  {onLeaveEditor && (
-                    <button
-                      type="button"
-                      onClick={onLeaveEditor}
-                      className="iv-btn iv-btn-ghost text-[11px] flex-1 justify-center border"
-                      style={{ borderColor: "var(--iv-border)" }}
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      Leave Editor
-                    </button>
-                  )}
+          {/* Floating Picture-in-Picture Video Call Window on the right */}
+          {videoElement && !isVideoHidden && isRightSidebarOpen && (
+            <div
+              className="absolute bottom-4 right-4 z-40 w-72 rounded-xl border border-white/15 bg-black/90 shadow-2xl overflow-hidden iv-panel-slide-up select-none"
+              style={{ backdropFilter: "blur(16px)" }}
+            >
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10 bg-white/5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/90">
+                  <Video className="h-3.5 w-3.5 text-[var(--iv-accent)]" />
+                  <span>Live Call</span>
+                </div>
+                <div className="flex items-center gap-1">
                   {onToggleVideo && (
                     <button
                       type="button"
                       onClick={onToggleVideo}
-                      className="iv-btn iv-btn-ghost text-[11px]"
+                      className="p-1 text-white/40 hover:text-white transition rounded"
+                      title="Turn video feed on/off"
                     >
                       <VideoOffIcon className="h-3 w-3" />
-                      {isVideoHidden ? "Show" : "Hide"}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setIsRightSidebarOpen(false)}
+                    className="p-1 text-white/40 hover:text-white transition rounded"
+                    title="Minimize floating video"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
-
-              {/* Right Panel Tabs */}
-              <div
-                className="flex items-center gap-0.5 border-b px-1.5 py-0.5 flex-shrink-0 select-none overflow-x-auto"
-                style={{
-                  borderColor: "var(--iv-border)",
-                  background: "var(--iv-surface)",
-                  scrollbarWidth: "none",
-                }}
-              >
-                {(["OUTPUT", "TESTS", "TERMINAL", "CHECKPOINTS", ...(showAiTab ? ["AI"] : [])] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setRightPanelTab(tab as any)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide border-b-2 whitespace-nowrap transition"
-                    style={{
-                      fontFamily: "var(--font-iv-ui)",
-                      borderColor: rightPanelTab === tab ? "var(--iv-accent)" : "transparent",
-                      color: rightPanelTab === tab ? "#fff" : "var(--iv-text-dim)",
-                      background: rightPanelTab === tab ? "var(--iv-surface-elevated)" : "transparent",
-                    }}
-                  >
-                    {tab === "OUTPUT" && <Play className="h-3 w-3" />}
-                    {tab === "TESTS" && <Beaker className="h-3 w-3" />}
-                    {tab === "TERMINAL" && <TermIcon className="h-3 w-3" />}
-                    {tab === "CHECKPOINTS" && <History className="h-3 w-3" />}
-                    {tab === "AI" && <Braces className="h-3 w-3" />}
-                    {tab === "TESTS" ? "Tests" : tab === "CHECKPOINTS" ? "Chkpt" : tab.charAt(0) + tab.slice(1).toLowerCase()}
-                  </button>
-                ))}
+              <div className="p-2">
+                <div className="iv-video-compact rounded-lg overflow-hidden" style={{ height: 140 }}>
+                  {videoElement}
+                </div>
               </div>
-
-              {/* Tab Content */}
-              <div className="flex-1 min-h-0 overflow-hidden" style={{ background: "var(--iv-surface-elevated)" }}>
-                {rightPanelTab === "OUTPUT" ? (
-                  <div className="h-full overflow-hidden">
-                    <ExecutionPanel
-                      executing={executing}
-                      output={executionOutput}
-                      language={language}
-                      customInput={customInput}
-                      setCustomInput={setCustomInput}
-                      onRunCode={handleRunCode}
-                      readOnly={readOnly}
-                    />
-                  </div>
-                ) : rightPanelTab === "TESTS" ? (
-                  <div className="h-full overflow-hidden">
-                    <TestCasePanel
-                      sessionId={sessionId}
-                      language={language}
-                      getCode={() => editorRef.current?.getValue() || ""}
-                      problemTestCases={activeProblem?.testCases}
-                      problemExamples={activeProblem?.examples}
-                    />
-                  </div>
-                ) : rightPanelTab === "TERMINAL" ? (
-                  <div className="h-full overflow-hidden">
-                    <TerminalPanel sessionId={sessionId} roomKey={roomKey} token={token ?? undefined} readOnly={readOnly} />
-                  </div>
-                ) : rightPanelTab === "CHECKPOINTS" ? (
-                  <div className="h-full overflow-hidden">
-                    <CheckpointTimeline sessionId={sessionId} token={token ?? undefined} onRestoreComplete={handleRestoreComplete} readOnly={readOnly} />
-                  </div>
-                ) : rightPanelTab === "AI" && aiPanel ? (
-                  <div className="h-full overflow-y-auto iv-scroll p-2">
-                    {aiPanel}
-                  </div>
-                ) : null}
-              </div>
-            </ResizablePanel>
+            </div>
           )}
-        </ResizablePanelGroup>
-      </div>
 
-      {/* Status Bar */}
-      <div
-        className="flex h-6 items-center justify-between border-t px-3 text-[10px] flex-shrink-0"
-        style={{
-          borderColor: "var(--iv-border)",
-          background: "var(--iv-surface)",
-          fontFamily: "var(--font-iv-ui)",
-          color: "var(--iv-text-muted)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5" style={{ color: "var(--iv-text)" }}>
-            <Braces className="h-3 w-3" style={{ color: "var(--iv-accent)" }} />
-            {activeFilePath.split("/").pop()} · {language.toUpperCase()}
-          </span>
-
-          <button onClick={() => openRightPanelTab("OUTPUT")} className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
-            Output
-          </button>
-
-          <button onClick={() => openRightPanelTab("TERMINAL")} className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
-            Terminal
-          </button>
-
-          <button onClick={() => openRightPanelTab("CHECKPOINTS")} className="flex items-center gap-1 transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
-            <History className="h-2.5 w-2.5" style={{ color: "var(--iv-accent)" }} />
-            Checkpoints
-          </button>
-
-          <button onClick={() => openRightPanelTab("TESTS")} className="flex items-center gap-1 transition hover:text-[var(--iv-accent-glow)] cursor-pointer">
-            <Beaker className="h-2.5 w-2.5" style={{ color: "var(--iv-accent)" }} />
-            Tests
-          </button>
-
-          {isRightPanelCollapsed && (
+          {/* Minimized Floating Video Badge */}
+          {videoElement && !isVideoHidden && !isRightSidebarOpen && (
             <button
-              onClick={() => setIsRightPanelCollapsed(false)}
-              className="transition hover:text-[var(--iv-accent-glow)] cursor-pointer"
+              type="button"
+              onClick={() => setIsRightSidebarOpen(true)}
+              className="absolute bottom-4 right-4 z-40 flex items-center gap-2 rounded-full border border-white/15 bg-black/85 px-3 py-1.5 text-xs text-white/90 shadow-lg hover:border-[var(--iv-accent)] transition-all cursor-pointer select-none"
+              title="Expand Live Video Call"
             >
-              Show Panel
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <Video className="h-3.5 w-3.5 text-[var(--iv-accent)]" />
+              <span className="font-semibold text-[11px]">Show Video</span>
             </button>
           )}
         </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          <span style={{ color: lspStatus === "ready" ? "#34d399" : "#fbbf24" }}>
-            LSP {lspStatus.toUpperCase()}
+      {/* VS Code Status Bar */}
+      <footer
+        className="iv-status-bar"
+        role="contentinfo"
+      >
+        <div className="flex items-center gap-2">
+          {/* Git Branch */}
+          <span className="iv-status-bar-item">
+            <GitBranch className="h-3 w-3 text-[var(--iv-accent)]" />
+            <span>main*</span>
           </span>
-          <span>
+
+          {/* Errors / Warnings */}
+          <span className="iv-status-bar-item gap-2">
+            <span className="flex items-center gap-1">
+              <AlertCircle className="h-3 w-3 text-red-400" />
+              <span>{executionOutput?.exitCode && executionOutput.exitCode !== 0 ? 1 : 0}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3 text-amber-400" />
+              <span>0</span>
+            </span>
+          </span>
+
+          {/* Quick Tab Switchers in Status Bar */}
+          <button
+            type="button"
+            onClick={() => openBottomPanelTab("OUTPUT")}
+            className="iv-status-bar-item interactive hidden sm:inline-flex"
+          >
+            Output
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openBottomPanelTab("TERMINAL")}
+            className="iv-status-bar-item interactive hidden sm:inline-flex"
+          >
+            Terminal
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openBottomPanelTab("TESTS")}
+            className="iv-status-bar-item interactive hidden md:inline-flex"
+          >
+            Tests
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openBottomPanelTab("CHECKPOINTS")}
+            className="iv-status-bar-item interactive hidden lg:inline-flex"
+          >
+            Checkpoints
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* LSP Indicator */}
+          <span className="iv-status-bar-item hidden md:inline-flex">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                lspStatus === "ready" ? "bg-emerald-400" : "bg-amber-400"
+              }`}
+            />
+            <span>LSP {lspStatus.toUpperCase()}</span>
+          </span>
+
+          {/* Line & Column */}
+          <span className="iv-status-bar-item interactive">
             Ln {editorStats.lines}, Col {editorStats.characters}
           </span>
+
+          <span className="iv-status-bar-item hidden sm:inline-flex">Spaces: 2</span>
+          <span className="iv-status-bar-item hidden sm:inline-flex">UTF-8</span>
+
+          {/* Active Language */}
+          <span className="iv-status-bar-item interactive font-medium text-white/90">
+            <Braces className="h-3 w-3 text-[var(--iv-accent)]" />
+            {language.toUpperCase()}
+          </span>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

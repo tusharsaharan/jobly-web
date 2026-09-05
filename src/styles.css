@@ -5,6 +5,7 @@
 /* ─── Self-hosted fonts (no Google Fonts blocking request) ─── */
 @import "@fontsource-variable/fredoka/wght.css";
 @import "@fontsource-variable/nunito/wght.css";
+@import "@fontsource-variable/inter/wght.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 
@@ -71,6 +72,31 @@
   --font-sans: "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
+  /* Interview suite fonts — crisp professional chrome (Zoom-like) */
+  --font-iv-ui: "Inter Variable", "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-iv-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Interview suite (immersive dark) — bg-iv-*, text-iv-*, border-iv-* utilities */
+  --color-iv-bg: var(--iv-bg);
+  --color-iv-surface: var(--iv-surface);
+  --color-iv-surface-alt: var(--iv-surface-alt);
+  --color-iv-elevated: var(--iv-surface-elevated);
+  --color-iv-line: var(--iv-border);
+  --color-iv-text: var(--iv-text);
+  --color-iv-muted: var(--iv-text-muted);
+  --color-iv-dim: var(--iv-text-dim);
+  --color-iv-accent: var(--iv-accent);
+  --color-iv-accent-strong: var(--iv-accent-strong);
+  --color-iv-accent-glow: var(--iv-accent-glow);
+  --color-iv-success: var(--iv-success);
+  --color-iv-danger: var(--iv-danger);
+  --color-iv-danger-strong: var(--iv-danger-strong);
+  --color-iv-danger-text: var(--iv-danger-text);
+  --color-iv-warning: var(--iv-warning);
+  --color-iv-warning-text: var(--iv-warning-text);
+  --color-iv-info: var(--iv-info);
+  --color-iv-info-text: var(--iv-info-text);
+
   /* Shadow scale */
   --shadow-xs: 0 1px 2px rgb(47 48 45 / 0.06);
   --shadow-soft: 0 22px 46px -30px rgb(47 48 45 / 0.24), 0 3px 8px rgb(47 48 45 / 0.05);
@@ -85,6 +111,35 @@
 :root {
   /* Radii */
   --radius: 0.75rem;
+
+  /* Interview suite — dark "focus mode" IDE chrome.
+     Single source of truth for the immersive interview room,
+     replay, feedback, evaluation and all interview components. */
+  --iv-bg: #0a0a0a;
+  --iv-surface: #141414;
+  --iv-surface-alt: #181818;
+  --iv-surface-elevated: #252526;
+  --iv-border: #2a2a2a;
+  --iv-border-subtle: rgb(255 255 255 / 0.06);
+  --iv-text: #f2f4f3;
+  --iv-text-muted: rgb(242 244 243 / 0.68);
+  --iv-text-dim: rgb(242 244 243 / 0.42);
+  --iv-accent: #2a9d7b;
+  --iv-accent-strong: #238266;
+  --iv-accent-glow: #6fe3bd;
+  --iv-accent-surface: rgb(42 157 123 / 0.14);
+  --iv-success: #34d399;
+  --iv-success-surface: rgb(52 211 153 / 0.12);
+  --iv-danger: #f87171;
+  --iv-danger-strong: #ef4444;
+  --iv-danger-surface: rgb(248 113 113 / 0.1);
+  --iv-danger-text: #fca5a5;
+  --iv-warning: #fbbf24;
+  --iv-warning-text: #fde68a;
+  --iv-warning-surface: rgb(251 191 36 / 0.1);
+  --iv-info: #60a5fa;
+  --iv-info-text: #93c5fd;
+  --iv-info-surface: rgb(96 165 250 / 0.1);
 
   /* Brand palette — white-first with mint accents */
   --mint: #b8ddd2;
@@ -477,4 +532,649 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INTERVIEW SUITE — unified component system (dark immersive chrome)
+   Standards:
+   · Icon scale: 12 / 16 / 20 / 24px, stroke 1.75
+   · Radii: rounded-md controls · rounded-xl cards/panels · pill badges
+   · Type: 10 / 11 / 12(xs) / 14(sm)px · Inter UI, JetBrains Mono code
+   · Spacing: p-2 chrome · p-3 cards · p-4 panels · p-6 empty states
+   · Headers: h-12 px-4 page · h-10 px-3 panel · 52px floating toolbar
+   · Call controls: 48px circles · 20px icons
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Scrollbars for dark panels (iv-scroll + standalone scrollbar-thin/none) */
+.iv-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+}
+.iv-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.iv-scroll::-webkit-scrollbar-track { background: transparent; }
+.iv-scroll::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.14);
+  border-radius: 999px;
+}
+.iv-scroll::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.26); }
+.iv-scroll.scrollbar-none { scrollbar-width: none; }
+.iv-scroll.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.14); border-radius: 999px; }
+
+/* Compact video tile (Picture-in-Picture style) */
+.iv-video-compact {
+  border: 1px solid var(--iv-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.iv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  font-family: var(--font-iv-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.iv-btn:active { transform: scale(0.97); }
+.iv-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.iv-btn-sm {
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  font-size: 11px;
+  gap: 0.375rem;
+}
+.iv-btn-lg {
+  height: 2.75rem;
+  padding: 0 1.25rem;
+  font-size: 13px;
+}
+.iv-btn-primary {
+  background: var(--iv-accent);
+  color: #fff;
+}
+.iv-btn-primary:hover:not(:disabled) {
+  background: var(--iv-accent-strong);
+  box-shadow: 0 6px 18px -8px rgb(42 157 123 / 0.55);
+}
+.iv-btn-ghost {
+  background: rgb(255 255 255 / 0.04);
+  color: var(--iv-text-muted);
+  border-color: var(--iv-border);
+}
+.iv-btn-ghost:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.09);
+  color: var(--iv-text);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.iv-btn-danger {
+  background: rgb(220 38 38 / 0.14);
+  color: var(--iv-danger);
+  border-color: rgb(248 113 113 / 0.28);
+}
+.iv-btn-danger:hover:not(:disabled) {
+  background: rgb(220 38 38 / 0.26);
+  color: #fecaca;
+  border-color: rgb(248 113 113 / 0.45);
+}
+
+/* Icon-only square button (40px hit area, 16px icon) */
+.iv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--iv-border);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--iv-text-muted);
+  cursor: pointer;
+  flex: none;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.iv-icon-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.09);
+  color: var(--iv-text);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.iv-icon-btn:active:not(:disabled) { transform: scale(0.94); }
+.iv-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.iv-icon-btn-sm { width: 1.75rem; height: 1.75rem; border-radius: 0.375rem; }
+
+/* ── Badges & pills ─────────────────────────────────────────── */
+.iv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-family: var(--font-iv-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.iv-badge-accent { background: var(--iv-accent-surface); color: var(--iv-accent-glow); border: 1px solid rgb(42 157 123 / 0.3); }
+.iv-badge-neutral { background: rgb(255 255 255 / 0.05); color: var(--iv-text-muted); border: 1px solid var(--iv-border); }
+.iv-badge-success { background: var(--iv-success-surface); color: var(--iv-success); border: 1px solid rgb(52 211 153 / 0.28); }
+.iv-badge-danger { background: var(--iv-danger-surface); color: var(--iv-danger); border: 1px solid rgb(248 113 113 / 0.28); }
+.iv-badge-warning { background: var(--iv-warning-surface); color: var(--iv-warning-text); border: 1px solid rgb(251 191 36 / 0.28); }
+.iv-badge-info { background: var(--iv-info-surface); color: var(--iv-info-text); border: 1px solid rgb(96 165 250 / 0.28); }
+
+/* ── Chrome (headers / bars) ─────────────────────────────────── */
+/* Page header: h-12 px-4 · Panel header: h-10 px-3 */
+.iv-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 3rem;
+  padding: 0 1rem;
+  background: var(--iv-surface);
+  border-bottom: 1px solid var(--iv-border);
+  font-family: var(--font-iv-ui);
+}
+.iv-header-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  background: var(--iv-surface);
+  border-bottom: 1px solid var(--iv-border);
+  font-family: var(--font-iv-ui);
+}
+
+/* Glass toolbar chrome */
+.iv-glass {
+  background: rgb(20 20 20 / 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--iv-border);
+}
+
+/* ── Alerts (proctor / error banners) ────────────────────────── */
+.iv-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--iv-border);
+  background: var(--iv-surface);
+  color: var(--iv-text);
+  font-family: var(--font-iv-ui);
+  font-size: 12px;
+  box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.5);
+}
+.iv-alert-danger {
+  border-color: rgb(248 113 113 / 0.35);
+  background: rgb(127 29 29 / 0.85);
+  color: #fecaca;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── Call control buttons (FloatingToolbar) ──────────────────── */
+/* 48px circle · 20px icon — Zoom control bar standard */
+.iv-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  border: 1px solid var(--iv-border);
+  background: rgb(255 255 255 / 0.05);
+  color: var(--iv-text-muted);
+  cursor: pointer;
+  flex: none;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.iv-call-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--iv-text);
+  border-color: rgb(255 255 255 / 0.18);
+}
+.iv-call-btn:active:not(:disabled) { transform: scale(0.92); }
+.iv-call-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.iv-call-btn.active {
+  background: rgb(255 255 255 / 0.12);
+  color: var(--iv-text);
+  border-color: rgb(255 255 255 / 0.2);
+}
+.iv-call-btn.off {
+  background: rgb(220 38 38 / 0.16);
+  border-color: rgb(248 113 113 / 0.3);
+  color: #fca5a5;
+}
+.iv-call-btn.end-call {
+  background: rgb(220 38 38 / 0.9);
+  border-color: transparent;
+  color: #fff;
+}
+.iv-call-btn.end-call:hover:not(:disabled) {
+  background: rgb(220 38 38 / 1);
+  color: #fff;
+}
+
+/* ── Mode switch (VIDEO / CODE / WHITEBOARD) ─────────────────── */
+.iv-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  font-family: var(--font-iv-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--iv-text-dim);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.iv-mode-btn:hover:not(.active) {
+  color: var(--iv-text-muted);
+  background: rgb(255 255 255 / 0.04);
+}
+.iv-mode-btn.active {
+  color: var(--iv-accent-glow);
+  background: var(--iv-accent-surface);
+  border-color: rgb(42 157 123 / 0.35);
+}
+
+/* ── Segmented control (stage select / filters / mode) ──────── */
+.iv-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem;
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 0.04);
+  border: 1px solid var(--iv-border);
+}
+.iv-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-iv-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--iv-text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.iv-seg-btn:hover:not(.active) { color: var(--iv-text-muted); }
+.iv-seg-btn.active {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.1);
+}
+
+/* ── Inputs & selects ────────────────────────────────────────── */
+.iv-input, .iv-select {
+  display: block;
+  width: 100%;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(0 0 0 / 0.3);
+  border: 1px solid var(--iv-border);
+  color: var(--iv-text);
+  font-family: var(--font-iv-ui);
+  font-size: 12px;
+}
+.iv-input { cursor: text; }
+.iv-select { cursor: pointer; }
+.iv-input:hover, .iv-select:hover { border-color: rgb(255 255 255 / 0.16); }
+.iv-input:focus-visible, .iv-select:focus-visible {
+  outline: 2px solid var(--iv-accent);
+  outline-offset: 1px;
+}
+
+/* ── Panels & cards ─────────────────────────────────────────── */
+.iv-card {
+  border: 1px solid var(--iv-border);
+  border-radius: 0.75rem;
+  background: var(--iv-surface);
+  overflow: hidden;
+}
+
+/* Slide-up panel (ToolbarSlidePanel) */
+.iv-panel-slide-up {
+  animation: iv-slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes iv-slide-up {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* IDE activity bar rail */
+.iv-activity-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.375rem;
+  background: var(--iv-surface);
+  border-right: 1px solid var(--iv-border);
+}
+.iv-activity-bar .iv-activity-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  color: var(--iv-text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.iv-activity-bar .iv-activity-item:hover { color: var(--iv-text); background: rgb(255 255 255 / 0.05); }
+.iv-activity-bar .iv-activity-item.active {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.07);
+}
+.iv-activity-bar .iv-activity-item.active::before {
+  content: "";
+  position: absolute;
+  left: -0.375rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--iv-accent);
+}
+
+/* Mode-switch enter flourish */
+.iv-mode-enter {
+  animation: iv-mode-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes iv-mode-enter {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── VS Code Style Interview IDE Chrome ────────────────────── */
+
+/* Title Bar */
+.iv-titlebar {
+  height: 38px;
+  background: var(--iv-surface);
+  border-bottom: 1px solid var(--iv-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: var(--font-iv-ui);
+  z-index: 20;
+}
+
+.iv-titlebar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 0.375rem;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--iv-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.iv-titlebar-btn:hover:not(:disabled) {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.07);
+  border-color: rgb(255 255 255 / 0.1);
+}
+
+.iv-titlebar-btn.active {
+  color: var(--iv-accent-glow);
+  background: var(--iv-accent-surface);
+  border-color: rgb(42 157 123 / 0.35);
+}
+
+/* Prominent Back to Video Button */
+.iv-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.iv-back-btn:hover {
+  background: var(--iv-accent-surface);
+  border-color: var(--iv-accent);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgb(42 157 123 / 0.25);
+  transform: translateX(-1px);
+}
+
+.iv-back-btn:active {
+  transform: translateX(0) scale(0.98);
+}
+
+/* Center Command / Breadcrumb Pill in TitleBar */
+.iv-titlebar-center-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgb(0 0 0 / 0.35);
+  border: 1px solid var(--iv-border);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.875rem;
+  font-size: 11px;
+  color: var(--iv-text-muted);
+  max-width: 480px;
+  min-width: 260px;
+  justify-content: center;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.2);
+}
+
+/* Bottom Panel Dock */
+.iv-bottom-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--iv-surface-elevated);
+  border-top: 1px solid var(--iv-border);
+  overflow: hidden;
+}
+
+.iv-bottom-panel-header {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+  background: var(--iv-surface);
+  border-bottom: 1px solid var(--iv-border);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.iv-bottom-panel-tabs {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  gap: 0.125rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.iv-bottom-panel-tabs::-webkit-scrollbar { display: none; }
+
+.iv-bottom-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 100%;
+  padding: 0 0.75rem;
+  font-family: var(--font-iv-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--iv-text-dim);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.iv-bottom-panel-tab:hover {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.03);
+}
+
+.iv-bottom-panel-tab.active {
+  color: #ffffff;
+  border-bottom-color: var(--iv-accent);
+  background: rgb(255 255 255 / 0.05);
+}
+
+.iv-bottom-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.iv-bottom-panel-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  color: var(--iv-text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.iv-bottom-panel-action-btn:hover {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.08);
+}
+
+/* VS Code Terminal Scroll Viewport */
+.iv-terminal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+
+.iv-terminal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.iv-terminal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.iv-terminal-scroll::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.18);
+  border-radius: 4px;
+}
+
+.iv-terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.32);
+}
+
+/* Right Video / AI Sidebar in VS Code layout */
+.iv-right-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--iv-surface);
+  border-left: 1px solid var(--iv-border);
+  overflow: hidden;
+}
+
+/* Status Bar */
+.iv-status-bar {
+  height: 22px;
+  background: var(--iv-surface);
+  border-top: 1px solid var(--iv-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.625rem;
+  font-family: var(--font-iv-ui);
+  font-size: 11px;
+  color: var(--iv-text-dim);
+  user-select: none;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.iv-status-bar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 100%;
+  padding: 0 0.375rem;
+  cursor: default;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.iv-status-bar-item.interactive {
+  cursor: pointer;
+}
+
+.iv-status-bar-item.interactive:hover {
+  color: var(--iv-text);
+  background: rgb(255 255 255 / 0.08);
 }

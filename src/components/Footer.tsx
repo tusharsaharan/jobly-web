@@ -81,7 +81,7 @@ export function Footer() {
       </div>
 
       <div className="mx-auto mt-12 flex max-w-7xl flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-xs text-ink/55">
-        <p>© {new Date().getFullYear()} Jobly. All rights reserved.</p>
+        <p>Copyright {new Date().getFullYear()} Jobly. All rights reserved.</p>
         <p>Better job matching for candidates and recruiters.</p>
       </div>
     </footer>

@@ -1038,7 +1038,7 @@ function PillarQuizArena() {
               />
               {topicError && (
                 <div className="mb-1.5 p-2 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700">
-                  <div className="font-semibold">⚠️ {topicError}</div>
+                  <div className="font-semibold">{topicError}</div>
                   {topicSuggestions.length>0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {topicSuggestions.slice(0,5).map((s,i)=>(

@@ -27,11 +27,11 @@ interface Feedback {
   completedAt?: string;
 }
 
-const PILLAR_META: Record<string, { label: string; icon: string }> = {
-  problem_solving: { label: "Problem Solving & Decomposition", icon: "🧩" },
-  coding_algorithms: { label: "Algorithmic Implementation & Code Quality", icon: "💻" },
-  system_design: { label: "System Architecture & Tradeoff Reasoning", icon: "🏗️" },
-  communication: { label: "Technical Communication & Collaboration", icon: "💬" },
+const PILLAR_META: Record<string, { label: string }> = {
+  problem_solving: { label: "Problem Solving & Decomposition" },
+  coding_algorithms: { label: "Algorithmic Implementation & Code Quality" },
+  system_design: { label: "System Architecture & Tradeoff Reasoning" },
+  communication: { label: "Technical Communication & Collaboration" },
 };
 
 function CandidateFeedbackPage() {
@@ -183,14 +183,13 @@ function CandidateFeedbackPage() {
           <div className="mt-5 space-y-5">
             {feedback.competencies.map((competency) => {
               const pillarKey = (competency as any).pillar || String(competency.category).toLowerCase().replace(/[^a-z_]/g, "_");
-              const meta = PILLAR_META[pillarKey] || { label: competency.category, icon: "📌" };
+              const meta = PILLAR_META[pillarKey] || { label: competency.category };
               const fullComp = fullEvaluation?.competencies?.find((c: any) => (c.category === competency.category || c.pillar === pillarKey));
               const evidenceList: any[] = fullComp?.evidenceRefs || (competency as any).evidenceRefs || [];
               return (
                 <article key={competency.category} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-sm font-medium flex items-center gap-2">
-                      <span>{meta.icon}</span>
                       {meta.label}
                       <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">{pillarKey}</span>
                     </h3>

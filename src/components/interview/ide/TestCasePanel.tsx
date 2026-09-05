@@ -319,7 +319,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
               <option value="passed">Passed</option>
               <option value="failed">Failed</option>
             </select>
-            <span className="hidden lg:inline text-[10px] font-mono text-[#858585]">{filteredIndices.length} visible • Scroll ↕</span>
+            <span className="hidden lg:inline text-[10px] font-mono text-[#858585]">{filteredIndices.length} visible • Scroll up/down</span>
           </div>
         </div>
 

@@ -36,3 +36,5 @@ playwright-report/
 test-results/
 coverage/
 
+.git.backup/
+.vercel/

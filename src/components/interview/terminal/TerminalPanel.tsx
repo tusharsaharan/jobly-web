@@ -8,6 +8,7 @@ interface TerminalPanelProps {
   roomKey: string;
   token?: string;
   readOnly?: boolean;
+  hideHeader?: boolean;
 }
 
 interface TerminalLine {
@@ -17,7 +18,13 @@ interface TerminalLine {
   prompt?: string;
 }
 
-export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: TerminalPanelProps) {
+export function TerminalPanel({
+  sessionId,
+  roomKey,
+  token,
+  readOnly = false,
+  hideHeader = false,
+}: TerminalPanelProps) {
   const [terminalId, setTerminalId] = useState<string | null>(null);
   const [lines, setLines] = useState<TerminalLine[]>([
     {
@@ -35,7 +42,9 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const terminalIdRef = useRef<string | null>(null);
+  const isNearBottomRef = useRef<boolean>(true);
 
   useEffect(() => {
     terminalIdRef.current = terminalId;
@@ -95,9 +104,16 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
     };
   }, [sessionId, token]);
 
-  // Safe inner container scroll only - NEVER scrolls the outer browser window
+  // Track scroll position to prevent auto-scrolling if user deliberately scrolled up
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    isNearBottomRef.current = scrollHeight - (scrollTop + clientHeight) < 60;
+  };
+
+  // Safe container scroll only when user is near bottom
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    if (scrollContainerRef.current && isNearBottomRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [lines]);
@@ -188,6 +204,16 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
         setLines((prev) => [...prev, inputLine]);
       }
 
+      // Automatically jump to bottom on new command sent
+      isNearBottomRef.current = true;
+      if (scrollContainerRef.current) {
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+          }
+        });
+      }
+
       // Also stream to room sockets / backend PTY
       if (token) {
         const socket = getInterviewSocket(token);
@@ -219,50 +245,61 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
     }
   };
 
+  const handleContainerClick = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
     <div
-      className="flex h-full flex-col overflow-hidden text-white select-text"
+      onClick={handleContainerClick}
+      className="flex h-full flex-col overflow-hidden text-white select-text cursor-text"
       style={{ background: "var(--iv-bg)", fontFamily: "var(--font-iv-code)" }}
     >
-      {/* Header */}
-      <div
-        className="flex h-8 items-center justify-between border-b px-3"
-        style={{
-          borderColor: "var(--iv-border)",
-          background: "var(--iv-surface)",
-          fontFamily: "var(--font-iv-ui)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <TerminalIcon className="h-3.5 w-3.5 text-[var(--iv-accent)]" />
-          <span className="text-[12px] font-semibold tracking-wide text-white/80">
-            Terminal
-          </span>
-          <span
-            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ background: "var(--iv-surface-elevated)", color: "var(--iv-accent-glow)" }}
-          >
-            fish 3.6
-          </span>
-        </div>
-
-        <button
-          onClick={() => setLines([])}
-          title="Clear Terminal"
-          className="rounded p-1 text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
+      {/* Header (optional if embedded in VS Code Bottom Panel) */}
+      {!hideHeader && (
+        <div
+          className="flex h-8 items-center justify-between border-b px-3 flex-shrink-0"
+          style={{
+            borderColor: "var(--iv-border)",
+            background: "var(--iv-surface)",
+            fontFamily: "var(--font-iv-ui)",
+          }}
         >
-          <RotateCcw className="h-3 w-3" />
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <TerminalIcon className="h-3.5 w-3.5 text-[var(--iv-accent)]" />
+            <span className="text-[12px] font-semibold tracking-wide text-white/80">
+              Terminal
+            </span>
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              style={{ background: "var(--iv-surface-elevated)", color: "var(--iv-accent-glow)" }}
+            >
+              fish 3.6
+            </span>
+          </div>
 
-      {/* Terminal Output Stream */}
+          <button
+            type="button"
+            onClick={() => setLines([])}
+            title="Clear Terminal"
+            className="rounded p-1 text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
+          >
+            <RotateCcw className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
+      {/* Terminal Output Stream with VS Code Scrollbar */}
       <div
         ref={scrollContainerRef}
-        className="iv-scroll flex-1 overflow-y-auto p-3 space-y-1.5"
+        onScroll={handleScroll}
+        className="iv-terminal-scroll flex-1 p-3 space-y-1.5 min-h-0"
         style={{ fontSize: "13px", lineHeight: "1.6" }}
       >
         {lines.map((line) => (
-          <div key={line.id}>
+          <div key={line.id} className="break-words">
             {line.type === "input" ? (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-bold" style={{ color: "#38BDF8" }}>{">"}</span>
@@ -289,11 +326,12 @@ export function TerminalPanel({ sessionId, roomKey, token, readOnly = false }: T
             <span className="select-none" style={{ color: "#A78BFA", fontSize: "12px" }}>on main</span>
             <span className="font-bold select-none" style={{ color: "var(--iv-accent)" }}>$</span>
             <input
+              ref={inputRef}
               type="text"
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="type command..."
+              placeholder="type command (e.g. ls, help, python solution.py)..."
               className="flex-1 bg-transparent text-white outline-none placeholder:text-white/20"
               style={{ fontFamily: "var(--font-iv-code)", fontSize: "13px" }}
             />

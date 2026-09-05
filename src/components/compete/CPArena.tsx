@@ -207,7 +207,7 @@ export default function CPArena({ lobbyState, user, setLobbyState }: any) {
         setBottomTab("OUTPUT");
         toast.success(`Passed ${data.testCasesPassed}/${data.totalTestCases} test cases!`);
         if (data.allPassed) {
-          toast.success("🎉 All test cases passed!");
+          toast.success("All test cases passed!");
         }
       }
       setIsEvaluating(false);
@@ -846,7 +846,7 @@ export default function CPArena({ lobbyState, user, setLobbyState }: any) {
                             <button onClick={handleAddCase} className="hidden sm:flex items-center gap-1 px-2 py-1 bg-[#37373d] hover:bg-[#3c3c3c] text-[#cccccc] text-[11px] rounded-sm">
                               <Plus className="w-3 h-3" /> New Case
                             </button>
-                            <span className="text-[10px] text-[#5a5a5a] font-mono">Scroll ↕ • Lot ready</span>
+                            <span className="text-[10px] text-[#5a5a5a] font-mono">Scroll up/down • Lot ready</span>
                           </div>
                         </div>
                       </div>

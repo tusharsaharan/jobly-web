@@ -5,6 +5,15 @@ import { apiCall } from "@/lib/api";
 import { useAuth, type UserRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    mode?: "signup";
+    email?: string;
+  } => ({
+    mode: search.mode === "signup" ? "signup" : undefined,
+    email: typeof search.email === "string" ? search.email : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Log in · Jobly" },
@@ -37,7 +46,11 @@ function AuthPage() {
 
   useEffect(() => {
     const queryMode = new URLSearchParams(window.location.search).get("mode");
+    const queryEmail = new URLSearchParams(window.location.search).get("email");
     if (queryMode === "signup") setMode("signup");
+    if (queryEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(queryEmail)) {
+      setForm((prev) => ({ ...prev, email: queryEmail }));
+    }
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -213,7 +226,7 @@ function AuthPage() {
               <div className="pt-2 border-t border-[rgba(24,58,50,0.08)] mt-3">
                 <div className="flex items-center justify-between text-[11px] font-semibold mb-2">
                   <span style={{ color: `${INK}99`, letterSpacing: "0.08em" }} className="uppercase text-[10px] font-mono">
-                    ⚡ Quick Demo Accounts
+                    Quick Demo Accounts
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -227,7 +240,7 @@ function AuthPage() {
                     }}
                   >
                     <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
-                      <span>👔</span> Sarah (Recruiter)
+                      Sarah (Recruiter)
                     </span>
                     <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
                       sarah@techcorp.com
@@ -243,7 +256,7 @@ function AuthPage() {
                     }}
                   >
                     <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
-                      <span>💻</span> Alex (Candidate)
+                      Alex (Candidate)
                     </span>
                     <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
                       alex@example.com

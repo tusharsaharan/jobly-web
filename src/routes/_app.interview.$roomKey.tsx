@@ -354,17 +354,17 @@ function InterviewRoomPage() {
       if (token) {
         const socket = getInterviewSocket(token);
         socket.emit("leave_interview", { roomKey });
-        socket.off("participant_joined", handleParticipantJoined);
-        socket.off("participant_left", handleParticipantLeft);
-        socket.off("stage_updated", handleStageUpdated);
-        socket.off("session_status_changed", handleSessionStatusChanged);
-        socket.off("code_execution_received", handleCodeExecutionReceived);
-        socket.off("live_transcript_received", handleLiveTranscript);
-        socket.off("timeline_event_received", handleTimelineEvent);
-        socket.off("whiteboard_snapshot_saved", handleWhiteboardSnapshot);
-        socket.off("checkpoint_created", handleCheckpointCreated);
-        socket.off("checkpoint_restored", handleCheckpointRestored);
-        socket.off("proctor_event_received", handleProctorEvent);
+        socket.off("participant_joined");
+        socket.off("participant_left");
+        socket.off("stage_updated");
+        socket.off("session_status_changed");
+        socket.off("code_execution_received");
+        socket.off("live_transcript_received");
+        socket.off("timeline_event_received");
+        socket.off("whiteboard_snapshot_saved");
+        socket.off("checkpoint_created");
+        socket.off("checkpoint_restored");
+        socket.off("proctor_event_received");
       }
     };
   }, [roomKey, token, addTimelineEventUnique]);
