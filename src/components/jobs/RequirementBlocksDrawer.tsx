@@ -20,6 +20,7 @@ type RequirementBlocksDrawerProps = {
   onInsertContent: (content: string) => void;
   onAppendSkills: (skills: string[]) => void;
   selectedText?: string;
+  roleType?: string;
 };
 
 export function RequirementBlocksDrawer({
@@ -28,6 +29,7 @@ export function RequirementBlocksDrawer({
   onInsertContent,
   onAppendSkills,
   selectedText = "",
+  roleType = "",
 }: RequirementBlocksDrawerProps) {
   const { token } = useAuth();
   const [blocks, setBlocks] = useState<RequirementBlock[]>([]);
@@ -40,20 +42,11 @@ export function RequirementBlocksDrawer({
   const [newBlockSkills, setNewBlockSkills] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchBlocks();
-      if (selectedText.trim()) {
-        setNewBlockContent(selectedText.trim());
-        setIsCreating(true);
-      }
-    }
-  }, [isOpen, selectedText]);
-
   const fetchBlocks = async () => {
     setLoading(true);
     try {
-      const res = await apiCall<{ blocks: RequirementBlock[] }>("/jobs/blocks", "GET", undefined, token);
+      const query = roleType ? `?roleType=${encodeURIComponent(roleType)}` : "";
+      const res = await apiCall<{ blocks: RequirementBlock[] }>(`/jobs/blocks${query}`, "GET", undefined, token);
       if (res?.blocks) {
         setBlocks(res.blocks);
       }
@@ -63,6 +56,17 @@ export function RequirementBlocksDrawer({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchBlocks();
+      if (selectedText.trim()) {
+        setNewBlockContent(selectedText.trim());
+        setIsCreating(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, roleType, selectedText]);
 
   const handleCreateBlock = async (e: React.FormEvent) => {
     e.preventDefault();

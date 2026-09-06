@@ -82,7 +82,7 @@ export function ExecutionPanel({
                 activeTab === "INPUT" ? "bg-[#252525] text-[#7EE0C5] font-bold" : "text-[#777777] hover:text-white"
               }`}
             >
-              <span>Custom Input {customInput.trim() ? "●" : ""}</span>
+              <span>Custom Input {customInput.trim() ? "(set)" : ""}</span>
             </button>
             <button
               onClick={() => setActiveTab("OUTPUT")}

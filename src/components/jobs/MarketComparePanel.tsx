@@ -34,6 +34,19 @@ type MarketCompareData = {
   insight: string;
 };
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  INR: "₹",
+  CAD: "C$",
+};
+
+function formatMoney(value: number | undefined, currency: string) {
+  if (value === undefined || value === null) return "—";
+  return `${CURRENCY_SYMBOLS[currency] || `${currency} `}${value.toLocaleString()}`;
+}
+
 type MarketComparePanelProps = {
   payload: any;
 };
@@ -120,7 +133,8 @@ export function MarketComparePanel({ payload }: MarketComparePanelProps) {
                           <span>Market Median Compensation</span>
                         </div>
                         <p className="text-2xl font-display font-bold text-ink">
-                          ${data.marketMedianSalary.min.toLocaleString()} – ${data.marketMedianSalary.max.toLocaleString()}
+                          {formatMoney(data.marketMedianSalary.min, data.marketMedianSalary.currency)} – {formatMoney(data.marketMedianSalary.max, data.marketMedianSalary.currency)}
+                          <span className="ml-1.5 text-sm font-medium text-ink/50">/ {data.marketMedianSalary.period}</span>
                         </p>
                         <p className="text-[11px] text-ink/50 mt-1">
                           Based on {data.marketMedianSalary.sampleSize} visible platform listings
@@ -158,7 +172,7 @@ export function MarketComparePanel({ payload }: MarketComparePanelProps) {
                           </div>
                           {comp.salaryRange ? (
                             <span className="rounded bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-300 text-xs">
-                              ${comp.salaryRange.min?.toLocaleString()} - ${comp.salaryRange.max?.toLocaleString()} / {comp.salaryRange.period}
+                              {formatMoney(comp.salaryRange.min, comp.salaryRange.currency)} - {formatMoney(comp.salaryRange.max, comp.salaryRange.currency)} / {comp.salaryRange.period}
                             </span>
                           ) : (
                             <span className="text-[11px] text-ink/40 italic">Salary not published</span>

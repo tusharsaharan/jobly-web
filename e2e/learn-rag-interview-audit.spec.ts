@@ -2,7 +2,7 @@
  * Learn · Quiz · RAG · Chat UX — Full Audit
  *
  * Validates the user journey:
- *  1) Seeker completes a small interview → weaknesses appear in RECOMMENDATIONS
+ *  1) Seeker completes a small interview, then weaknesses appear in RECOMMENDATIONS
  *  2) Recommendations show curated resources (RAG-backed) + Google search + Mark Studied
  *  3) Quiz generates, completes, and improvement is tracked (gamification + auto-resolve)
  *  4) System Design Oracle RAG answers with citations (Hybrid RRF path)
@@ -59,7 +59,7 @@ async function apiFetch(page: any, path: string, opts: any = {}) {
   );
 }
 
-test.describe("Audit: Interview → Recommendations → Quiz improvement → RAG → Chat UX", () => {
+test.describe("Audit: Interview, Recommendations, Quiz improvement, RAG, Chat UX", () => {
   test("seeker journey audit (API + UI checks)", async ({ page }) => {
     test.setTimeout(120000);
 

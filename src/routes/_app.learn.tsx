@@ -469,7 +469,7 @@ function PillarRecommendations({ onSwitchTab }: { onSwitchTab?: (tab: any) => vo
                   )}
                   {searchResults?.fallbackUrl && (
                     <div className="mt-3 text-center">
-                      <a href={searchResults.fallbackUrl} target="_blank" rel="noreferrer" className="text-xs text-[#2A9D7B] underline font-semibold">Search on GeeksForGeeks directly →</a>
+                      <a href={searchResults.fallbackUrl} target="_blank" rel="noreferrer" className="text-xs text-[#2A9D7B] underline font-semibold">Search on GeeksForGeeks directly</a>
                     </div>
                   )}
                 </>

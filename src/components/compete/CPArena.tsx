@@ -758,11 +758,11 @@ export default function CPArena({ lobbyState, user, setLobbyState }: any) {
                                   {!isExpanded && (
                                     <div className="px-3 pb-1.5 flex items-center gap-2 text-[11px] font-mono text-[#858585] truncate">
                                       <span className="truncate">
-                                        in: <span className="text-[#cccccc]">{tc.input.slice(0, 32) || "∅"}{tc.input.length > 32 ? "…" : ""}</span>
+                                        in: <span className="text-[#cccccc]">{tc.input.slice(0, 32) || "(empty)"}{tc.input.length > 32 ? "..." : ""}</span>
                                       </span>
-                                      <span className="text-[#424242]">→</span>
+                                      <span className="text-[#424242]">-&gt;</span>
                                       <span className="truncate">
-                                        out: <span className="text-[#cccccc]">{tc.expectedOutput.slice(0, 16) || "∅"}</span>
+                                        out: <span className="text-[#cccccc]">{tc.expectedOutput.slice(0, 16) || "(empty)"}</span>
                                       </span>
                                     </div>
                                   )}
@@ -875,7 +875,7 @@ export default function CPArena({ lobbyState, user, setLobbyState }: any) {
                                 <div className="text-sm font-bold">{lastResult.allPassed ? "All tests passed!" : `${lastResult.testCasesPassed}/${lastResult.totalTestCases} tests passed`}</div>
                                 <div className="text-xs opacity-80 font-mono">Score: +{lastResult.scoreDelta ?? 0} • {lastResult.durationMs ? `${lastResult.durationMs}ms` : ""}</div>
                               </div>
-                              <div className="ml-auto text-xs font-mono bg-black/20 px-2 py-1 rounded">{lastResult.allPassed ? "✓ SUCCESS" : "✗ FAILED"}</div>
+                              <div className="ml-auto text-xs font-mono bg-black/20 px-2 py-1 rounded">{lastResult.allPassed ? "SUCCESS" : "FAILED"}</div>
                             </div>
 
                             {lastResult.testResults && (
@@ -925,7 +925,7 @@ export default function CPArena({ lobbyState, user, setLobbyState }: any) {
                                   <XCircle className="w-3.5 h-3.5 text-[#f85149] mt-0.5 flex-shrink-0" />
                                   <div className="min-w-0">
                                     <div className="text-xs font-medium text-[#f85149]">Test Case {r.testCaseIndex ?? i + 1} failed</div>
-                                    <div className="text-[11px] font-mono text-[#858585] truncate">Expected: {(r.expectedOutput || "").slice(0, 60) || "∅"} → Got: {(r.actualOutput || "").slice(0, 60) || "∅"}</div>
+                                    <div className="text-[11px] font-mono text-[#858585] truncate">Expected: {(r.expectedOutput || "").slice(0, 60) || "(empty)"} =&gt; Got: {(r.actualOutput || "").slice(0, 60) || "(empty)"}</div>
                                   </div>
                                 </div>
                               ))}

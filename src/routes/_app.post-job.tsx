@@ -149,11 +149,28 @@ function validateForm(form: JobForm): FormErrors {
 
 function asForm(job: any): JobForm {
   const requirements = job?.atsRequirements ?? {};
-  const salary = job?.salaryRange ?? {};
+  const salary = job?.salaryRange ?? job?.salary ?? job?.salary_range ?? job?.compensation ?? job?.pay ?? {};
   const cgpa = Number(requirements.minCgpa);
   const experience = Number(requirements.minExperienceYears);
   const salaryMin = Number(salary.min);
   const salaryMax = Number(salary.max);
+
+  const rawCurr = String(salary.currency || "").toUpperCase();
+  const currency = ["USD", "EUR", "GBP", "INR", "CAD"].includes(rawCurr)
+    ? rawCurr
+    : (rawCurr.includes("INR") || rawCurr.includes("RUPEE") || rawCurr.includes("RS") || rawCurr.includes("₹")
+      ? "INR"
+      : "USD");
+
+  const rawPeriod = String(salary.period || "").toLowerCase();
+  const period = (["annual", "monthly", "hourly"].includes(rawPeriod)
+    ? rawPeriod
+    : (rawPeriod.includes("month") || rawPeriod.includes("pm")
+      ? "monthly"
+      : rawPeriod.includes("hour")
+        ? "hourly"
+        : "annual")) as "annual" | "monthly" | "hourly";
+
   return {
     title: typeof job?.title === "string" ? job.title : "",
     company: typeof job?.company === "string" ? job.company : "",
@@ -170,8 +187,8 @@ function asForm(job: any): JobForm {
     salaryRange: {
       min: Number.isFinite(salaryMin) && salaryMin > 0 ? String(salaryMin) : "",
       max: Number.isFinite(salaryMax) && salaryMax > 0 ? String(salaryMax) : "",
-      currency: typeof salary.currency === "string" ? salary.currency : "USD",
-      period: ["annual", "monthly", "hourly"].includes(salary.period) ? salary.period : "annual",
+      currency,
+      period,
       visible: typeof salary.visible === "boolean" ? salary.visible : true,
     },
   };
@@ -574,6 +591,7 @@ function PostJobPage() {
         isOpen={isBlocksDrawerOpen}
         onClose={() => setIsBlocksDrawerOpen(false)}
         selectedText={selectedTextForBlock}
+        roleType={form.type}
         onInsertContent={(content) => {
           const currentDesc = form.description ? `${form.description}\n\n${content}` : content;
           updateForm({ ...form, description: currentDesc }, "description");

@@ -216,7 +216,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
       const failedIds = new Set(res.results.filter(r => !r.passed).map((_, i) => cases[i]?.id).filter(Boolean) as string[]);
       if (failedIds.size) setExpanded(failedIds);
       else setExpanded(new Set(cases.slice(0, 2).map(c => c.id)));
-      if (res.allPassed) toast.success(`All ${res.totalCount} tests passed! ✓`);
+      if (res.allPassed) toast.success(`All ${res.totalCount} tests passed!`);
       else toast.error(`${res.passedCount}/${res.totalCount} passed`);
     } catch (e: any) {
       toast.error(e.message || "Test run failed");
@@ -256,7 +256,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
             </span>
             {results && (
               <span className={`hidden sm:inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border ${summary?.allPassed ? "bg-[#89d185]/15 text-[#89d185] border-[#89d185]/20" : "bg-[#f85149]/15 text-[#f85149] border-[#f85149]/20"}`}>
-                {passedCount}/{totalCount} {summary?.allPassed ? "✓" : "✗"}
+                {passedCount}/{totalCount} {summary?.allPassed ? "PASS" : "FAIL"}
               </span>
             )}
           </div>
@@ -378,7 +378,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
                         {res && <span className="font-mono font-normal text-[#858585] text-[10px]">· {res.durationMs}ms</span>}
                       </span>
                     )}
-                    <span className="hidden lg:inline text-[10px] font-mono text-[#5a5a5a] truncate max-w-[160px]">in: {(tc.input.slice(0, 24) || "∅").replace(/\n/g, "↵")}</span>
+                    <span className="hidden lg:inline text-[10px] font-mono text-[#5a5a5a] truncate max-w-[160px]">in: {(tc.input.slice(0, 24) || "(empty)").replace(/\n/g, "\\n")}</span>
                   </div>
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     <button onClick={(e) => { e.stopPropagation(); duplicateCase(tc.id); }} title="Duplicate" className="rounded-sm p-1 text-[#858585] hover:bg-[#37373d] hover:text-white"><Copy className="h-3 w-3" /></button>
@@ -390,9 +390,9 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
                 {/* Collapsed preview */}
                 {!isExpanded && (
                   <div className="px-3 pb-1.5 flex items-center gap-2 text-[11px] font-mono text-[#858585] truncate">
-                    <span className="truncate">in: <span className="text-[#cccccc]">{tc.input.slice(0, 36) || "∅"}{tc.input.length > 36 ? "…" : ""}</span></span>
-                    <span className="text-[#424242]">→</span>
-                    <span className="truncate">out: <span className="text-[#cccccc]">{tc.expectedOutput.slice(0, 18) || "∅"}</span></span>
+                    <span className="truncate">in: <span className="text-[#cccccc]">{tc.input.slice(0, 36) || "(empty)"}{tc.input.length > 36 ? "..." : ""}</span></span>
+                    <span className="text-[#424242]">-&gt;</span>
+                    <span className="truncate">out: <span className="text-[#cccccc]">{tc.expectedOutput.slice(0, 18) || "(empty)"}</span></span>
                   </div>
                 )}
 
@@ -447,7 +447,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
                     )}
                     {res && res.passed && (
                       <div className="lg:col-span-2 flex items-center gap-1.5 rounded-sm bg-[#89d185]/10 border border-[#89d185]/20 px-2 py-1.5 text-[11px] text-[#89d185]">
-                        <CheckCircle2 className="h-3 w-3" /> Output matched expected ✓
+                        <CheckCircle2 className="h-3 w-3" /> Output matched expected
                       </div>
                     )}
                   </div>
@@ -463,7 +463,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
         <div className={`flex-shrink-0 sticky bottom-0 flex items-center justify-between px-3 py-2 text-xs font-medium border-t backdrop-blur ${summary?.allPassed ? "bg-[#89d185]/10 border-[#89d185]/20 text-[#89d185]" : summary ? "bg-[#f85149]/10 border-[#f85149]/20 text-[#f85149]" : "bg-[#252526] border-[#2d2d2d] text-[#cccccc]"}`}>
           <span className="flex items-center gap-2">
             {summary?.allPassed ? <CheckCircle2 className="h-4 w-4" /> : summary ? <Beaker className="h-4 w-4" /> : <ListChecks className="h-4 w-4 text-[#858585]" />}
-            <span className="font-mono text-[11px]">{summary ? (summary.allPassed ? `All ${summary.total} tests passed ✓` : `${summary.passed}/${summary.total} passed`) : `${filteredIndices.length} of ${cases.length} shown • Ready to run`}</span>
+            <span className="font-mono text-[11px]">{summary ? (summary.allPassed ? `All ${summary.total} tests passed` : `${summary.passed}/${summary.total} passed`) : `${filteredIndices.length} of ${cases.length} shown • Ready to run`}</span>
           </span>
           <span className="hidden sm:flex items-center gap-2 text-[10px] font-mono font-normal opacity-70">
             {results && <span>{results.reduce((a, r) => a + r.durationMs, 0)}ms total</span>}

@@ -146,7 +146,7 @@ export function CommandPalette() {
           <div className="flex items-center justify-between border-t border-border bg-cream/60 px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-ink/45">
             <span>Jobly command</span>
             <span className="flex items-center gap-1.5">
-              <kbd className="rounded border border-border bg-popover px-1">⌘</kbd>
+              <kbd className="rounded border border-border bg-popover px-1">Cmd</kbd>
               <kbd className="rounded border border-border bg-popover px-1">K</kbd>
            </span>
          </div>

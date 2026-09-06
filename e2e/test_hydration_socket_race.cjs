@@ -199,7 +199,7 @@ async function runHydrationRaceAudit() {
  console.log("--- Browser Execution Race Logs ---");
  logs.forEach((l) => console.log(l));
  } else {
- if (i % 10 === 0) console.log(`✓ Iteration ${i}/${TOTAL_ITERATIONS} passed`);
+    if (i % 10 === 0) console.log(`Iteration ${i}/${TOTAL_ITERATIONS} passed`);
  }
 
  await page.unroute(`**/api/interviews/${sessionId}`);
