@@ -3,11 +3,12 @@
 @import "tw-animate-css";
 
 /* ─── Self-hosted fonts (no Google Fonts blocking request) ─── */
-@import "@fontsource-variable/fredoka/wght.css";
-@import "@fontsource-variable/nunito/wght.css";
+@import "@fontsource-variable/bricolage-grotesque/wght.css";
 @import "@fontsource-variable/inter/wght.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -62,19 +63,50 @@
   --color-mint-soft: var(--mint-soft);
   --color-mint-tint: var(--mint-tint);
   --color-mint-light: var(--mint-light);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-tint: var(--accent-tint);
   --color-warm: var(--warm);
   --color-warm-hover: var(--warm-hover);
   --color-butter: var(--butter);
   --color-panel: var(--panel);
 
   /* Typography */
-  --font-display: "Fredoka Variable", "Nunito Variable", "Helvetica Neue", system-ui, sans-serif;
-  --font-sans: "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Inter Variable", "Helvetica Neue", system-ui, sans-serif;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Interview suite fonts — crisp professional chrome (Zoom-like) */
-  --font-iv-ui: "Inter Variable", "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-iv-ui: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-iv-code: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* ─── Type scale (single source of truth) ───
+     Micro labels: text-2xs (11px) mono uppercase
+     Body: text-sm (14) / base (15) / lg (18)
+     Headings: display tokens below            */
+  --text-2xs: 0.6875rem;   /* 11px — micro labels, badges */
+  --text-2xs--line-height: 1.45;
+  --text-2xs--letter-spacing: 0.04em;
+
+  --text-hero: clamp(3rem, 7vw, 7.5rem);
+  --text-hero--line-height: 0.98;
+  --text-hero--letter-spacing: -0.03em;
+  --text-hero--font-weight: 700;
+
+  --text-h1: clamp(2.6rem, 5.2vw, 5.25rem);
+  --text-h1--line-height: 1.02;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 600;
+
+  --text-h2: clamp(1.75rem, 3.2vw, 3rem);
+  --text-h2--line-height: 1.08;
+  --text-h2--letter-spacing: -0.015em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.16;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: 600;
 
   /* Interview suite (immersive dark) — bg-iv-*, text-iv-*, border-iv-* utilities */
   --color-iv-bg: var(--iv-bg);
@@ -155,6 +187,12 @@
   --warm-hover: #577d73;
   --butter: #e6efe1;
 
+  /* Action green family — the ONE saturated green (was raw #2A9D7B in 12+ files).
+     --accent itself is defined below in the semantic block. */
+  --accent-strong: #1e7058;
+  --accent-soft: #8ddcbe;
+  --accent-tint: #e9fbf2;
+
   /* Semantic surfaces (shadcn-style) */
   --background: var(--cream);
   --foreground: var(--ink);
@@ -168,11 +206,11 @@
   --secondary-foreground: var(--ink);
   --muted: var(--panel);
   --muted-foreground: rgb(47 48 45 / 0.62);
-  --accent: var(--mint);
-  --accent-foreground: var(--ink);
+  --accent: #2a9d7b;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.60 0.22 25);
   --destructive-foreground: #ffffff;
-  --success: #2a9d7b;
+  --success: var(--accent);
   --success-foreground: #ffffff;
   --warning: #d99a3a;
   --warning-foreground: #1f1707;
@@ -226,7 +264,6 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
   }
   :focus-visible {
     outline: 2px solid var(--mint-deep);
@@ -282,13 +319,21 @@
 @utility font-display {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.04;
+  letter-spacing: -0.02em;
 }
 
 @utility font-num {
   font-family: var(--font-mono);
   font-feature-settings: "tnum", "zero";
+}
+
+/* Micro label — 11px mono uppercase, for contexts without marker-num color */
+@utility micro-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 /* Primary brand button — mint pill with sweep */
@@ -395,23 +440,13 @@
   &:active { transform: scale(0.98); }
 }
 
-/* Eyebrow / micro-label */
-@utility eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgb(24 58 50 / 0.58);
-  font-weight: 500;
-}
-
-/* Eyebrow with mint color */
+/* Eyebrow with mint color — the canonical micro-label (11px mono uppercase) */
 @utility marker-num {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #247a61;
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
@@ -424,14 +459,6 @@
   -webkit-backdrop-filter: blur(16px);
   box-shadow: var(--shadow-soft);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-}
-@utility surface-hover {
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-  &:hover {
-    transform: translateY(-2px);
-    border-color: rgb(42 157 123 / 0.34);
-    box-shadow: var(--shadow-lift);
-  }
 }
 
 /* Form control — used for inputs/selects inside cards */
@@ -447,35 +474,6 @@
     box-shadow: 0 0 0 3px rgb(169 235 209 / 0.42);
     outline: none;
   }
-}
-
-/* Animated underline for text links */
-@utility link-underline {
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -2px;
-    height: 1px;
-    width: 100%;
-    background: currentColor;
-    transform-origin: right;
-    transform: scaleX(0);
-    transition: transform 0.5s cubic-bezier(0.7, 0, 0.2, 1);
-  }
-  &:hover::after {
-    transform-origin: left;
-    transform: scaleX(1);
-  }
-}
-
-/* Grain texture overlay (subtle paper feel) */
-@utility paper-card {
-  background: #fffefd;
-  box-shadow:
-    0 1px 2px rgb(24 58 50 / 0.06),
-    0 30px 60px -30px rgb(42 157 123 / 0.22);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1016,6 +1014,15 @@
   min-width: 260px;
   justify-content: center;
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.2);
+  transition: all 0.15s ease;
+  outline: none;
+}
+.iv-titlebar-center-pill:hover,
+.iv-titlebar-center-pill:focus-visible {
+  background: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.18);
+  color: var(--iv-text);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3), 0 0 8px rgb(255 255 255 / 0.05);
 }
 
 /* Bottom Panel Dock */

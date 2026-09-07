@@ -57,12 +57,15 @@ interface MonacoWorkspaceProps {
     timedOut: boolean;
     compilerOutput?: string;
     failureKind?: "compilation_error" | "runtime_error" | "runtime_unavailable" | "timeout" | null;
+    executionId?: string;
+    sequence?: number;
   } | null;
   activeProblem?: {
     title?: string;
     description?: string;
     examples?: Array<{ input: string; output: string }>;
     testCases?: Array<{ input: string; expectedOutput: string; isHidden?: boolean }>;
+    difficulty?: string;
   } | null;
 
   // New props for the redesign
@@ -971,10 +974,10 @@ export function MonacoWorkspace({
 
         {isExplorerOpen && activeActivity === "SEARCH" && (
           <div
-            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none"
+            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none overflow-y-auto iv-scroll"
             style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
           >
-            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70" style={{ borderColor: "var(--iv-border)" }}>
+            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70 flex-shrink-0" style={{ borderColor: "var(--iv-border)" }}>
               Search Workspace
             </div>
             <div className="p-3 flex flex-col gap-2">
@@ -993,10 +996,10 @@ export function MonacoWorkspace({
 
         {isExplorerOpen && activeActivity === "SETTINGS" && (
           <div
-            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none"
+            className="w-72 flex flex-col h-full border-r flex-shrink-0 select-none overflow-y-auto iv-scroll"
             style={{ borderColor: "var(--iv-border)", background: "var(--iv-surface)" }}
           >
-            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70" style={{ borderColor: "var(--iv-border)" }}>
+            <div className="h-9 flex items-center px-4 border-b text-[11px] font-semibold uppercase tracking-wider text-white/70 flex-shrink-0" style={{ borderColor: "var(--iv-border)" }}>
               IDE Preferences
             </div>
             <div className="p-4 space-y-4 text-xs text-white/80">
@@ -1117,11 +1120,24 @@ export function MonacoWorkspace({
                   fontLigatures: true,
                   lineHeight: 22,
                   minimap: { enabled: true, scale: 1, showSlider: "mouseover" },
-                  scrollBeyondLastLine: false,
+                  scrollBeyondLastLine: true,
                   automaticLayout: true,
                   tabSize: 2,
                   cursorBlinking: "smooth",
                   smoothScrolling: true,
+                  scrollbar: {
+                    vertical: "visible",
+                    horizontal: "auto",
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10,
+                    verticalSliderSize: 10,
+                    horizontalSliderSize: 10,
+                    useShadows: false,
+                    alwaysConsumeMouseWheel: true,
+                    handleMouseWheel: true,
+                  },
+                  mouseWheelScrollSensitivity: 1,
+                  fastScrollSensitivity: 5,
                   padding: { top: 14, bottom: 14 },
                   wordWrap: "on",
                   wrappingStrategy: "advanced",
@@ -1131,7 +1147,7 @@ export function MonacoWorkspace({
                   quickSuggestions: { other: true, comments: false, strings: false },
                   parameterHints: { enabled: true },
                   hover: { enabled: true },
-                  lightbulb: { enabled: true },
+                  lightbulb: { enabled: "on" as any },
                   formatOnType: true,
                   formatOnPaste: true,
                   autoClosingBrackets: "always",
@@ -1183,7 +1199,7 @@ export function MonacoWorkspace({
           {/* VS Code Bottom Panel — fixed pixel height, docked at bottom */}
           {isBottomPanelOpen && (
             <div
-              className="flex-shrink-0 flex flex-col"
+              className="flex-shrink-0 flex flex-col min-h-0"
               style={{
                 height: isBottomPanelMaximized ? "75%" : bottomPanelHeight,
                 minHeight: 80,

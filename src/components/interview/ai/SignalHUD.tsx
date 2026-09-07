@@ -9,7 +9,7 @@ import {
   Terminal,
   Eye,
   Layers,
-  Sparkles,
+  Bot,
   Loader2,
   Shield,
   Clock,
@@ -431,16 +431,16 @@ export function SignalHUD({ sessionId, roomKey, currentStage }: SignalHUDProps) 
       </div>
 
       {/* Copilot suggestion panel */}
-      <div className="mt-3 rounded-lg border border-purple-500/30 bg-purple-950/20 p-3">
+      <div className="mt-3 rounded border border-[#2d2d2d] bg-[#1e1e1e] p-2.5">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 font-semibold text-purple-300 text-[11px]">
-            <Sparkles className="h-3.5 w-3.5" />
-            Co-Interviewer Copilot
+          <span className="flex items-center gap-1.5 font-semibold text-[#cccccc] text-[11px] uppercase tracking-wider">
+            <Bot className="h-3.5 w-3.5 text-[#7EE0C5]" />
+            Co-Interviewer Assistant
           </span>
           <button
             onClick={handleCopilotRequest}
             disabled={copilotLoading}
-            className="flex items-center gap-1 rounded bg-purple-600 px-2 py-1 text-[11px] font-medium text-white transition hover:bg-purple-700 disabled:opacity-50"
+            className="flex items-center gap-1 rounded bg-[#0e639c] hover:bg-[#1177bb] px-2.5 py-1 text-[11px] font-medium text-white transition disabled:opacity-50 cursor-pointer"
           >
             {copilotLoading && <Loader2 className="h-3 w-3 animate-spin" />}
             <span>Suggest</span>
@@ -448,11 +448,11 @@ export function SignalHUD({ sessionId, roomKey, currentStage }: SignalHUDProps) 
         </div>
         {copilot ? (
           <div className="mt-2 space-y-1.5">
-            <p className="text-[11px] leading-relaxed text-purple-200">
-              <span className="font-semibold">Observation:</span> {copilot.observation}
+            <p className="text-[11px] leading-relaxed text-[#cccccc]">
+              <span className="font-semibold text-white/90">Observation:</span> {copilot.observation}
             </p>
-            <p className="text-[11px] leading-relaxed text-zinc-200">
-              <span className="font-semibold text-purple-300">Ask:</span> “{copilot.suggestedQuestion}”
+            <p className="text-[11px] leading-relaxed text-[#d4d4d4]">
+              <span className="font-semibold text-[#7EE0C5]">Ask:</span> “{copilot.suggestedQuestion}”
             </p>
             <div className="flex items-center gap-2">
               <span className="rounded bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">

@@ -111,20 +111,25 @@ export function TitleBar({
 
       {/* Center: Command Palette / File Quick-Open Pill */}
       <div className="hidden md:flex items-center justify-center flex-1 mx-4">
-        <div className="iv-titlebar-center-pill">
-          <Search className="h-3 w-3 text-white/40" />
-          <span className="truncate max-w-[140px] text-white/60">{roomKey}</span>
+        <button
+          type="button"
+          className="iv-titlebar-center-pill group cursor-pointer"
+          title="Quick Open (Ctrl+P)"
+          aria-label="Quick open file"
+        >
+          <Search className="h-3 w-3 text-white/40 group-hover:text-white/70 transition-colors" />
+          <span className="truncate max-w-[140px] text-white/60 group-hover:text-white/80 transition-colors">{roomKey}</span>
           <span className="text-white/20">/</span>
           <span className="text-white font-medium truncate max-w-[160px]">
             {activeFileName}
           </span>
           <span
-            className="ml-1 text-[9px] rounded px-1 py-0.2 border text-white/40"
+            className="ml-1 text-[9px] rounded px-1.5 py-0.5 border text-white/40 group-hover:text-white/60 transition-colors"
             style={{ borderColor: "var(--iv-border)" }}
           >
             Ctrl+P
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Right: Actions, Language, Run, Layout Toggles */}

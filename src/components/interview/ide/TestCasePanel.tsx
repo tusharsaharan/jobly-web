@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
-  Play, Plus, Trash2, Copy, Check, X, Wand2, Beaker, ChevronDown, ChevronUp, Sparkles, AlertCircle, CheckCircle2, XCircle, Clock, FlaskConical, Search, Filter, Download, Upload, Trash, ListChecks, Maximize2
+  Play, Plus, Trash2, Copy, Check, X, Wand2, Beaker, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, XCircle, Clock, FlaskConical, Search, Filter, Download, Upload, Trash, ListChecks, Maximize2
 } from "lucide-react";
 import { apiCall } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -90,8 +90,11 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
   const { token } = useAuth();
   const [cases, setCases] = useState<TestCase[]>(() => {
     const initial: TestCase[] = [];
-    const src = problemTestCases && problemTestCases.length ? problemTestCases : (problemExamples?.map(e => ({ input: e.input, expectedOutput: e.output })) || []);
-    src.slice(0, 20).forEach(tc => initial.push({ id: genId(), input: tc.input, expectedOutput: tc.expectedOutput, isHidden: !!tc.isHidden }));
+    const src: Array<{ input: string; expectedOutput: string; isHidden?: boolean }> =
+      problemTestCases && problemTestCases.length
+        ? problemTestCases
+        : problemExamples?.map((e) => ({ input: e.input, expectedOutput: e.output, isHidden: false })) || [];
+    src.slice(0, 20).forEach((tc) => initial.push({ id: genId(), input: tc.input, expectedOutput: tc.expectedOutput, isHidden: !!tc.isHidden }));
     if (initial.length === 0) {
       initial.push({ id: genId(), input: "5\n1 2 3 4 5", expectedOutput: "15", isHidden: false });
       initial.push({ id: genId(), input: "3\n10 20 30", expectedOutput: "60", isHidden: false });
@@ -277,12 +280,12 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
             </button>
 
             <div className="relative">
-              <button onClick={() => setShowGenMenu(!showGenMenu)} title="Auto-generate edge cases (lot)" className="flex items-center gap-1 rounded-sm bg-[#323233] hover:bg-[#3c3c3c] border border-[#3c3c3c] px-2 py-1 text-[11px] text-[#cccccc] transition">
+              <button onClick={() => setShowGenMenu(!showGenMenu)} title="Auto-generate edge cases" className="flex items-center gap-1 rounded-sm bg-[#323233] hover:bg-[#3c3c3c] border border-[#3c3c3c] px-2 py-1 text-[11px] text-[#cccccc] transition">
                 <Wand2 className="h-3 w-3 text-[#7EE0C5]" /> Generate <ChevronDown className={`h-3 w-3 transition ${showGenMenu ? "rotate-180" : ""}`} />
               </button>
               {showGenMenu && (
                 <div className="absolute left-0 top-full mt-1 bg-[#252526] border border-[#3c3c3c] rounded-md shadow-2xl py-1 min-w-[200px] z-50">
-                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#858585] border-b border-[#3c3c3c] mb-1">Bulk Generate (Lot)</div>
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#858585] border-b border-[#3c3c3c] mb-1">Bulk Generate Edge Cases</div>
                   {[5, 10, 25, 50].map(n => (
                     <button key={n} onClick={() => addBulk(n)} className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#2a2d2e] text-[#cccccc] flex items-center justify-between">
                       <span className="flex items-center gap-2"><Beaker className="w-3 h-3 text-[#7EE0C5]" /> Generate {n} edge cases</span>
@@ -291,7 +294,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
                   ))}
                   <div className="border-t border-[#3c3c3c] mt-1 pt-1 px-2 space-y-1">
                     <button onClick={() => addBulk(Math.min(20, MAX_CASES - cases.length))} className="w-full px-2 py-1.5 text-xs bg-[#0e639c] hover:bg-[#1177bb] text-white rounded-sm text-center font-medium">+ 20 Random Stress</button>
-                    <p className="text-[10px] text-[#858585] text-center">VS Code limit: {MAX_CASES} cases</p>
+                    <p className="text-[10px] text-[#858585] text-center">Max limit: {MAX_CASES} cases</p>
                   </div>
                 </div>
               )}
@@ -319,7 +322,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
               <option value="passed">Passed</option>
               <option value="failed">Failed</option>
             </select>
-            <span className="hidden lg:inline text-[10px] font-mono text-[#858585]">{filteredIndices.length} visible • Scroll up/down</span>
+            <span className="hidden lg:inline text-[10px] font-mono text-[#858585]">{filteredIndices.length} test cases</span>
           </div>
         </div>
 
@@ -342,15 +345,15 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
         )}
       </div>
 
-      {/* Scrollable content - VS Code / VS Online style: fills remaining, overflow-y-auto, handles lot (100) */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 space-y-1.5 bg-[#1e1e1e] scrollbar-thin scrollbar-thumb-[#424242] scrollbar-track-transparent">
+      {/* Scrollable content - VS Code style */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 space-y-1.5 bg-[#1e1e1e] iv-scroll scrollbar-thin scrollbar-thumb-[#424242] scrollbar-track-transparent">
         {filteredIndices.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-10 h-10 rounded-full bg-[#252526] border border-[#2d2d2d] flex items-center justify-center mb-2">
               <Beaker className="h-5 w-5 text-[#424242]" />
             </div>
             <p className="text-xs font-medium text-[#858585]">{search || filter !== "all" ? "No cases match filter" : "No test cases"}</p>
-            <p className="text-[11px] text-[#5a5a5a] mt-1 max-w-[260px]">{search ? `Search: "${search}"` : "Add cases or generate edge cases (lot)"} • Scrollable panel ready for 100 cases</p>
+            <p className="text-[11px] text-[#5a5a5a] mt-1 max-w-[260px]">{search ? `Search: "${search}"` : "Add test cases or generate edge cases"}</p>
             {!search && filter === "all" && (
               <div className="flex gap-1.5 mt-3">
                 <button onClick={addCase} className="px-2.5 py-1 bg-[#0e639c] text-white text-xs rounded-sm">Add Case</button>
@@ -467,7 +470,7 @@ export function TestCasePanel({ sessionId, language, getCode, problemTestCases, 
           </span>
           <span className="hidden sm:flex items-center gap-2 text-[10px] font-mono font-normal opacity-70">
             {results && <span>{results.reduce((a, r) => a + r.durationMs, 0)}ms total</span>}
-            <span className="bg-[#37373d] text-[#cccccc] px-1.5 py-0.5 rounded">Scrollable: Lot ready • {cases.length} cases</span>
+            <span className="bg-[#37373d] text-[#cccccc] px-1.5 py-0.5 rounded">{cases.length} test cases</span>
           </span>
         </div>
       )}

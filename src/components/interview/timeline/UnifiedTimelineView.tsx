@@ -4,7 +4,7 @@ import {
   MessageSquare,
   Code2,
   Layers,
-  Sparkles,
+  Bot,
   UserCheck,
   Search,
   ShieldAlert,
@@ -48,7 +48,7 @@ export function UnifiedTimelineView({ events, onSelectEvent }: UnifiedTimelineVi
       case "STAGE":
         return <span className="flex items-center gap-1 text-amber-400 font-semibold"><UserCheck className="h-3 w-3" /> Stage</span>;
       case "AI":
-        return <span className="flex items-center gap-1 text-purple-400 font-semibold"><Sparkles className="h-3 w-3" /> AI</span>;
+        return <span className="flex items-center gap-1 text-sky-400 font-semibold"><Bot className="h-3 w-3" /> Assistant</span>;
       case "INTEGRITY":
         return <span className="flex items-center gap-1 text-rose-400 font-semibold"><ShieldAlert className="h-3 w-3" /> Signal</span>;
       default:

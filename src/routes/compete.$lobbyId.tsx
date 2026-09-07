@@ -179,7 +179,7 @@ function CompeteArena() {
 
   // PLAYING STATE
   return (
-    <div className="min-h-screen bg-ink flex flex-col">
+    <div className="h-screen max-h-screen w-full overflow-hidden bg-[#090d0b] flex flex-col">
       {lobbyState.mode === "QUIZ" ? (
         <QuizArena lobbyState={lobbyState} user={user} setLobbyState={setLobbyState} />
       ) : (

@@ -133,7 +133,7 @@ function IntroSequence() {
   });
 
   return (
-    <section id="hero" ref={sectionRef} className="relative bg-[#302f2c]">
+    <section id="hero" ref={sectionRef} className="relative bg-ink">
       {reduce ? (
         <div className="hidden md:block">
           <IntroFallback />
@@ -180,7 +180,7 @@ function IntroSequence() {
                 <div className="absolute inset-0 bg-[#1f2724]/45" />
               </motion.figure>
               <motion.figure
-                className="absolute inset-0 z-30 overflow-hidden bg-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] pointer-events-auto"
+                className="absolute inset-0 z-30 overflow-hidden bg-ink shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] pointer-events-auto"
                 style={{
                   rotateX: reduce ? 0 : mainRotateX,
                   rotateY: reduce ? 0 : mainRotateY,
@@ -191,7 +191,7 @@ function IntroSequence() {
                 <div className="absolute inset-0 bg-[#1f2724]/45" />
                 <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 text-center text-white sm:inset-x-16">
                   <p className="marker-num text-mint-light">Meet Jobly</p>
-                  <h2 className="font-display mt-5 text-[clamp(2.5rem,5.5vw,5.8rem)] font-extrabold text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]">
+                  <h2 className="font-display mt-5 text-h2 text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]">
                     Find your next good fit.
                   </h2>
                   <p className="mt-5 max-w-2xl mx-auto text-sm leading-relaxed text-white/88 sm:text-base">
@@ -252,7 +252,7 @@ function HeroMessage() {
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.08 }}
-        className="font-display mt-5 max-w-5xl text-[clamp(3.3rem,7vw,7.6rem)] font-extrabold text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]"
+        className="font-display mt-5 max-w-5xl text-hero text-white [text-shadow:0_4px_28px_rgb(20_30_27_/_0.45)]"
       >
         Find your next good fit.
       </motion.h1>
@@ -306,7 +306,7 @@ function IntroFallback() {
           className="absolute inset-0 h-full w-full object-cover opacity-35"
         />
         <div className="relative mx-auto max-w-sm" style={{ perspective: "900px" }}>
-          <figure className="relative z-20 overflow-hidden bg-[#2f302d] shadow-[0_26px_52px_-26px_rgb(47_48_45_/_0.52)]">
+          <figure className="relative z-20 overflow-hidden bg-ink shadow-[0_26px_52px_-26px_rgb(47_48_45_/_0.52)]">
             <img
               src={heroImg}
               alt="People considering their next steps together"
@@ -315,7 +315,7 @@ function IntroFallback() {
             <div className="absolute inset-0 bg-[#1f2724]/45" />
             <figcaption className="absolute inset-x-6 top-1/2 -translate-y-1/2 text-center text-white flex flex-col items-center">
               <p className="marker-num text-mint-light">Meet Jobly</p>
-              <p className="font-display mt-3 text-4xl font-extrabold">Find your next good fit.</p>
+              <p className="font-display mt-3 text-h2">Find your next good fit.</p>
               <p className="mt-3 text-sm leading-relaxed text-white/88 max-w-md">
                 A more thoughtful place to turn experience into opportunity.
               </p>
@@ -343,7 +343,7 @@ function StatementPanel() {
   return (
     <section
       id="statement"
-      className="relative overflow-hidden bg-[#302f2c] px-6 py-24 text-white sm:px-10 sm:py-32"
+      className="relative overflow-hidden bg-ink px-6 py-24 text-white sm:px-10 sm:py-32"
     >
       <div
         aria-hidden="true"
@@ -363,14 +363,14 @@ function StatementPanel() {
       />
       <div className="relative mx-auto flex min-h-[540px] max-w-5xl items-center justify-center border border-white/5 bg-[#353431] px-6 py-16 text-center shadow-[0_34px_80px_-38px_rgb(0_0_0_/_0.65)] sm:px-16">
         <div className="max-w-4xl">
-          <p className="font-serif text-2xl text-white/84 sm:text-3xl">
+          <p className="font-display text-h3 text-white/85">
             Because the next move matters
           </p>
-          <h2 className="font-display mt-8 text-[clamp(3rem,8vw,7.5rem)] font-extrabold leading-[0.93]">
+          <h2 className="font-display mt-8 text-h2">
             Good work
           </h2>
-          <p className="font-serif mt-6 text-2xl text-white/84 sm:text-3xl">starts with</p>
-          <h2 className="font-display mt-6 text-[clamp(3rem,8vw,7.5rem)] font-extrabold leading-[0.93]">
+          <p className="font-display mt-6 text-h3 text-white/85">starts with</p>
+          <h2 className="font-display mt-6 text-h2">
             a clear picture.
           </h2>
           <p className="mt-12 text-lg text-white/60">
@@ -431,7 +431,7 @@ function JourneySection() {
                 <p className="marker-num text-warm">
                   Step {activeStep.number} | {activeStep.eyebrow}
                 </p>
-                <h2 className="font-display mt-4 text-[clamp(2.5rem,4.5vw,4.8rem)] text-ink">
+                <h2 className="font-display mt-4 text-h2 text-ink">
                   {activeStep.title}
                 </h2>
                 <p className="mt-5 max-w-sm text-lg leading-relaxed text-ink/72">
@@ -475,7 +475,7 @@ function JourneySection() {
 
       <div className="px-6 py-20 sm:px-10 md:hidden">
         <p className="marker-num text-ink/60">Your four-step flow</p>
-        <h2 className="font-display mt-5 max-w-lg text-[clamp(2.4rem,11vw,4rem)] text-ink">
+        <h2 className="font-display mt-5 max-w-lg text-h2 text-ink">
           A job search that feels more like you.
         </h2>
         <ol className="mt-12 border-t border-ink/15">
@@ -661,7 +661,7 @@ function OpportunitySequence() {
               style={{ opacity: showWorkspace ? 1 : 0, y: openingCopyY }}
             >
               <p className="marker-num text-mint-light">A shared hiring space</p>
-              <h2 className="font-display mt-4 max-w-xl text-[clamp(2.45rem,4.4vw,4.75rem)] leading-[0.98] text-white">
+              <h2 className="font-display mt-4 max-w-xl text-h2 text-white">
                 One message can start a good application.
               </h2>
             </motion.div>
@@ -674,7 +674,7 @@ function OpportunitySequence() {
               {WORKSPACE_TILES.map((title, index) => (
                 <motion.article
                   key={title}
-                  className="min-h-32 border border-white/15 bg-[#f7f8f6]/95 p-5 text-[#2f302d] shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)]"
+                  className="min-h-32 border border-white/15 bg-cream/95 p-5 text-ink shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)]"
                   style={{
                     x: index < 3 ? gridTopX : gridBottomX,
                     y: index < 3 ? gridTopY : gridBottomY,
@@ -683,9 +683,9 @@ function OpportunitySequence() {
                 >
                   <p className="text-sm font-semibold">{title}</p>
                   <div className="mt-6 space-y-2.5">
-                    <div className="h-2 w-4/5 bg-[#2f302d]/15" />
-                    <div className="h-2 w-full bg-[#2f302d]/10" />
-                    <div className="h-2 w-3/5 bg-[#2f302d]/10" />
+                    <div className="h-2 w-4/5 bg-ink/15" />
+                    <div className="h-2 w-full bg-ink/10" />
+                    <div className="h-2 w-3/5 bg-ink/10" />
                   </div>
                 </motion.article>
               ))}
@@ -693,7 +693,7 @@ function OpportunitySequence() {
 
             {/* Floating card — starts invisible, fades in as Hiring plan tile fades out */}
             <motion.div
-              className="absolute left-1/2 top-[58%] z-30 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-[#d9ddd9] bg-[#fffefd] text-[#2f302d] shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)]"
+              className="absolute left-1/2 top-[58%] z-30 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 overflow-hidden border border-ink/10 bg-white text-ink shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)]"
               style={{
                 opacity: showCardInFolder ? cardIntoFolderOpacity : cardOpacity,
                 x: cardX,
@@ -710,9 +710,9 @@ function OpportunitySequence() {
                 className="absolute inset-0 flex flex-col justify-center p-9"
                 style={{ opacity: showMessage ? 1 : 0, y: messageContentY }}
               >
-                <p className="marker-num text-[#628c80]">Candidate message</p>
+                <p className="marker-num text-mint-deep">Candidate message</p>
                 <p className="mt-3 text-2xl font-semibold">Ari Patel</p>
-                <p className="mt-4 max-w-md text-xl leading-relaxed text-[#2f302d]/72">
+                <p className="mt-4 max-w-md text-xl leading-relaxed text-ink/72">
                   The fit looks strong. I would love to hear more about the product work.
                 </p>
               </motion.div>
@@ -725,26 +725,26 @@ function OpportunitySequence() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="marker-num text-[#628c80]">Jobly application</p>
+                    <p className="marker-num text-mint-deep">Jobly application</p>
                     <p className="font-display mt-2 text-4xl">Ari Patel</p>
                   </div>
-                  <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
+                  <span className="rounded-full bg-mint-light px-3 py-1 text-xs font-bold text-accent-strong">
                     Submitted
                   </span>
                 </div>
-                <p className="mt-3 text-base text-[#2f302d]/64">Senior React Developer</p>
+                <p className="mt-3 text-base text-ink/64">Senior React Developer</p>
                 <div className="mt-7 space-y-3">
-                  <div className="h-2 w-full bg-[#2f302d]/15" />
-                  <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-                  <div className="h-2 w-3/5 bg-[#2f302d]/11" />
+                  <div className="h-2 w-full bg-ink/15" />
+                  <div className="h-2 w-4/5 bg-ink/11" />
+                  <div className="h-2 w-3/5 bg-ink/11" />
                 </div>
                 <div className="mt-7 grid grid-cols-2 gap-3">
-                  <div className="border border-[#d9ddd9] p-3">
-                    <p className="text-xs text-[#2f302d]/48">Match</p>
+                  <div className="border border-ink/10 p-3">
+                    <p className="text-xs text-ink/48">Match</p>
                     <p className="mt-2 text-xl font-bold">Strong</p>
                   </div>
-                  <div className="border border-[#d9ddd9] p-3">
-                    <p className="text-xs text-[#2f302d]/48">Status</p>
+                  <div className="border border-ink/10 p-3">
+                    <p className="text-xs text-ink/48">Status</p>
                     <p className="mt-2 text-xl font-bold">Applied</p>
                   </div>
                 </div>
@@ -756,8 +756,8 @@ function OpportunitySequence() {
               className="absolute left-[62%] top-[25%] z-20 w-[min(28vw,390px)]"
               style={{ opacity: showApplicationCopy ? 1 : 0, y: rightCopyY }}
             >
-              <p className="marker-num text-[#628c80]">A message becomes a move</p>
-              <h2 className="font-display mt-5 text-[clamp(2.65rem,4vw,4.7rem)] leading-[0.98]">
+              <p className="marker-num text-mint-deep">A message becomes a move</p>
+              <h2 className="font-display mt-5 text-h2">
                 Turn a good signal into a complete application.
               </h2>
               <p className="mt-6 text-lg leading-relaxed text-ink/68">
@@ -779,8 +779,8 @@ function OpportunitySequence() {
                 transformStyle: "preserve-3d",
               }}
             >
-              <div className="absolute bottom-0 left-[7%] right-[4%] h-[55%] border border-[#86b4a6] bg-[#a3cfc2] shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]">
-                <div className="absolute -top-10 left-8 h-10 w-[42%] rounded-t-sm border border-b-0 border-[#86b4a6] bg-[#a3cfc2]" />
+              <div className="absolute bottom-0 left-[7%] right-[4%] h-[55%] border border-[color:var(--chart-3)] bg-mint-hover shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]">
+                <div className="absolute -top-10 left-8 h-10 w-[42%] rounded-t-sm border border-b-0 border-[color:var(--chart-3)] bg-mint-hover" />
               </div>
             </motion.div>
             {/* Folder — front flap (overlays card as it slides in) */}
@@ -797,7 +797,7 @@ function OpportunitySequence() {
               }}
             >
               <div
-                className="absolute bottom-0 left-[7%] right-[4%] h-[49%] border border-[#86b4a6] bg-[#b8ddd2]"
+                className="absolute bottom-0 left-[7%] right-[4%] h-[49%] border border-[color:var(--chart-3)] bg-mint"
                 style={{ clipPath: "polygon(0 13%, 100% 0, 100% 100%, 0 100%)" }}
               />
             </motion.div>
@@ -807,8 +807,8 @@ function OpportunitySequence() {
               className="absolute left-[62%] top-[25%] z-50 w-[min(28vw,390px)]"
               style={{ opacity: showFolderCopy ? 1 : 0, y: folderCopyY }}
             >
-              <p className="marker-num text-[#628c80]">Keep the momentum</p>
-              <h2 className="font-display mt-5 text-[clamp(2.65rem,4vw,4.7rem)] leading-[0.98]">
+              <p className="marker-num text-mint-deep">Keep the momentum</p>
+              <h2 className="font-display mt-5 text-h2">
                 File the application without losing the story.
               </h2>
               <p className="mt-6 text-lg leading-relaxed text-ink/68">
@@ -847,7 +847,7 @@ function CollaborationScene() {
       <div className="mx-auto w-full max-w-7xl">
         <div className="max-w-2xl">
           <p className="marker-num text-mint-light">A shared hiring space</p>
-          <h2 className="font-display mt-4 text-[clamp(2.6rem,5vw,5.3rem)]">
+          <h2 className="font-display mt-4 text-h2">
             One message can start a good application.
           </h2>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-white/75">
@@ -859,34 +859,34 @@ function CollaborationScene() {
           {WORKSPACE_TILES.map((title, index) => (
             <article
               key={title}
-              className="min-h-36 border border-white/15 bg-[#f7f8f6]/90 p-5 text-[#2f302d] shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)] lg:min-h-40 lg:p-6"
+              className="min-h-36 border border-white/15 bg-cream/90 p-5 text-ink shadow-[0_20px_40px_-26px_rgb(0_0_0_/_0.5)] lg:min-h-40 lg:p-6"
             >
               <p className="text-sm font-semibold">{title}</p>
               <div className="mt-5 space-y-2.5">
-                <div className="h-2 w-4/5 bg-[#2f302d]/15" />
-                <div className="h-2 w-full bg-[#2f302d]/10" />
-                <div className="h-2 w-3/5 bg-[#2f302d]/10" />
+                <div className="h-2 w-4/5 bg-ink/15" />
+                <div className="h-2 w-full bg-ink/10" />
+                <div className="h-2 w-3/5 bg-ink/10" />
               </div>
               {index === 3 ? (
                 <div className="mt-6 grid grid-cols-3 gap-2">
-                  <div className="h-8 bg-[#b8ddd2]" />
-                  <div className="h-8 bg-[#d7ebe4]" />
+                  <div className="h-8 bg-mint" />
+                  <div className="h-8 bg-mint-light" />
                   <div className="h-8 bg-[#86b4a6]" />
                 </div>
               ) : null}
               {index === 5 ? (
                 <div className="mt-6 flex gap-2">
                   {Array.from({ length: 4 }).map((_, avatarIndex) => (
-                    <span key={avatarIndex} className="h-8 w-8 rounded-full bg-[#b8ddd2]" />
+                    <span key={avatarIndex} className="h-8 w-8 rounded-full bg-mint" />
                   ))}
                 </div>
               ) : null}
             </article>
           ))}
-          <aside className="relative z-10 mx-auto -mt-4 w-full max-w-xl border-t-8 border-[#86b4a6] bg-white p-6 text-[#2f302d] shadow-[0_28px_60px_-26px_rgb(0_0_0_/_0.55)] md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:p-7">
-            <p className="marker-num text-[#628c80]">Candidate message</p>
+          <aside className="relative z-10 mx-auto -mt-4 w-full max-w-xl border-t-8 border-[color:var(--chart-3)] bg-white p-6 text-ink shadow-[0_28px_60px_-26px_rgb(0_0_0_/_0.55)] md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:p-7">
+            <p className="marker-num text-mint-deep">Candidate message</p>
             <p className="font-semibold">Ari Patel</p>
-            <p className="mt-2 text-lg text-[#2f302d]/72">
+            <p className="mt-2 text-lg text-ink/72">
               The fit looks strong. I would love to hear more about the product work.
             </p>
           </aside>
@@ -911,31 +911,31 @@ function ApplicationScene() {
         >
           <div
             aria-hidden="true"
-            className="absolute left-[6%] top-6 h-[82%] w-[80%] rotate-[-8deg] border border-[#d9ddd9] bg-white/50 shadow-[0_30px_60px_-34px_rgb(47_48_45_/_0.42)]"
+            className="absolute left-[6%] top-6 h-[82%] w-[80%] rotate-[-8deg] border border-ink/10 bg-white/50 shadow-[0_30px_60px_-34px_rgb(47_48_45_/_0.42)]"
           />
-          <article className="absolute left-[16%] top-12 z-10 h-[84%] w-[80%] overflow-hidden border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)] sm:p-9">
+          <article className="absolute left-[16%] top-12 z-10 h-[84%] w-[80%] overflow-hidden border border-ink/10 bg-white p-7 text-ink shadow-[0_36px_70px_-32px_rgb(47_48_45_/_0.55)] sm:p-9">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="marker-num text-[#628c80]">Jobly application</p>
-                <h3 className="font-display mt-2 text-[clamp(2rem,3vw,3rem)]">Ari Patel</h3>
+                <p className="marker-num text-mint-deep">Jobly application</p>
+                <h3 className="font-display mt-2 text-h3">Ari Patel</h3>
               </div>
-              <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
+              <span className="rounded-full bg-mint-light px-3 py-1 text-xs font-bold text-accent-strong">
                 Submitted
               </span>
             </div>
-            <p className="mt-3 text-base text-[#2f302d]/64">Senior React Developer</p>
+            <p className="mt-3 text-base text-ink/64">Senior React Developer</p>
             <div className="mt-8 space-y-3">
-              <div className="h-2 w-full bg-[#2f302d]/15" />
-              <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-              <div className="h-2 w-3/5 bg-[#2f302d]/11" />
+              <div className="h-2 w-full bg-ink/15" />
+              <div className="h-2 w-4/5 bg-ink/11" />
+              <div className="h-2 w-3/5 bg-ink/11" />
             </div>
             <div className="mt-8 grid grid-cols-2 gap-3">
-              <div className="border border-[#d9ddd9] p-3">
-                <p className="text-xs text-[#2f302d]/48">Match</p>
+              <div className="border border-ink/10 p-3">
+                <p className="text-xs text-ink/48">Match</p>
                 <p className="mt-2 text-xl font-bold">Strong</p>
               </div>
-              <div className="border border-[#d9ddd9] p-3">
-                <p className="text-xs text-[#2f302d]/48">Status</p>
+              <div className="border border-ink/10 p-3">
+                <p className="text-xs text-ink/48">Status</p>
                 <p className="mt-2 text-xl font-bold">Applied</p>
               </div>
             </div>
@@ -948,7 +948,7 @@ function ApplicationScene() {
         </div>
         <div className="max-w-xl lg:pl-8">
           <p className="marker-num">A message becomes a move</p>
-          <h2 className="font-display mt-5 text-[clamp(2.8rem,5vw,5.4rem)]">
+          <h2 className="font-display mt-5 text-h2">
             Turn a good signal into a complete application.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-ink/68">
@@ -984,18 +984,18 @@ function FolderScene({
     <div className="relative flex h-full min-h-[720px] items-center overflow-hidden bg-[#edf1ef] px-6 py-16 sm:px-10 sm:py-20">
       <div
         aria-hidden="true"
-        className="absolute right-[-8%] top-[-10%] h-80 w-80 rounded-full border-[34px] border-[#b8ddd2]/35"
+        className="absolute right-[-8%] top-[-10%] h-80 w-80 rounded-full border-[34px] border-mint/35"
       />
       <div className="relative mx-auto grid max-w-7xl gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.75fr)] lg:items-center">
         <div className="relative mx-auto h-[460px] w-full max-w-[540px] sm:h-[530px]">
           <motion.div
-            className="absolute bottom-[9%] left-[8%] right-[5%] z-10 h-[48%] border border-[#86b4a6] bg-[#a3cfc2] shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]"
+            className="absolute bottom-[9%] left-[8%] right-[5%] z-10 h-[48%] border border-[color:var(--chart-3)] bg-mint-hover shadow-[0_28px_60px_-30px_rgb(47_48_45_/_0.42)]"
             style={{ y: folderLift ?? 0 }}
           >
-            <div className="absolute -top-9 left-8 h-9 w-[42%] rounded-t-sm border border-b-0 border-[#86b4a6] bg-[#a3cfc2]" />
+            <div className="absolute -top-9 left-8 h-9 w-[42%] rounded-t-sm border border-b-0 border-[color:var(--chart-3)] bg-mint-hover" />
           </motion.div>
           <motion.article
-            className="absolute left-[12%] top-[10%] z-20 h-[58%] w-[62%] border border-[#d9ddd9] bg-[#fffefd] p-6 text-[#2f302d] shadow-[0_30px_60px_-30px_rgb(47_48_45_/_0.5)]"
+            className="absolute left-[12%] top-[10%] z-20 h-[58%] w-[62%] border border-ink/10 bg-white p-6 text-ink shadow-[0_30px_60px_-30px_rgb(47_48_45_/_0.5)]"
             style={{
               x: applicationX ?? 0,
               y: applicationY ?? 0,
@@ -1003,24 +1003,24 @@ function FolderScene({
               opacity: applicationOpacity ?? 1,
             }}
           >
-            <p className="marker-num text-[#628c80]">Application</p>
+            <p className="marker-num text-mint-deep">Application</p>
             <p className="font-display mt-3 text-3xl">Ari Patel</p>
-            <p className="mt-2 text-sm text-[#2f302d]/62">Senior React Developer</p>
+            <p className="mt-2 text-sm text-ink/62">Senior React Developer</p>
             <div className="mt-7 space-y-2.5">
-              <div className="h-2 w-full bg-[#2f302d]/15" />
-              <div className="h-2 w-4/5 bg-[#2f302d]/10" />
-              <div className="h-2 w-3/5 bg-[#2f302d]/10" />
+              <div className="h-2 w-full bg-ink/15" />
+              <div className="h-2 w-4/5 bg-ink/10" />
+              <div className="h-2 w-3/5 bg-ink/10" />
             </div>
           </motion.article>
           <div
             aria-hidden="true"
-            className="absolute bottom-[9%] left-[8%] right-[5%] z-30 h-[27%] border border-[#86b4a6] bg-[#b8ddd2]"
+            className="absolute bottom-[9%] left-[8%] right-[5%] z-30 h-[27%] border border-[color:var(--chart-3)] bg-mint"
             style={{ clipPath: "polygon(0 18%, 100% 0, 100% 100%, 0 100%)" }}
           />
         </div>
         <div className="max-w-xl lg:pl-8">
           <p className="marker-num">Keep the momentum</p>
-          <h2 className="font-display mt-5 text-[clamp(2.8rem,5vw,5.4rem)]">
+          <h2 className="font-display mt-5 text-h2">
             File the application without losing the story.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-ink/68">
@@ -1046,19 +1046,19 @@ function ProfileScene() {
           <div className="absolute inset-0 bg-[#f6f8f6]/50" />
           <div
             aria-hidden="true"
-            className="absolute left-[13%] top-[12%] h-14 w-14 rounded-full border-[10px] border-[#86b4a6]/75"
+            className="absolute left-[13%] top-[12%] h-14 w-14 rounded-full border-[10px] border-[color:var(--chart-3)]/75"
           />
           <div
             aria-hidden="true"
-            className="absolute right-[14%] top-[20%] h-9 w-9 rotate-[10deg] border-[8px] border-[#86b4a6]/75"
+            className="absolute right-[14%] top-[20%] h-9 w-9 rotate-[10deg] border-[8px] border-[color:var(--chart-3)]/75"
           />
           <div
             aria-hidden="true"
             className="absolute bottom-[24%] right-[13%] h-0 w-0 border-b-[28px] border-l-[22px] border-r-[22px] border-b-[#86b4a6]/75 border-l-transparent border-r-transparent"
           />
-          <div className="absolute inset-x-[12%] top-[35%] border-[8px] border-[#86b4a6] bg-[#86b4a6]/90 px-6 py-10 text-center text-white sm:px-10">
-            <p className="font-serif text-lg">Your profile</p>
-            <p className="font-display mt-4 text-[clamp(2.3rem,5vw,4.8rem)]">Your next chapter</p>
+          <div className="absolute inset-x-[12%] top-[35%] border-[8px] border-[color:var(--chart-3)] bg-[color:var(--chart-3)]/90 px-6 py-10 text-center text-white sm:px-10">
+            <p className="font-display text-lg">Your profile</p>
+            <p className="font-display mt-4 text-h2">Your next chapter</p>
             <p className="mt-4 text-sm text-white/85">
               Keep the work you are proud of close to the roles that deserve it.
             </p>
@@ -1066,7 +1066,7 @@ function ProfileScene() {
         </div>
         <div className="max-w-md">
           <p className="marker-num">The details stay yours</p>
-          <h2 className="font-display mt-5 text-[clamp(2.6rem,5vw,5rem)]">
+          <h2 className="font-display mt-5 text-h2">
             One profile. A better starting point.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-ink/68">
@@ -1133,7 +1133,7 @@ function ClosingCall() {
   return (
     <section
       id="cta"
-      className="relative overflow-hidden bg-[#302f2c] px-6 py-20 text-white sm:px-10 sm:py-28"
+      className="relative overflow-hidden bg-ink px-6 py-20 text-white sm:px-10 sm:py-28"
     >
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)] lg:items-end">
         <div className="relative mx-auto h-[520px] w-full max-w-sm">
@@ -1151,7 +1151,7 @@ function ClosingCall() {
         </div>
         <div className="max-w-2xl lg:pb-8">
           <p className="marker-num text-mint-light">Start where you are</p>
-          <h2 className="font-display mt-5 text-[clamp(3rem,6vw,6rem)]">
+          <h2 className="font-display mt-5 text-h2">
             Make the next move a good one.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-white/70">
@@ -1189,20 +1189,20 @@ function PaperMockup({
 }) {
   return (
     <div
-      className={`overflow-hidden border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] ${className}`}
+      className={`overflow-hidden border border-ink/10 bg-white p-7 text-ink ${className}`}
     >
-      <p className="text-sm text-[#2f302d]/45">{label}</p>
-      <p className="font-display mt-2 text-[clamp(1.7rem,3vw,2.7rem)]">{title}</p>
+      <p className="text-sm text-ink/45">{label}</p>
+      <p className="font-display mt-2 text-h3">{title}</p>
       <div className="mt-9 space-y-3">
-        <div className="h-2 w-full bg-[#2f302d]/15" />
-        <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-        <div className="h-2 w-3/5 bg-[#2f302d]/11" />
+        <div className="h-2 w-full bg-ink/15" />
+        <div className="h-2 w-4/5 bg-ink/11" />
+        <div className="h-2 w-3/5 bg-ink/11" />
       </div>
       <p className="mt-8 text-sm font-semibold">What matters most</p>
       <div className="mt-4 space-y-2.5">
-        <div className="h-2 w-full bg-[#2f302d]/12" />
-        <div className="h-2 w-[92%] bg-[#2f302d]/10" />
-        <div className="h-2 w-2/3 bg-[#2f302d]/10" />
+        <div className="h-2 w-full bg-ink/12" />
+        <div className="h-2 w-[92%] bg-ink/10" />
+        <div className="h-2 w-2/3 bg-ink/10" />
       </div>
       {image ? (
         <img
@@ -1211,7 +1211,7 @@ function PaperMockup({
           className="absolute bottom-0 left-0 h-[34%] w-full object-cover opacity-65"
         />
       ) : (
-        <div className="absolute bottom-8 left-7 right-7 h-20 bg-[#b8ddd2]" />
+        <div className="absolute bottom-8 left-7 right-7 h-20 bg-mint" />
       )}
     </div>
   );

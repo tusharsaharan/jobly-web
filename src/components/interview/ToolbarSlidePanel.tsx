@@ -75,7 +75,7 @@ export function ToolbarSlidePanel({
           <CheckpointTimeline
             sessionId={sessionId}
             token={token}
-            onRestoreComplete={onRestoreCheckpoint}
+            onRestoreComplete={onRestoreCheckpoint || (() => {})}
             readOnly={checkpointReadOnly}
           />
         )}

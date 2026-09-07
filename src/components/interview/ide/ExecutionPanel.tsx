@@ -58,7 +58,7 @@ export function ExecutionPanel({
   };
 
   return (
-    <div className="flex h-full flex-col border-t border-[#2A2A2A] bg-[#141414] text-white font-mono text-xs overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col border-t border-[#2A2A2A] bg-[#141414] text-white font-mono text-xs overflow-hidden">
       {/* Header bar */}
       <div className="flex h-9 items-center justify-between border-b border-[#2A2A2A] px-3 bg-[#1A1A1A] flex-shrink-0 select-none">
         <div className="flex items-center gap-3">
@@ -125,12 +125,12 @@ export function ExecutionPanel({
       </div>
 
       {/* Main Console Viewport */}
-      <div className="flex-1 overflow-hidden p-2.5">
+      <div className="flex-1 min-h-0 overflow-y-auto iv-scroll p-2.5">
         {activeTab === "SPLIT" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 min-h-full">
             {/* Left Box: Custom Input (stdin) */}
-            <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full">
-              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888]">
+            <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden min-h-[160px] md:min-h-0 md:h-full">
+              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888] flex-shrink-0">
                 <div className="flex items-center gap-1.5">
                   <FileInput className="h-3 w-3 text-[#2A9D7B]" />
                   <span>Custom Input (stdin)</span>
@@ -148,14 +148,14 @@ export function ExecutionPanel({
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
                 placeholder="Type or paste custom test input here (e.g. numbers, arrays, strings)...&#10;cin >> a >> b; or input() reads this sequentially."
-                className="flex-1 w-full bg-transparent p-2.5 text-[#E0E0E0] placeholder:text-[#444444] text-[11px] font-mono outline-none resize-none focus:bg-[#121212] transition-colors"
+                className="flex-1 min-h-0 w-full bg-transparent p-2.5 text-[#E0E0E0] placeholder:text-[#444444] text-[11px] font-mono outline-none resize-none focus:bg-[#121212] transition-colors iv-scroll overflow-y-auto"
                 spellCheck={false}
               />
             </div>
 
             {/* Right Box: Standard Output (stdout) */}
-            <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full">
-              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888]">
+            <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden min-h-[160px] md:min-h-0 md:h-full">
+              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888] flex-shrink-0">
                 <div className="flex items-center gap-1.5">
                   <FileOutput className="h-3 w-3 text-[#2A9D7B]" />
                   <span>Output (stdout)</span>
@@ -180,7 +180,7 @@ export function ExecutionPanel({
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-2.5">
+              <div className="flex-1 min-h-0 overflow-y-auto iv-scroll p-2.5">
                 {output ? (
                   <pre className="whitespace-pre-wrap text-[#E0E0E0] text-[11px] leading-relaxed select-text font-mono">
                     {[output.stdout, output.stderr].filter(Boolean).join("\n") || "[Process completed with no output]"}
@@ -196,8 +196,8 @@ export function ExecutionPanel({
           </div>
         ) : activeTab === "INPUT" ? (
           /* Full Input View */
-          <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full">
-            <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888]">
+          <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full min-h-0">
+            <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888] flex-shrink-0">
               <div className="flex items-center gap-1.5">
                 <FileInput className="h-3 w-3 text-[#2A9D7B]" />
                 <span>Custom Input (stdin)</span>
@@ -215,14 +215,14 @@ export function ExecutionPanel({
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               placeholder="Type or paste custom test input here...&#10;For example:&#10;5&#10;10 20 30 40 50"
-              className="flex-1 w-full bg-transparent p-3 text-[#E0E0E0] placeholder:text-[#444444] text-xs font-mono outline-none resize-none"
+              className="flex-1 min-h-0 w-full bg-transparent p-3 text-[#E0E0E0] placeholder:text-[#444444] text-xs font-mono outline-none resize-none iv-scroll overflow-y-auto"
               spellCheck={false}
             />
           </div>
         ) : (
           /* Full Output View */
-          <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full">
-            <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888]">
+          <div className="flex flex-col rounded-lg border border-[#252525] bg-[#0E0E0E] overflow-hidden h-full min-h-0">
+            <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-[#222222] bg-[#161616] text-[10px] font-semibold text-[#888888] flex-shrink-0">
               <div className="flex items-center gap-2">
                 {output ? (
                   output.exitCode === 0 ? (
@@ -254,7 +254,7 @@ export function ExecutionPanel({
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="flex-1 min-h-0 overflow-y-auto iv-scroll p-3">
               {output ? (
                 <pre className="whitespace-pre-wrap text-[#E0E0E0] text-xs leading-relaxed font-mono">
                   {output.stdout || output.stderr || "[Process completed with no output]"}

@@ -4,11 +4,12 @@ import {
   Terminal as TermIcon,
   Beaker,
   History,
-  Sparkles,
+  Bot,
   X,
   Maximize2,
   Minimize2,
   Trash2,
+  LucideIcon,
 } from "lucide-react";
 import { ExecutionPanel } from "./ExecutionPanel";
 import { TestCasePanel } from "./TestCasePanel";
@@ -70,12 +71,12 @@ export function BottomPanel({
   showAiTab = false,
   aiPanel,
 }: BottomPanelProps) {
-  const tabs: { id: BottomPanelTab; label: string; icon: React.ElementType }[] = [
+  const tabs: { id: BottomPanelTab; label: string; icon: LucideIcon }[] = [
     { id: "OUTPUT", label: "Output", icon: Play },
     { id: "TERMINAL", label: "Terminal", icon: TermIcon },
     { id: "TESTS", label: "Test Results", icon: Beaker },
     { id: "CHECKPOINTS", label: "Checkpoints", icon: History },
-    ...(showAiTab ? [{ id: "AI" as BottomPanelTab, label: "AI Copilot", icon: Sparkles }] : []),
+    ...(showAiTab ? [{ id: "AI" as BottomPanelTab, label: "Assistant", icon: Bot }] : []),
   ];
 
   return (
@@ -135,9 +136,9 @@ export function BottomPanel({
       </div>
 
       {/* Tab Body */}
-      <div className="flex-1 min-h-0 overflow-hidden" style={{ background: "var(--iv-bg)" }}>
+      <div className="flex-1 min-h-0 relative flex flex-col" style={{ background: "var(--iv-bg)" }}>
         {activeTab === "OUTPUT" && (
-          <div className="h-full overflow-hidden">
+          <div className="h-full w-full min-h-0 flex flex-col">
             <ExecutionPanel
               executing={executing}
               output={executionOutput}
@@ -151,7 +152,7 @@ export function BottomPanel({
         )}
 
         {activeTab === "TERMINAL" && (
-          <div className="h-full overflow-hidden">
+          <div className="h-full w-full min-h-0 flex flex-col">
             <TerminalPanel
               sessionId={sessionId}
               roomKey={roomKey}
@@ -163,7 +164,7 @@ export function BottomPanel({
         )}
 
         {activeTab === "TESTS" && (
-          <div className="h-full overflow-hidden">
+          <div className="h-full w-full min-h-0 flex flex-col">
             <TestCasePanel
               sessionId={sessionId}
               language={language}
@@ -175,7 +176,7 @@ export function BottomPanel({
         )}
 
         {activeTab === "CHECKPOINTS" && (
-          <div className="h-full overflow-hidden">
+          <div className="h-full w-full min-h-0 flex flex-col">
             <CheckpointTimeline
               sessionId={sessionId}
               token={token}
@@ -186,7 +187,7 @@ export function BottomPanel({
         )}
 
         {activeTab === "AI" && aiPanel && (
-          <div className="h-full overflow-y-auto iv-scroll p-3">
+          <div className="h-full w-full min-h-0 overflow-y-auto iv-scroll p-3">
             {aiPanel}
           </div>
         )}

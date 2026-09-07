@@ -5,6 +5,7 @@ import {
   Play,
   FileText,
   Settings,
+  LucideIcon,
 } from "lucide-react";
 
 export type ActivityType = "EXPLORER" | "SEARCH" | "RUN_DEBUG" | "PROBLEM" | "SETTINGS";
@@ -14,7 +15,7 @@ interface ActivityBarProps {
   onChange: (activity: ActivityType) => void;
 }
 
-const mainActivities: { id: ActivityType; icon: React.ElementType; label: string }[] = [
+const mainActivities: { id: ActivityType; icon: LucideIcon; label: string }[] = [
   { id: "EXPLORER", icon: FolderTree, label: "Explorer (Ctrl+Shift+E)" },
   { id: "SEARCH", icon: Search, label: "Search (Ctrl+Shift+F)" },
   { id: "RUN_DEBUG", icon: Play, label: "Run and Debug" },

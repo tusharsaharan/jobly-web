@@ -23,13 +23,8 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-// Palette — white-first with subtle mint accents.
-const CREAM = "#F7FFFB";
-const CREAM_SOFT = "rgba(255, 255, 255, 0.72)";
-const INK = "#183A32";
-const CORAL = "#2A9D7B";
-const MINT = "#D6F6E7";
-const MINT_HOVER = "#A9EBD1";
+// Palette — theme tokens (see styles.css). No private hex values.
+// mint-tint bg · ink text · accent actions · mint-light hovers
 
 function AuthPage() {
   const { user, login } = useAuth();
@@ -82,23 +77,14 @@ function AuthPage() {
   const isLogin = mode === "login";
 
   return (
-    <main
-      className="relative h-screen w-full overflow-hidden flex flex-col items-center justify-center px-4 sm:px-6"
-      style={{ backgroundColor: CREAM, color: INK, fontFamily: "'Nunito', system-ui, sans-serif" }}
-    >
+    <main className="relative h-screen w-full overflow-hidden flex flex-col items-center justify-center bg-mint-tint px-4 text-ink font-sans sm:px-6">
       {/* Wordmark in top-left */}
       <div className="absolute left-6 top-6 flex items-center gap-2 sm:left-10 sm:top-8">
         <a href="/" className="flex items-center gap-2 group">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-extrabold transition-transform duration-200 group-hover:scale-105"
-            style={{ backgroundColor: CORAL, color: "#fff" }}
-          >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold text-white transition-transform duration-200 group-hover:scale-105">
             jr
           </span>
-          <span
-            className="text-lg font-extrabold tracking-tight"
-            style={{ color: INK, fontFamily: "'Fredoka', 'Nunito', system-ui, sans-serif" }}
-          >
+          <span className="font-display text-lg text-ink">
             Jobly
           </span>
         </a>
@@ -106,47 +92,18 @@ function AuthPage() {
 
       <div className="w-full max-w-md my-auto flex flex-col items-center justify-center">
         <div
-          className="w-full rounded-[1.75rem] p-6 sm:p-8 transition-all duration-300 shadow-2xl"
+          className="surface w-full rounded-3xl p-6 sm:p-8"
           style={{
-            backgroundColor: CREAM_SOFT,
-            border: "1px solid rgba(24,58,50,0.12)",
-            boxShadow: "0 30px 80px -40px rgba(42,157,123,0.28), 0 2px 8px rgba(24,58,50,0.05)",
-            backdropFilter: "blur(18px)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow =
-              "0 40px 90px -36px rgba(42,157,123,0.36), 0 4px 14px rgba(24,58,50,0.08)";
-            e.currentTarget.style.borderColor = "rgba(42,157,123,0.28)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow =
-              "0 30px 80px -40px rgba(42,157,123,0.28), 0 2px 8px rgba(24,58,50,0.05)";
-            e.currentTarget.style.borderColor = "rgba(24,58,50,0.12)";
+            boxShadow: "0 30px 80px -40px rgb(42 157 123 / 0.28), 0 2px 8px rgb(47 48 45 / 0.05)",
           }}
         >
-          <p
-            className="mb-2 text-[10px] font-medium uppercase"
-            style={{
-              color: `${INK}8C`,
-              letterSpacing: "0.24em",
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-            }}
-          >
+          <p className="marker-num mb-2">
             {isLogin ? "Log in · Jobly" : "Sign up · Jobly"}
           </p>
-          <h1
-            className="text-3xl font-black leading-[1.05] tracking-tight sm:text-4xl"
-            style={{
-              color: INK,
-              fontFamily: "'Fredoka', 'Nunito', system-ui, sans-serif",
-            }}
-          >
+          <h1 className="font-display text-h3 sm:text-4xl sm:leading-[1.05]">
             {isLogin ? "Hey, welcome back." : "Nice to meet you."}
           </h1>
-          <p
-            className="mt-2 text-xs sm:text-sm leading-relaxed"
-            style={{ color: `${INK}A6` }}
-          >
+          <p className="mt-2 text-sm leading-relaxed text-ink/65">
             {isLogin
               ? "A friendlier way to find work. Sign in to pick up where you left off."
               : "Set up your account in a minute — then dive in."}
@@ -163,14 +120,7 @@ function AuthPage() {
                   required
                 />
                 <div>
-                  <span
-                    className="text-[10px] font-semibold uppercase"
-                    style={{
-                      color: `${INK}B3`,
-                      letterSpacing: "0.16em",
-                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                    }}
-                  >
+                  <span className="marker-num">
                     I am a
                   </span>
                   <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -179,11 +129,10 @@ function AuthPage() {
                         type="button"
                         key={r}
                         onClick={() => setRole(r)}
-                        className="rounded-full px-3 py-2 text-xs font-bold capitalize transition-all duration-200 hover:-translate-y-[1px]"
-                        style={
+                        className={
                           role === r
-                            ? { backgroundColor: INK, color: CREAM }
-                            : { backgroundColor: "rgba(214,246,231,0.72)", color: `${INK}CC` }
+                            ? "rounded-full bg-ink px-3 py-2 text-xs font-bold capitalize text-cream transition-all duration-200 hover:-translate-y-[1px]"
+                            : "rounded-full bg-mint-light/70 px-3 py-2 text-xs font-bold capitalize text-ink/80 transition-all duration-200 hover:-translate-y-[1px]"
                         }
                       >
                         {r}
@@ -214,18 +163,15 @@ function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-full py-3 text-sm font-extrabold tracking-wide transition-all duration-200 hover:-translate-y-[1px] hover:shadow-[0_16px_30px_-16px_rgba(14,17,22,0.28)] disabled:opacity-50 cursor-pointer"
-              style={{ backgroundColor: MINT, color: INK }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = MINT_HOVER)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = MINT)}
+              className="pill-mint mt-2 w-full rounded-full py-3 hover:shadow-[0_16px_30px_-16px_rgb(42_157_123/0.4)]"
             >
               {loading ? "Hold on…" : isLogin ? "Log in" : "Sign up"}
             </button>
 
             {isLogin && (
-              <div className="pt-2 border-t border-[rgba(24,58,50,0.08)] mt-3">
-                <div className="flex items-center justify-between text-[11px] font-semibold mb-2">
-                  <span style={{ color: `${INK}99`, letterSpacing: "0.08em" }} className="uppercase text-[10px] font-mono">
+              <div className="pt-2 border-t border-ink/10 mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="marker-num text-ink/60">
                     Quick Demo Accounts
                   </span>
                 </div>
@@ -233,32 +179,24 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, email: "sarah@techcorp.com", password: "password123" })}
-                    className="flex flex-col items-start rounded-xl p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 border cursor-pointer group"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.7)",
-                      borderColor: "rgba(24,58,50,0.12)",
-                    }}
+                    className="flex flex-col items-start rounded-xl border border-ink/10 bg-white/70 p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-accent/30 cursor-pointer group"
                   >
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
+                    <span className="text-xs font-bold text-ink">
                       Sarah (Recruiter)
                     </span>
-                    <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
+                    <span className="font-mono text-2xs text-ink/70 truncate max-w-full group-hover:opacity-100">
                       sarah@techcorp.com
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, email: "alex@example.com", password: "password123" })}
-                    className="flex flex-col items-start rounded-xl p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 border cursor-pointer group"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.7)",
-                      borderColor: "rgba(24,58,50,0.12)",
-                    }}
+                    className="flex flex-col items-start rounded-xl border border-ink/10 bg-white/70 p-2.5 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-accent/30 cursor-pointer group"
                   >
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: INK }}>
+                    <span className="text-xs font-bold text-ink">
                       Alex (Candidate)
                     </span>
-                    <span className="text-[10px] opacity-70 font-mono truncate max-w-full group-hover:opacity-100" style={{ color: INK }}>
+                    <span className="font-mono text-2xs text-ink/70 truncate max-w-full group-hover:opacity-100">
                       alex@example.com
                     </span>
                   </button>
@@ -268,7 +206,7 @@ function AuthPage() {
           </form>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs font-medium" style={{ color: `${INK}A6` }}>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-sm font-medium text-ink/65">
           <span>{isLogin ? "New here?" : "Already a member?"}</span>
           <a
             href={isLogin ? "?mode=signup" : "?mode=login"}
@@ -276,16 +214,14 @@ function AuthPage() {
               e.preventDefault();
               setMode(isLogin ? "signup" : "login");
             }}
-            className="font-extrabold underline underline-offset-4 transition-opacity hover:opacity-70 cursor-pointer"
-            style={{ color: CORAL }}
+            className="font-bold text-accent underline underline-offset-4 transition-opacity hover:opacity-70 cursor-pointer"
           >
             {isLogin ? "Create an account" : "Log in"}
           </a>
         </div>
         <a
           href="/"
-          className="mt-2.5 block text-center text-xs font-semibold transition-opacity hover:opacity-65 cursor-pointer"
-          style={{ color: `${INK}8C` }}
+          className="mt-2.5 block text-center text-sm font-semibold text-ink/55 transition-opacity hover:opacity-75 cursor-pointer"
         >
           Back to home
         </a>
@@ -311,14 +247,7 @@ function UField({
 }) {
   return (
     <label className="block">
-      <span
-        className="text-[11px] font-semibold uppercase"
-        style={{
-          color: `${INK}B3`,
-          letterSpacing: "0.16em",
-          fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-        }}
-      >
+      <span className="marker-num">
         {label}
       </span>
       <input
@@ -327,12 +256,7 @@ function UField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="mt-2 w-full rounded-2xl px-4 py-3 text-[15px] transition-colors duration-200 focus:outline-none focus:ring-2"
-        style={{
-          backgroundColor: "rgba(255,255,255,0.72)",
-          color: INK,
-          border: "1px solid rgba(24,58,50,0.14)",
-        }}
+        className="control-surface mt-2 w-full rounded-2xl bg-white/70 px-4 py-3 text-base placeholder:text-ink/40 focus:outline-none"
       />
     </label>
   );
