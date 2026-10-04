@@ -1,1068 +1,676 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { motion, useReducedMotion, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
 import { LandingNav } from "@/components/Nav";
 import { Preloader } from "@/components/landing/Preloader";
-import { SignupMorph } from "@/components/landing/SignupMorph";
-import heroImg from "@/assets/hero.jpg";
-import step4 from "@/assets/step4.jpg";
+import { SideDots } from "@/components/landing/SideDots";
+import { useSnapScroll } from "@/components/landing/useSnapScroll";
+import { PanelElement, FooterPanel } from "@/components/landing/SwipeElement";
+import { TitleCard } from "@/components/landing/scenes/TitleCard";
+import { ResumeSheet } from "@/components/landing/scenes/ResumeSheet";
+import { DeskScatter, GatherCount } from "@/components/landing/scenes/DeskScatter";
+import { LaptopStage, LaptopProof } from "@/components/landing/scenes/LaptopStage";
+import { ParsePage, ParseTally } from "@/components/landing/scenes/ParsePage";
+import { SkillRail, ScoreBreakdown } from "@/components/landing/scenes/SkillRail";
+import { EvidenceLayer } from "@/components/landing/scenes/EvidenceLayer";
+import { MailboxFlight } from "@/components/landing/scenes/MailboxFlight";
+import { InterviewRoom } from "@/components/landing/scenes/InterviewRoom";
+import { FeedbackAssembly } from "@/components/landing/scenes/FeedbackAssembly";
+import { CrackAndFix } from "@/components/landing/scenes/CrackAndFix";
+import { FolderStage } from "@/components/landing/scenes/FolderStage";
+import { FooterSignup, ScrollHint } from "@/components/landing/scenes/pieces";
+import {
+  ANCHORS,
+  ATS_CATEGORIES,
+  ATS_PROOF,
+  CANDIDATES,
+  COPY,
+  END_STEP,
+  EVIDENCE,
+  FOLDER_TABS,
+  FOOTER_CTA,
+  MAILBOXES,
+  PALETTE,
+  PILLARS,
+  STUDY_TOPICS,
+} from "@/components/landing/sceneManifest";
+import { collaborateImg, introImg } from "@/components/landing/sceneAssets";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Jobly | Great hires start with great interviews" },
+      { title: "Jobly | Your resume is evidence, not a formality" },
       {
         name: "description",
-        content: "A live, evidence-grounded interview room for technical hiring.",
-      },
-      { property: "og:title", content: "Jobly | Great hires start with great interviews" },
-      {
-        property: "og:description",
-        content: "Collaborative coding, whiteboarding, and evidence-based scorecards in one calm room.",
+        content:
+          "Upload your resume, get a deterministic ATS score with every point traced to a quote, interview live, and leave with evidence-backed feedback and a study plan.",
       },
     ],
   }),
   component: Landing,
 });
 
-/* ─────────────────────────────────────────────────────────────
-   Scene model — one entry per scroll scene (Beagle structure)
-   ───────────────────────────────────────────────────────────── */
-
-type SceneTheme = "dark" | "light" | "mint";
-
-interface SceneMeta {
-  id: string;
-  label: string;
-  theme: SceneTheme;
+/** Canvas experience for fine-pointer desktop; static story otherwise. */
+function useStaticLayout() {
+  const [isStatic, setIsStatic] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px), (pointer: coarse)");
+    const apply = () => setIsStatic(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return isStatic;
 }
 
-const SCENES: SceneMeta[] = [
-  { id: "introducing", label: "Welcome", theme: "dark" },
-  { id: "belief", label: "Why interviews", theme: "dark" },
-  { id: "schedule", label: "Schedule", theme: "mint" },
-  { id: "live-room", label: "Live room", theme: "light" },
-  { id: "signals", label: "Signals", theme: "dark" },
-  { id: "collaborate", label: "Decide", theme: "light" },
-  { id: "done", label: "Wrap up", theme: "dark" },
-];
-
-const DARK = "#302f2c";
-const PANEL_DARK = "#353431";
-const MINT_PANEL = "#a3cfc2";
-const MINT_FLAP = "#b8ddd2";
-const MINT_DEEP = "#628c80";
-const INK_SOFT = "#2f302d";
-const PAPER = "#fffefd";
-const PAPER_LINE = "#d9ddd9";
-
-const serifClass = "font-serif";
-const displayClass = "font-display font-extrabold";
-
-/* ─────────────────────────────────────────────────────────────
-   Landing shell — preloader, nav, scenes, sidenav, finale
-   ───────────────────────────────────────────────────────────── */
+/** Points the ring awards, summed only from evidence that has actually docked. */
+function useLiveScore(pos: MotionValue<number>) {
+  return useTransform(pos, (p) => {
+    let total = 0;
+    EVIDENCE.forEach((atom, i) => {
+      const docked = Math.min(1, Math.max(0, (p - (8.15 + i * 0.045 + 0.1)) / 0.4));
+      total += atom.pts * docked;
+    });
+    // ATS readability is structural, not evidence-bound — it lands last.
+    const hygiene = Math.min(1, Math.max(0, (p - 8.6) / 0.3));
+    return Math.round(total + 10 * hygiene);
+  });
+}
 
 function Landing() {
-  const [revealed, setRevealed] = useState(false);
-  const [activeScene, setActiveScene] = useState(0);
-  const [navLight, setNavLight] = useState(false);
-  const mainRef = useRef<HTMLDivElement>(null);
+  const [preloaded, setPreloaded] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = Boolean(useReducedMotion());
+  const isStatic = useStaticLayout();
 
+  const { pos, activeIndex, whiteTheme, navVisible, moveTo, engineRef } = useSnapScroll(
+    END_STEP,
+    !preloaded,
+    stageRef,
+  );
+
+  // One candidate carried across every beat, picked per load.
+  const [candidateIndex, setCandidateIndex] = useState(0);
   useEffect(() => {
-    if (revealed) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [revealed]);
-
-  useEffect(() => {
-    const root = mainRef.current;
-    if (!root) return;
-    const sections = Array.from(root.querySelectorAll<HTMLElement>("[data-scene]"));
-    const finaleEl = document.getElementById("signup");
-    if (finaleEl) sections.push(finaleEl);
-    const visible = new Map<string, number>();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            visible.set(entry.target.id, entry.intersectionRatio);
-          } else {
-            visible.delete(entry.target.id);
-          }
-        }
-        let bestId: string | null = null;
-        let bestRatio = -1;
-        for (const [id, ratio] of visible) {
-          if (ratio > bestRatio) {
-            bestRatio = ratio;
-            bestId = id;
-          }
-        }
-        if (bestId) {
-          if (bestId === "signup") {
-            /* Finale: light features panel on the left under the nav. */
-            setNavLight(true);
-            return;
-          }
-          const index = SCENES.findIndex((scene) => scene.id === bestId);
-          if (index >= 0) {
-            setActiveScene((current) => (current === index ? current : index));
-            setNavLight(SCENES[index].theme === "light");
-          }
-        }
-      },
-      { threshold: [0.25, 0.5, 0.75] },
-    );
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+    setCandidateIndex(Math.floor(Math.random() * CANDIDATES.length));
   }, []);
+  const candidate = CANDIDATES[candidateIndex];
 
-  const activeTheme = SCENES[activeScene]?.theme ?? "dark";
+  const onGo = useCallback((step: number) => moveTo(step), [moveTo]);
+
+  useEffect(() => {
+    if (!preloaded) return;
+    const hook = {
+      moveTo: (step: number) => moveTo(step),
+      getProgress: () => pos.get(),
+      getPos: () => pos.get(),
+      getAim: () => engineRef.current?.getAim() ?? pos.get(),
+      getWhiteTheme: () => document.body.classList.contains("landing-white-theme"),
+      getActiveIndex: () => activeIndex,
+    };
+    (window as unknown as Record<string, unknown>).__joblyLanding = hook;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__joblyLanding;
+    };
+  }, [preloaded, moveTo, pos, engineRef, activeIndex]);
+
+  useEffect(() => {
+    document.body.classList.toggle("landing-white-theme", whiteTheme);
+    return () => document.body.classList.remove("landing-white-theme");
+  }, [whiteTheme]);
+
+  const heroPhotoOpacity = useTransform(pos, (p) => (p <= 1 ? 1 : Math.max(0, 1 - (p - 1) / 1.2)));
+  const liveScore = useLiveScore(pos);
+
+  if (shouldReduceMotion || isStatic) {
+    return (
+      <main className="landing-fallback bg-cream text-ink">
+        <LandingNav light revealed />
+        <LandingFallback />
+      </main>
+    );
+  }
 
   return (
-    <main className="bg-cream text-ink">
-      {!revealed ? <Preloader onDone={() => setRevealed(true)} /> : null}
-      <LandingNav light={navLight} revealed={revealed} />
-      <div ref={mainRef}>
-        <IntroducingScene />
-        <BeliefScene />
-        <ScheduleScene />
-        <LiveRoomScene />
-        <SignalsScene />
-        <CollaborateScene />
-        <DoneScene />
+    <main className="relative h-screen overflow-hidden bg-[var(--lp-cream)] text-ink">
+      {!preloaded ? <Preloader onDone={() => setPreloaded(true)} /> : null}
+      {/* `whiteTheme` = white ink on a dark surface; LandingNav's `light` is the inverse. */}
+      <LandingNav light={!whiteTheme} revealed={preloaded && navVisible} />
+
+      <div
+        ref={stageRef}
+        className="landing-stage relative h-screen w-full cursor-grab touch-none select-none overflow-hidden"
+        data-active-step={activeIndex}
+      >
+        {/* ══ chapter 1 · the desk ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.inkPanel.anchor}
+          visibleLength={ANCHORS.inkPanel.length}
+          color={PALETTE.ink}
+          introOffset={0}
+          outro={false}
+          zIndex={0}
+        />
+
+        <motion.div
+          aria-hidden="true"
+          className="absolute inset-0 z-[5]"
+          style={{ opacity: heroPhotoOpacity }}
+        >
+          <img src={introImg} alt="" className="h-full w-full object-cover object-center" />
+          <div className="absolute inset-0 bg-[var(--lp-ink)]/60" />
+          <div className="landing-vignette absolute inset-0" />
+        </motion.div>
+
+        <DeskScatter
+          pos={pos}
+          anchor={ANCHORS.deskScatter.anchor}
+          visibleLength={ANCHORS.deskScatter.length}
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.heroTitle.anchor}
+          visibleLength={ANCHORS.heroTitle.length}
+          kicker="CAREER CLARITY, BUILT AROUND YOU"
+          title="Find your next good fit."
+          subheader={COPY.hero.subheader}
+          color="#FFFFFF"
+          top="14%"
+          zIndex={45}
+        />
+
+        <HeroActions pos={pos} />
+
+        <ScrollHint
+          pos={pos}
+          anchor={ANCHORS.scrollHint.anchor}
+          visibleLength={ANCHORS.scrollHint.length}
+          onClick={() => moveTo(2)}
+        />
+
+        {/* ══ chapter 2 · the thesis ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.particleBg.anchor}
+          visibleLength={ANCHORS.particleBg.length}
+          color={PALETTE.ink}
+          zIndex={15}
+        >
+          <div className="landing-particles absolute inset-0" aria-hidden="true" />
+          <div className="landing-spotlight absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.thesisTitle.anchor}
+          visibleLength={ANCHORS.thesisTitle.length}
+          kicker={COPY.thesis.uppertitle}
+          title={COPY.thesis.title}
+          subheader={COPY.thesis.subheader}
+          subtitle={COPY.thesis.subtitle}
+          footnote={COPY.thesis.bottomtitle}
+          color="#FFFFFF"
+          zIndex={46}
+        />
+
+        {/* ══ chapter 3 · gather → open → parse → extract → score ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.creamPanel.anchor}
+          visibleLength={ANCHORS.creamPanel.length}
+          color={PALETTE.cream}
+          zIndex={16}
+        >
+          <div className="landing-grain absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        {/* the laptop screen owns the frame for parse / extract / score */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.screenPanel.anchor}
+          visibleLength={ANCHORS.screenPanel.length}
+          color="#0a1410"
+          zIndex={17}
+        >
+          <div className="landing-screenfield absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.gatherTitle.anchor}
+          visibleLength={ANCHORS.gatherTitle.length}
+          title={COPY.gather.title}
+          subheader={COPY.gather.subheader}
+          color={PALETTE.ink}
+          zIndex={44}
+        />
+
+        <GatherCount pos={pos} />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.openTitle.anchor}
+          visibleLength={ANCHORS.openTitle.length}
+          title={COPY.open.title}
+          subheader={COPY.open.subheader}
+          color={PALETTE.ink}
+          top="12%"
+          zIndex={44}
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.parseTitle.anchor}
+          visibleLength={ANCHORS.parseTitle.length}
+          title={COPY.parse.title}
+          subheader={COPY.parse.subheader}
+          color="#FFFFFF"
+          top="7%"
+          zIndex={44}
+          className="landing-title--compact"
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.extractTitle.anchor}
+          visibleLength={ANCHORS.extractTitle.length}
+          title={COPY.extract.title}
+          subheader={COPY.extract.subheader}
+          color="#FFFFFF"
+          top="7%"
+          zIndex={44}
+          className="landing-title--compact"
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.scoreTitle.anchor}
+          visibleLength={ANCHORS.scoreTitle.length}
+          title={COPY.score.title}
+          subheader={COPY.score.subheader}
+          color="#FFFFFF"
+          top="7%"
+          zIndex={44}
+          className="landing-title--compact"
+        />
+
+        {/* the laptop hosts the parse page, the rail and the score rows */}
+        <LaptopStage
+          pos={pos}
+          anchor={ANCHORS.laptop.anchor}
+          visibleLength={ANCHORS.laptop.length}
+        >
+          <ParsePage pos={pos} candidate={candidate} />
+          <SkillRail pos={pos} />
+          <ScoreBreakdown pos={pos} categories={ATS_CATEGORIES} score={liveScore} />
+        </LaptopStage>
+
+        <ParseTally pos={pos} />
+        <LaptopProof pos={pos} items={ATS_PROOF} />
+
+        {/* ══ chapter 4 · apply ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.deepPanel.anchor}
+          visibleLength={ANCHORS.deepPanel.length}
+          color={PALETTE.deep}
+          zIndex={18}
+        >
+          <div className="landing-mesh absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.applyTitle.anchor}
+          visibleLength={ANCHORS.applyTitle.length}
+          title={COPY.apply.title}
+          subheader={COPY.apply.subheader}
+          color="#FFFFFF"
+          top="10%"
+          zIndex={44}
+        />
+
+        <MailboxFlight
+          pos={pos}
+          anchor={ANCHORS.mailboxes.anchor}
+          visibleLength={ANCHORS.mailboxes.length}
+          candidate={candidate}
+        />
+
+        {/* ══ chapter 5 · the room — near-black IDE, no photo ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.roomPanel.anchor}
+          visibleLength={ANCHORS.roomPanel.length}
+          color={PALETTE.room}
+          zIndex={19}
+        >
+          <div className="landing-roomfield absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.roomTitle.anchor}
+          visibleLength={ANCHORS.roomTitle.length}
+          title={COPY.room.title}
+          subheader={COPY.room.subheader}
+          color="#FFFFFF"
+          top="9%"
+          zIndex={44}
+          className="whitespace-pre-line"
+        />
+
+        <InterviewRoom
+          pos={pos}
+          anchor={ANCHORS.interviewRoom.anchor}
+          visibleLength={ANCHORS.interviewRoom.length}
+        />
+
+        {/* ══ chapter 6 · the verdict — teal + blueprint, deliberately not the room ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.verdictPanel.anchor}
+          visibleLength={ANCHORS.verdictPanel.length}
+          color={PALETTE.verdict}
+          zIndex={20}
+        >
+          <img
+            src={collaborateImg}
+            alt=""
+            className="h-full w-full object-cover object-center opacity-[0.07] [filter:grayscale(1)]"
+          />
+          <div className="landing-blueprint absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.feedbackTitle.anchor}
+          visibleLength={ANCHORS.feedbackTitle.length}
+          title={COPY.feedback.title}
+          subheader={COPY.feedback.subheader}
+          color="#FFFFFF"
+          top="8%"
+          zIndex={44}
+        />
+
+        <FeedbackAssembly
+          pos={pos}
+          anchor={ANCHORS.feedbackAssembly.anchor}
+          visibleLength={ANCHORS.feedbackAssembly.length}
+        />
+
+        {/* ══ chapter 7 · fix and rewrite ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.fixPanel.anchor}
+          visibleLength={ANCHORS.fixPanel.length}
+          color={PALETTE.cream}
+          zIndex={21}
+        >
+          <div className="landing-lamp absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.fixTitle.anchor}
+          visibleLength={ANCHORS.fixTitle.length}
+          title={COPY.fix.title}
+          subheader={COPY.fix.subheader}
+          color={PALETTE.ink}
+          top="9%"
+          zIndex={44}
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.rewriteTitle.anchor}
+          visibleLength={ANCHORS.rewriteTitle.length}
+          title={COPY.rewrite.title}
+          subheader={COPY.rewrite.subheader}
+          color={PALETTE.ink}
+          top="9%"
+          zIndex={44}
+        />
+
+        <CrackAndFix
+          pos={pos}
+          anchor={ANCHORS.crackAndFix.anchor}
+          visibleLength={ANCHORS.crackAndFix.length}
+        />
+
+        {/* ══ chapter 8 · the folder closes the loop ══ */}
+        <PanelElement
+          pos={pos}
+          anchor={ANCHORS.folderPanel.anchor}
+          visibleLength={ANCHORS.folderPanel.length}
+          color={PALETTE.ink}
+          zIndex={22}
+        >
+          <div className="landing-stagelight absolute inset-0" aria-hidden="true" />
+        </PanelElement>
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.folderTitle.anchor}
+          visibleLength={ANCHORS.folderTitle.length}
+          title={COPY.folder.title}
+          subheader={COPY.folder.subheader}
+          color="#FFFFFF"
+          top="8%"
+          zIndex={44}
+        />
+
+        <TitleCard
+          pos={pos}
+          anchor={ANCHORS.fileTitle.anchor}
+          visibleLength={ANCHORS.fileTitle.length}
+          title={COPY.file.title}
+          subheader={COPY.file.subheader}
+          color="#FFFFFF"
+          top="8%"
+          zIndex={44}
+        />
+
+        <FolderStage
+          pos={pos}
+          anchor={ANCHORS.folder.anchor}
+          visibleLength={ANCHORS.folder.length}
+          candidate={candidate}
+        />
+
+        {/* ══ THE PROTAGONISTS — mounted once, alive across the story ══ */}
+        <ResumeSheet
+          pos={pos}
+          anchor={ANCHORS.resume.anchor}
+          visibleLength={ANCHORS.resume.length}
+          candidate={candidate}
+        />
+
+        <EvidenceLayer
+          pos={pos}
+          anchor={ANCHORS.evidence.anchor}
+          visibleLength={ANCHORS.evidence.length}
+        />
+
+        <FooterPanel
+          pos={pos}
+          anchor={ANCHORS.footerColor.anchor}
+          visibleLength={ANCHORS.footerColor.length}
+          color={PALETTE.ink}
+          zIndex={42}
+        >
+          <FooterSignup />
+        </FooterPanel>
+
+        <SideDots pos={pos} activeIndex={activeIndex} light={!whiteTheme} onGo={onGo} />
       </div>
-      <FinaleSection activeTheme={activeTheme} />
-      <SideNav activeIndex={activeScene} />
     </main>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Scene 1 — Introducing (dark photo, title + serif subtitle)
-   ───────────────────────────────────────────────────────────── */
+/* ─── Reduced-motion / mobile fallback — same manifest, same story ─── */
 
-function IntroducingScene() {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-  const photoScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
-  const photoOpacity = useTransform(scrollYProgress, [0, 0.7, 1], [1, 0.7, 0.35]);
-  const copyY = useTransform(scrollYProgress, [0, 0.6], [0, -90]);
-  const copyOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-
-  return (
-    <section
-      id={SCENES[0].id}
-      data-scene
-      ref={sectionRef}
-      className="relative h-[160vh] bg-[#302f2c]"
-    >
-      <div className="sticky top-0 flex h-screen items-center justify-center overflow-hidden">
-        <motion.img
-          src={heroImg}
-          alt="Two people working together at a table"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-          style={
-            reduce
-              ? undefined
-              : { scale: photoScale, opacity: photoOpacity }
-          }
-        />
-        <div className="absolute inset-0 bg-[#1f2724]/55" aria-hidden="true" />
-        <motion.div
-          className="relative z-10 px-6 text-center text-white"
-          style={reduce ? undefined : { y: copyY, opacity: copyOpacity }}
-        >
-          <motion.h2
-            className={`${displayClass} text-[clamp(2.8rem,7vw,6.5rem)] leading-[0.98]`}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
-          >
-            Introducing Jobly
-          </motion.h2>
-          <motion.p
-            className={`${serifClass} mt-5 text-lg text-white/85 sm:text-2xl`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-          >
-            The live interview room for fair technical hiring
-          </motion.p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 2 — Belief statement (pattern panel, staggered lines)
-   ───────────────────────────────────────────────────────────── */
-
-function BeliefScene() {
-  const reduce = Boolean(useReducedMotion());
-
-  return (
-    <section
-      id={SCENES[1].id}
-      data-scene
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#302f2c] px-6 py-24 sm:px-10"
-    >
-      <div
-        aria-hidden="true"
-        className="absolute left-[7%] top-[16%] h-24 w-24 rotate-[20deg] border-[9px] border-black/15"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute right-[12%] top-[14%] h-24 w-24 rotate-[38deg] border-[9px] border-black/15"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute bottom-[14%] left-[14%] h-14 w-14 rotate-[17deg] border-[8px] border-black/15"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute bottom-[12%] right-[10%] h-20 w-20 rounded-full border-[10px] border-black/15"
-      />
-
-      <div className="relative mx-auto max-w-4xl text-center text-white">
-        {reduce ? (
-          <BeliefLines />
-        ) : (
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.5 }}
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.22 } },
-            }}
-          >
-            <BeliefLines />
-          </motion.div>
-        )}
-        <p className="mt-16 text-lg text-white/60 sm:text-xl">
-          Here&rsquo;s how Jobly works:
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function BeliefLines() {
-  const line = (children: React.ReactNode, big = false) =>
-    big ? (
-      <motion.h2
-        className={`${displayClass} text-[clamp(3rem,8vw,7.5rem)] leading-[0.93]`}
-        variants={{ hidden: { opacity: 0, y: 34 }, visible: { opacity: 1, y: 0 } }}
-        transition={{ duration: 0.6 }}
-      >
-        {children}
-      </motion.h2>
-    ) : (
-      <motion.p
-        className={`${serifClass} text-2xl text-white/84 sm:text-3xl`}
-        variants={{ hidden: { opacity: 0, y: 26 }, visible: { opacity: 1, y: 0 } }}
-        transition={{ duration: 0.55 }}
-      >
-        {children}
-      </motion.p>
-    );
+function LandingFallback() {
+  const candidate = CANDIDATES[0];
+  const sections = [
+    { ...COPY.gather, tone: "bg-mint text-ink", n: "01" },
+    { ...COPY.parse, tone: "bg-[#0a1410] text-white", n: "02" },
+    { ...COPY.score, tone: "bg-[#f5f5f3] text-ink", n: "03" },
+    { ...COPY.apply, tone: "bg-[var(--lp-deep)] text-white", n: "04" },
+    { ...COPY.room, tone: "bg-[var(--lp-room)] text-white", n: "05" },
+    { ...COPY.feedback, tone: "bg-[var(--lp-verdict)] text-white", n: "06" },
+    { ...COPY.fix, tone: "bg-[#f5f5f3] text-ink", n: "07" },
+    { ...COPY.folder, tone: "bg-cream text-ink", n: "08" },
+  ];
 
   return (
     <>
-      {line("Because we believe")}
-      <div className="mt-8">{line("Great Hires", true)}</div>
-      <div className="mt-6">{line("Start With")}</div>
-      <div className="mt-8">{line("Great Interviews", true)}</div>
+      <section className="relative flex min-h-[600px] items-center justify-center overflow-hidden bg-ink px-6 text-center text-white">
+        <img
+          src={introImg}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-45"
+        />
+        <div className="relative z-10 max-w-3xl">
+          <p className="marker-num text-mint-light">{COPY.hero.title}</p>
+          <h1 className="font-display mt-5 text-5xl leading-[1.02] sm:text-6xl">
+            {COPY.thesis.title} {COPY.thesis.subheader} {COPY.thesis.subtitle}
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-lg text-white/85">{COPY.hero.subheader}</p>
+          <Link to="/auth" search={{ mode: "signup" }} className="pill-mint-lg mt-10 gap-2">
+            Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
+      <section aria-label="How Jobly works">
+        {sections.map((card) => (
+          <article key={card.n} className={`px-6 py-16 sm:px-10 ${card.tone}`}>
+            <div className="mx-auto max-w-2xl">
+              <p className="marker-num opacity-60">{card.n}</p>
+              <h2 className="font-display mt-3 text-4xl leading-none">{card.title}</h2>
+              <p className="font-serif mt-3 whitespace-pre-line text-lg opacity-80">
+                {card.subheader}
+              </p>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      {/* The evidence chain, spelled out for anyone who cannot see it animate. */}
+      <section className="bg-cream px-6 py-16">
+        <div className="mx-auto max-w-2xl">
+          <h3 className="font-display text-2xl">Every point traced to a quote</h3>
+          <ul className="mt-5 space-y-4">
+            {EVIDENCE.map((atom) => (
+              <li key={atom.id} className="border-b border-ink/10 pb-3">
+                <p className="text-sm">
+                  {atom.text.slice(0, atom.mark[0])}
+                  <mark className="bg-[var(--lp-marker)]">
+                    {atom.text.slice(atom.mark[0], atom.mark[1])}
+                  </mark>
+                  {atom.text.slice(atom.mark[1])}
+                </p>
+                <p className="mt-1 text-xs opacity-60">
+                  → {atom.skill} · {atom.atsCat.replace(/_/g, " ")} · +{atom.pts} pts
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="font-display mt-10 text-2xl">Seven weighted categories</h3>
+          <ul className="mt-5 space-y-2">
+            {ATS_CATEGORIES.map((c) => (
+              <li key={c.id} className="flex justify-between border-b border-ink/10 pb-2 text-sm">
+                <span>{c.label}</span>
+                <span className="font-mono opacity-60">{c.max} pts</span>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="font-display mt-10 text-2xl">Sent where the evidence lands</h3>
+          <ul className="mt-5 space-y-2">
+            {MAILBOXES.map((m) => (
+              <li key={m.id} className="flex justify-between border-b border-ink/10 pb-2 text-sm">
+                <span>
+                  {m.role} — {m.company}
+                </span>
+                <span className="font-mono opacity-60">{m.fit}% fit</span>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="font-display mt-10 text-2xl">Four competencies</h3>
+          <ul className="mt-5 space-y-2">
+            {PILLARS.map((p) => (
+              <li key={p.id} className="border-b border-ink/10 pb-2 text-sm">
+                {p.label}
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="font-display mt-10 text-2xl">Then a study plan</h3>
+          <ul className="mt-5 space-y-2">
+            {STUDY_TOPICS.map((t) => (
+              <li key={t.id} className="border-b border-ink/10 pb-2 text-sm">
+                <span className="font-semibold">{t.topic}</span>
+                <span className="opacity-60"> — from “{t.from}”</span>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="font-display mt-10 text-2xl">Every version kept</h3>
+          <ul className="mt-5 space-y-2">
+            {FOLDER_TABS.map((t) => (
+              <li key={t.id} className="flex justify-between border-b border-ink/10 pb-2 text-sm">
+                <span className="font-semibold">{t.label}</span>
+                <span className="opacity-60">{t.caption}</span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-10 font-serif text-lg italic opacity-75">
+            {candidate.scoreBefore} → {candidate.scoreAfter} on the second pass.
+          </p>
+        </div>
+      </section>
+
+      <section className="bg-ink px-6 py-20 text-center text-white">
+        <h2 className="font-display text-4xl">
+          {FOOTER_CTA.lead} <span className="font-serif italic">{FOOTER_CTA.em}</span>{" "}
+          {FOOTER_CTA.trail}
+        </h2>
+        <p className="marker-num mt-3 text-mint-light">{FOOTER_CTA.kicker}</p>
+        <Link to="/auth" search={{ mode: "signup" }} className="pill-mint mt-8 gap-2">
+          Create your profile <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </section>
     </>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Shared scroll-scene machinery for the five product scenes
-   ───────────────────────────────────────────────────────────── */
-
-interface ProductSceneProps {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  className?: string;
-  paperClassName?: string;
-  copyClassName?: string;
-  backgroundImage?: string;
-}
-
-function ProductScene({
-  id,
-  eyebrow,
-  title,
-  description,
-  children,
-  className = "",
-  paperClassName = "",
-  copyClassName = "",
-  backgroundImage,
-}: ProductSceneProps) {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  const paperY = useTransform(scrollYProgress, [0.1, 0.45], ["62vh", "0vh"]);
-  const paperRotateX = useTransform(scrollYProgress, [0.1, 0.45], [16, 0]);
-  const paperScale = useTransform(scrollYProgress, [0.1, 0.45], [0.86, 1]);
-  const paperOpacity = useTransform(scrollYProgress, [0.08, 0.22], [0, 1]);
-
-  const copyOpacity = useTransform(scrollYProgress, [0.3, 0.45, 0.85, 0.95], [0, 1, 1, 0]);
-  const copyY = useTransform(scrollYProgress, [0.3, 0.5], [40, 0]);
+function HeroActions({ pos }: { pos: MotionValue<number> }) {
+  const opacity = useTransform(pos, (p) =>
+    Math.min(1, Math.max(0, p < 0 ? p + 1 : 1 - p / 0.85)),
+  );
+  const y = useTransform(pos, (p) => `${p < 0 ? -p * 8 : -p * 12}px`);
+  const visibility = useTransform(pos, (p) => (p > -0.99 && p < 0.85 ? "visible" : "hidden"));
 
   return (
-    <section
-      id={id}
-      data-scene
-      ref={sectionRef}
-      className={`relative h-[260vh] ${className}`}
-    >
-      <div
-        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
-        style={{ perspective: "1500px" }}
+    <motion.div className="landing-hero-actions" style={{ opacity, y, visibility }}>
+      <Link
+        to="/auth"
+        search={{ mode: "signup" }}
+        className="landing-hero-cta"
+        data-no-drag
       >
-        {backgroundImage ? (
-          <>
-            <img
-              src={backgroundImage}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-cover opacity-30"
-            />
-            <div className="absolute inset-0 bg-black/45" aria-hidden="true" />
-          </>
-        ) : null}
-
-        <motion.div
-          className={`relative z-10 mx-auto w-full max-w-lg ${paperClassName}`}
-          style={
-            reduce
-              ? undefined
-              : {
-                  y: paperY,
-                  rotateX: paperRotateX,
-                  scale: paperScale,
-                  opacity: paperOpacity,
-                  transformStyle: "preserve-3d",
-                }
-          }
-          initial={reduce ? { opacity: 0 } : undefined}
-          whileInView={reduce ? { opacity: 1 } : undefined}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          {children}
-        </motion.div>
-
-        <motion.div
-          className={`absolute z-20 max-w-md px-6 ${copyClassName}`}
-          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
-        >
-          <p className="marker-num opacity-80">{eyebrow}</p>
-          <h2 className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] leading-[0.98]`}>
-            {title}
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed opacity-80">{description}</p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 3 — Schedule (mint theme, schedule-card paper)
-   ───────────────────────────────────────────────────────────── */
-
-function ScheduleScene() {
-  return (
-    <ProductScene
-      id={SCENES[2].id}
-      eyebrow="Set the stage"
-      title="Schedule in one click."
-      description="Pick the role, pick the candidate, and Jobly mints a live room with the problem, the tools, and the team already in place."
-      className="bg-[#a3cfc2]"
-      copyClassName="left-6 top-[10%] text-ink sm:left-[7%] lg:left-[10%]"
-    >
-      <div className="relative aspect-[4/5] border border-[#86b4a6] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.55)] sm:p-9">
-        <p className="text-sm text-[#2f302d]/45">Jobly interview</p>
-        <p className={`${displayClass} mt-2 text-3xl sm:text-4xl`}>Senior React Developer</p>
-        <p className="mt-2 text-sm text-[#2f302d]/60">with Ari Patel</p>
-
-        <div className="mt-8 space-y-3">
-          <div className="h-2 w-full bg-[#2f302d]/15" />
-          <div className="h-2 w-4/5 bg-[#2f302d]/11" />
-          <div className="h-2 w-3/5 bg-[#2f302d]/11" />
-        </div>
-
-        <div className="mt-8 grid grid-cols-2 gap-3">
-          <div className="border border-[#d9ddd9] p-3">
-            <p className="text-xs text-[#2f302d]/48">Room</p>
-            <p className="mt-2 font-num text-sm font-bold">live-4f2a</p>
-          </div>
-          <div className="border border-[#d9ddd9] p-3">
-            <p className="text-xs text-[#2f302d]/48">When</p>
-            <p className="mt-2 font-num text-sm font-bold">Tomorrow · 10:00</p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-7 left-7 right-7 flex items-center justify-between border-t border-[#d9ddd9] pt-5">
-          <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
-            Ready
-          </span>
-          <span className="font-num text-xs text-[#2f302d]/45">Scheduled by Sarah</span>
-        </div>
-      </div>
-    </ProductScene>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 4 — Live room (paper theme, IDE paper rising)
-   ───────────────────────────────────────────────────────────── */
-
-function LiveRoomScene() {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
-  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [14, 0]);
-  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.88, 1]);
-  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
-
-  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
-  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
-
-  const tabHighlight = useTransform(scrollYProgress, [0.45, 0.55], [0, 1]);
-  const codeLineProgress = useTransform(scrollYProgress, [0.4, 0.75], [0, 1]);
-
-  return (
-    <section
-      id={SCENES[3].id}
-      data-scene
-      ref={sectionRef}
-      className="relative h-[260vh] bg-[#f2f2f2]"
-    >
-      <div
-        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
-        style={{ perspective: "1500px" }}
-      >
-        <motion.div
-          className="relative z-10 mx-auto w-full max-w-2xl"
-          style={
-            reduce
-              ? undefined
-              : {
-                  y: paperY,
-                  rotateX: paperRotateX,
-                  scale: paperScale,
-                  opacity: paperOpacity,
-                  transformStyle: "preserve-3d",
-                }
-          }
-          initial={reduce ? { opacity: 0 } : undefined}
-          whileInView={reduce ? { opacity: 1 } : undefined}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <div className="overflow-hidden border border-[#d9ddd9] bg-[#fffefd] text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)]">
-            <div className="flex items-center justify-between border-b border-[#d9ddd9] bg-[#f7f8f6] px-4 py-2.5">
-              <div className="flex items-center gap-1">
-                {["solution.py", "tests", "notes"].map((tab, index) => (
-                  <span
-                    key={tab}
-                    className={`rounded-md px-3 py-1 font-num text-xs ${
-                      index === 0 ? "bg-[#302f2c] text-white" : "text-[#2f302d]/55"
-                    }`}
-                  >
-                    {tab}
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#86b4a6]" />
-                <span className="h-2 w-2 rounded-full bg-[#b8ddd2]" />
-                <span className="h-2 w-2 rounded-full bg-[#2f302d]/20" />
-              </div>
-            </div>
-
-            <div className="flex">
-              <div className="w-8 border-r border-[#d9ddd9] py-4 text-right">
-                <div className="space-y-2.5 pr-2">
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <span key={index} className="font-num block text-[10px] text-[#2f302d]/30">
-                      {index + 1}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1 space-y-2.5 py-4 pl-4 font-num text-xs leading-relaxed">
-                <motion.div
-                  className="h-2 w-11/12 bg-[#2f302d]/18"
-                  style={reduce ? undefined : { scaleX: codeLineProgress, originX: 0 }}
-                />
-                <div className="h-2 w-9/12 bg-[#2f302d]/11" />
-                <div className="h-2 w-10/12 bg-[#2f302d]/11" />
-                <div className="ml-4 h-2 w-8/12 bg-[#628c80]/35" />
-                <div className="ml-4 h-2 w-7/12 bg-[#628c80]/28" />
-                <div className="h-2 w-10/12 bg-[#2f302d]/11" />
-                <div className="h-2 w-5/12 bg-[#2f302d]/11" />
-                <div className="ml-4 h-2 w-9/12 bg-[#628c80]/28" />
-                <div className="h-2 w-6/12 bg-[#2f302d]/11" />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-[#d9ddd9] bg-[#f7f8f6] px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-[#302f2c] px-2.5 py-1 font-num text-xs font-bold text-white">
-                  Run
-                </span>
-                <span className="font-num text-xs text-[#2f302d]/50">python 3.12</span>
-              </div>
-              <motion.span
-                className="font-num text-xs text-[#40685e]"
-                style={reduce ? undefined : { opacity: tabHighlight }}
-              >
-                All tests passing
-              </motion.span>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="absolute left-6 top-[10%] z-20 max-w-md sm:left-[7%] lg:left-[10%]"
-          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
-        >
-          <p className="marker-num text-[#628c80]">Run the live room</p>
-          <h2
-            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-ink leading-[0.98]`}
-          >
-            One room. Every tool.
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-ink/70">
-            Shared IDE, whiteboard, video, and terminal — everything synced in real time for
-            both sides of the table.
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 5 — Signals (dark theme + accent, timeline paper)
-   ───────────────────────────────────────────────────────────── */
-
-function SignalsScene() {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
-  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [16, 0]);
-  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.86, 1]);
-  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
-
-  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
-  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
-
-  const markerTravel = useTransform(scrollYProgress, [0.4, 0.8], ["0%", "86%"]);
-
-  const EVENTS = [
-    { time: "00:42", label: "Clarifying question", tone: "mint" },
-    { time: "04:15", label: "Hash map chosen", tone: "mint" },
-    { time: "07:30", label: "Tests all passing", tone: "mint" },
-    { time: "09:58", label: "Tradeoff explained", tone: "mint" },
-  ];
-
-  return (
-    <section
-      id={SCENES[4].id}
-      data-scene
-      ref={sectionRef}
-      className="relative h-[260vh] bg-[#302f2c]"
-    >
-      <div
-        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
-        style={{ perspective: "1500px" }}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute bottom-[10%] left-[6%] h-16 w-16 rotate-[18deg] border-[8px] border-black/20"
-        />
-
-        <motion.div
-          className="relative z-10 mx-auto w-full max-w-lg"
-          style={
-            reduce
-              ? undefined
-              : {
-                  y: paperY,
-                  rotateX: paperRotateX,
-                  scale: paperScale,
-                  opacity: paperOpacity,
-                  transformStyle: "preserve-3d",
-                }
-          }
-          initial={reduce ? { opacity: 0 } : undefined}
-          whileInView={reduce ? { opacity: 1 } : undefined}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <div className="border border-[#4d4c49] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.7)] sm:p-9">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-[#2f302d]/45">Live timeline</p>
-                <p className={`${displayClass} mt-2 text-2xl`}>Every signal, kept</p>
-              </div>
-              <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
-                Recording
-              </span>
-            </div>
-
-            <div className="relative mt-8 pb-2">
-              <div className="h-[3px] w-full rounded-full bg-[#2f302d]/12" />
-              <motion.div
-                className="absolute top-0 h-[3px] w-full origin-left rounded-full bg-[#2a9d7b]"
-                style={reduce ? undefined : { scaleX: markerTravel }}
-              />
-              <motion.div
-                className="absolute -top-[5px] h-3.5 w-3.5 rounded-full border-2 border-[#fffefd] bg-[#2a9d7b] shadow-[0_2px_8px_rgb(42_157_123_/_0.6)]"
-                style={reduce ? undefined : { left: markerTravel }}
-              />
-            </div>
-
-            <ol className="mt-6 space-y-3">
-              {EVENTS.map((event) => (
-                <li
-                  key={event.time}
-                  className="flex items-center justify-between border-b border-[#d9ddd9]/70 pb-3 last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-[#2a9d7b]" />
-                    <span className="text-sm font-semibold">{event.label}</span>
-                  </div>
-                  <span className="font-num text-xs text-[#2f302d]/45">{event.time}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="absolute right-6 top-[10%] z-20 max-w-md text-right sm:right-[7%] lg:right-[10%]"
-          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
-        >
-          <p className="marker-num text-mint-light">Evidence, not memory</p>
-          <h2
-            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-white leading-[0.98]`}
-          >
-            Capture every signal.
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-white/70">
-            Checkpoints, transcripts, and code runs stream into one timeline — the interview
-            writes its own record.
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 6 — Collaborate / decide (photo bg, scorecard paper)
-   ───────────────────────────────────────────────────────────── */
-
-function CollaborateScene() {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
-  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [14, 0]);
-  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.88, 1]);
-  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
-
-  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
-  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
-
-  const barFill = useTransform(scrollYProgress, [0.4, 0.7], ["12%", "88%"]);
-
-  return (
-    <section
-      id={SCENES[5].id}
-      data-scene
-      ref={sectionRef}
-      className="relative h-[260vh] bg-[#f2f2f2]"
-    >
-      <div
-        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
-        style={{ perspective: "1500px" }}
-      >
-        <img
-          src={step4}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-[#f2f2f2]/55" aria-hidden="true" />
-
-        <motion.div
-          className="relative z-10 mx-auto w-full max-w-lg"
-          style={
-            reduce
-              ? undefined
-              : {
-                  y: paperY,
-                  rotateX: paperRotateX,
-                  scale: paperScale,
-                  opacity: paperOpacity,
-                  transformStyle: "preserve-3d",
-                }
-          }
-          initial={reduce ? { opacity: 0 } : undefined}
-          whileInView={reduce ? { opacity: 1 } : undefined}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <div className="border border-[#d9ddd9] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(47_48_45_/_0.55)] sm:p-9">
-            <p className="text-sm text-[#2f302d]/45">Scorecard</p>
-            <p className={`${displayClass} mt-2 text-2xl`}>Four pillars, cited</p>
-
-            <div className="mt-7 space-y-4">
-              {["Problem solving", "Code quality", "System design", "Communication"].map(
-                (pillar, index) => (
-                  <div key={pillar}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold">{pillar}</span>
-                      <span className="font-num text-xs text-[#2f302d]/50">{4 + (index % 2)} / 5</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[#2f302d]/12">
-                      <motion.div
-                        className="h-full rounded-full bg-[#628c80]"
-                        style={
-                          reduce ? { width: "80%" } : { width: barFill }
-                        }
-                      />
-                    </div>
-                  </div>
-                ),
-              )}
-            </div>
-
-            <div className="mt-7 flex items-center gap-2 border-t border-[#d9ddd9] pt-5">
-              <span className="h-2 w-2 rounded-full bg-[#2a9d7b]" />
-              <span className="text-xs text-[#2f302d]/55">
-                Every score cites timeline evidence
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="absolute left-6 top-[10%] z-20 max-w-md sm:left-[7%] lg:left-[10%]"
-          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
-        >
-          <p className="marker-num text-[#628c80]">Decide together</p>
-          <h2
-            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-ink leading-[0.98]`}
-          >
-            Decide with evidence.
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-ink/70">
-            The scorecard links back to the exact moment it happened, so the whole team can
-            see the why behind the hire.
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Scene 7 — Done (dark, replay paper)
-   ───────────────────────────────────────────────────────────── */
-
-function DoneScene() {
-  const reduce = Boolean(useReducedMotion());
-  const sectionRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
-
-  const paperY = useTransform(scrollYProgress, [0.08, 0.4], ["64vh", "0vh"]);
-  const paperRotateX = useTransform(scrollYProgress, [0.08, 0.4], [16, 0]);
-  const paperScale = useTransform(scrollYProgress, [0.08, 0.4], [0.86, 1]);
-  const paperOpacity = useTransform(scrollYProgress, [0.06, 0.2], [0, 1]);
-
-  const copyOpacity = useTransform(scrollYProgress, [0.32, 0.48, 0.85, 0.95], [0, 1, 1, 0]);
-  const copyY = useTransform(scrollYProgress, [0.32, 0.52], [40, 0]);
-
-  const scrubTravel = useTransform(scrollYProgress, [0.42, 0.78], ["0%", "72%"]);
-
-  return (
-    <section
-      id={SCENES[6].id}
-      data-scene
-      ref={sectionRef}
-      className="relative h-[260vh] bg-[#302f2c]"
-    >
-      <div
-        className="sticky top-0 flex h-screen items-center justify-center overflow-hidden"
-        style={{ perspective: "1500px" }}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute right-[10%] top-[14%] h-24 w-24 rotate-[24deg] border-[9px] border-black/18"
-        />
-
-        <motion.div
-          className="relative z-10 mx-auto w-full max-w-lg"
-          style={
-            reduce
-              ? undefined
-              : {
-                  y: paperY,
-                  rotateX: paperRotateX,
-                  scale: paperScale,
-                  opacity: paperOpacity,
-                  transformStyle: "preserve-3d",
-                }
-          }
-          initial={reduce ? { opacity: 0 } : undefined}
-          whileInView={reduce ? { opacity: 1 } : undefined}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <div className="border border-[#4d4c49] bg-[#fffefd] p-7 text-[#2f302d] shadow-[0_40px_80px_-34px_rgb(0_0_0_/_0.7)] sm:p-9">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-[#2f302d]/45">Replay</p>
-                <p className={`${displayClass} mt-2 text-2xl`}>Rewind the room</p>
-              </div>
-              <span className="rounded-full bg-[#d7ebe4] px-3 py-1 text-xs font-bold text-[#40685e]">
-                18:24
-              </span>
-            </div>
-
-            <div className="relative mt-8">
-              <div className="h-[3px] w-full rounded-full bg-[#2f302d]/12" />
-              {[18, 34, 52, 71, 86].map((left) => (
-                <span
-                  key={left}
-                  className="absolute -top-[3px] h-[9px] w-[2px] rounded bg-[#628c80]"
-                  style={{ left: `${left}%` }}
-                />
-              ))}
-              <motion.div
-                className="absolute -top-[5px] h-3.5 w-3.5 rounded-full border-2 border-[#fffefd] bg-[#302f2c]"
-                style={reduce ? undefined : { left: scrubTravel }}
-              />
-            </div>
-
-            <div className="mt-7 flex items-center gap-1.5">
-              <span className="rounded-full bg-[#302f2c] px-3 py-1.5 font-num text-xs font-bold text-white">
-                Play
-              </span>
-              {["0.5x", "1x", "2x"].map((speed, index) => (
-                <span
-                  key={speed}
-                  className={`rounded-full px-2.5 py-1.5 font-num text-xs ${
-                    index === 1 ? "bg-[#d7ebe4] text-[#40685e] font-bold" : "text-[#2f302d]/45"
-                  }`}
-                >
-                  {speed}
-                </span>
-              ))}
-            </div>
-
-            <p className="mt-7 border-t border-[#d9ddd9]/70 pt-5 text-sm leading-relaxed text-[#2f302d]/60">
-              Candidates get a practice plan. Recruiters get the evidence. Both sides leave
-              with the same story.
-            </p>
-          </div>
-        </motion.div>
-
-        <motion.div
-          className="absolute right-6 top-[10%] z-20 max-w-md text-right sm:right-[7%] lg:right-[10%]"
-          style={reduce ? undefined : { opacity: copyOpacity, y: copyY }}
-        >
-          <p className="marker-num text-mint-light">After the room</p>
-          <h2
-            className={`${displayClass} mt-4 text-[clamp(2.4rem,5vw,4.6rem)] text-white leading-[0.98]`}
-          >
-            Done? Replay it.
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-white/70">
-            Time-travel through the code, the conversation, and the calls that shaped the
-            decision.
-          </p>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Finale — features + morph signup (Beagle footer)
-   ───────────────────────────────────────────────────────────── */
-
-function FinaleSection({ activeTheme }: { activeTheme: SceneTheme }) {
-  return (
-    <section
-      id="signup"
-      className="relative bg-[#302f2c]"
-      aria-label="Sign up for Jobly"
-    >
-      <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
-        <div className="flex items-center justify-center px-6 py-20 sm:px-10 lg:py-32">
-          <div className="max-w-md text-[#302f2c]">
-            <div
-              className={`transition-colors duration-500 ${
-                activeTheme === "light" ? "text-[#302f2c]" : "text-[#302f2c]"
-              }`}
-            >
-              <h2 className={`${displayClass} text-4xl leading-[1.05] sm:text-5xl`}>
-                Create your own great interviews now
-              </h2>
-              <ul className="mt-10 space-y-6">
-                <FeatureItem title="Free" lines={["during", "beta"]} />
-                <FeatureItem title="Unlimited" lines={["interview rooms"]} />
-                <FeatureItem
-                  title="Plans"
-                  lines={["for teams large", "and small (after beta)"]}
-                />
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col justify-center bg-[#353431] px-6 py-16 sm:px-10 lg:py-32">
-          <div className="mx-auto w-full max-w-md">
-            <h3 className="text-xl font-bold text-white">
-              Sign up for the free beta
-              <small className="mt-3 block text-sm font-normal text-white/50">
-                Already have an account?{" "}
-                <Link to="/auth" className="underline underline-offset-2 hover:text-white">
-                  Sign in
-                </Link>
-              </small>
-            </h3>
-
-            <div className="mt-10">
-              <SignupMorph />
-            </div>
-
-            <div className="mt-16 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/40">
-              <Link to="/auth" className="transition-colors hover:text-white">
-                Log in
-              </Link>
-              <span aria-hidden="true">·</span>
-              <a href="#main" className="transition-colors hover:text-white">
-                Back to top
-              </a>
-              <span aria-hidden="true">·</span>
-              <span>Jobly — fair technical hiring</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FeatureItem({ title, lines }: { title: string; lines: string[] }) {
-  return (
-    <li className="flex items-start gap-4">
-      <span
-        aria-hidden="true"
-        className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-current"
-      >
-        <span className="h-3.5 w-3.5 rounded-sm bg-current" />
-      </span>
-      <p className="text-lg font-semibold leading-snug">
-        {title}
-        <br />
-        <span className="font-normal opacity-75">{lines.join(" ")}</span>
-      </p>
-    </li>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   Sidenav — Beagle dots (right edge, hover labels)
-   ───────────────────────────────────────────────────────────── */
-
-function SideNav({ activeIndex }: { activeIndex: number }) {
-  const activeTheme = SCENES[activeIndex]?.theme;
-  /* Dots sit on light surfaces (paper/mint scenes) vs dark ones. */
-  const onLight = activeTheme === "light" || activeTheme === "mint";
-
-  return (
-    <nav
-      aria-label="Scene progress"
-      className="fixed right-8 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
-    >
-      <ol className="space-y-2">
-        {SCENES.map((scene, index) => {
-          const isActive = index === activeIndex;
-
-          return (
-            <li key={scene.id} className="group relative flex justify-end">
-              <span
-                className={`pointer-events-none absolute right-6 top-1/2 -translate-y-1/2 whitespace-nowrap text-xs font-semibold transition-all duration-200 ${
-                  onLight ? "text-ink/0 group-hover:text-ink/60" : "text-white/0 group-hover:text-white/70"
-                } ${isActive ? (onLight ? "!text-ink/80" : "!text-white/90") : ""}`}
-              >
-                {scene.label}
-              </span>
-              <span
-                aria-hidden="true"
-                className={`h-[6px] w-[6px] rounded-full transition-all duration-300 ${
-                  isActive
-                    ? onLight
-                      ? "scale-125 bg-ink shadow-[0_0_0_4px_rgb(47_48_45_/_0.15)]"
-                      : "scale-125 bg-white shadow-[0_0_0_4px_rgb(255_255_255_/_0.18)]"
-                    : onLight
-                      ? "bg-ink/30"
-                      : "bg-white/35"
-                }`}
-              />
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+        Create your free profile
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
+      <p>Free during the beta · No credit card required</p>
+    </motion.div>
   );
 }
