@@ -6,11 +6,10 @@ import {
   easeInOut,
   easeOut,
   limit,
-  linear,
   quadInOut,
   type EaseFn,
 } from "./beagleEase";
-import { surfaceAt } from "./sceneManifest";
+import { PASS_THROUGH_STEPS, surfaceAt, type Surface } from "./sceneManifest";
 
 /**
  * Faithful port of the Beagle scroll engine: `nolz.SwipeController` +
@@ -27,6 +26,10 @@ import { surfaceAt } from "./sceneManifest";
  * The reference works in pixels (`y = -step * viewportHeight`) and converts at
  * the boundary. We keep the same arithmetic so the ported durations — all of
  * which are expressed as `k * |dy| / viewportHeight` — stay exact.
+ *
+ * STORY-AGNOSTIC: the pass-through set and the surface lookup arrive as
+ * options, defaulting to the long `sceneManifest` story. They used to be
+ * module-scope imports, which meant only one story could ever drive the engine.
  */
 
 const LERP = 0.33;
@@ -34,11 +37,8 @@ const WHEEL_STEP_PX = 300;
 const WHEEL_IDLE_MS = 200;
 const TRACKPAD_THROTTLE_MS = 100;
 const RUBBER = 0.35;
-const AIM_CLAMP_STEPS = 0.2;
 
-/** Pass-through steps: resting here immediately continues in the travel direction. */
-const PASS_THROUGH = new Set([1, 3]);
-/** `ScreenManager.BREAKPOINT_2COLUMN` — step 10 pass-through is desktop-only. */
+/** `ScreenManager.BREAKPOINT_2COLUMN` — the `endStep - 1` rule is desktop-only. */
 const BREAKPOINT_2COLUMN = 1023;
 
 const isFormField = (target: EventTarget | null): boolean => {
@@ -115,6 +115,38 @@ export interface EngineHandle {
   moveToEnd: () => void;
   getPos: () => number;
   getAim: () => number;
+  /**
+   * Park the camera at an arbitrary, possibly fractional step.
+   *
+   * `moveTo` cannot do this: it snaps to whole viewports (`getSnapPositionY`)
+   * and fires `onActivityEnd`, so the pass-through steps immediately advance
+   * away. This sets aim and position together, which leaves `render()` with
+   * nothing to do and no activity to end. Screenshot harnesses only — nothing
+   * in the UI should call it.
+   */
+  parkAt: (step: number) => void;
+}
+
+/**
+ * Everything about the engine that is a property of the STORY rather than of
+ * the scroll physics.
+ */
+export interface StoryOptions {
+  /**
+   * Steps `onActivityEnd` refuses to rest on — the chapter changes. Resting
+   * here immediately continues in the direction of travel.
+   */
+  passThrough?: readonly number[];
+  /** Drives `whiteTheme`: dark surfaces get white nav + white dots. */
+  surfaceAt?: (pos: number) => Surface;
+  /**
+   * The reference also treats `endStep - 1` as a desktop-only pass-through,
+   * because ITS penultimate step is transitional. That is a property of the
+   * story, not the engine: in a story whose penultimate step is a real resting
+   * beat the rule silently makes that beat unreachable on any viewport wider
+   * than 1023px. Off means "my second-to-last step is a real beat".
+   */
+  edgePassThrough?: boolean;
 }
 
 class BeagleEngine {
@@ -140,13 +172,23 @@ class BeagleEngine {
   private drag: DragState | null = null;
   private stage: HTMLElement | null = null;
 
+  /* ── story config ── */
+  private passThrough: Set<number>;
+  private surfaceAt: (pos: number) => Surface;
+  private edgePassThrough: boolean;
+
   constructor(
     private endStep: number,
     private posValue: MotionValue<number>,
     private onIndex: (i: number) => void,
     private onTheme: (whiteTheme: boolean, navVisible: boolean) => void,
     private isLocked: () => boolean,
-  ) {}
+    story: StoryOptions = {},
+  ) {
+    this.passThrough = new Set<number>(story.passThrough ?? PASS_THROUGH_STEPS);
+    this.surfaceAt = story.surfaceAt ?? surfaceAt;
+    this.edgePassThrough = story.edgePassThrough ?? true;
+  }
 
   /* ─────────── lifecycle ─────────── */
 
@@ -231,20 +273,6 @@ class BeagleEngine {
     this.emit(step);
   }
 
-  /** SwipeController.setWheel — with the aim clamp. */
-  private setWheelPositionY(y: number) {
-    let aim = -y / this.vh;
-    const delta = aim - this.scrollPosition;
-    // Reference assigns an absolute ±0.2 here; see FINDINGS.md. We clamp relative
-    // to the rendered position, which is the same result for every reachable
-    // delta but cannot teleport on a pathological wheel event.
-    if (Math.abs(delta) > AIM_CLAMP_STEPS) {
-      aim = this.scrollPosition + (delta > 0 ? AIM_CLAMP_STEPS : -AIM_CLAMP_STEPS);
-    }
-    this.scrollPositionAim = aim;
-    this.movementDirection = aim - this.scrollPosition < 0 ? -1 : 1;
-  }
-
   /** SwipeController.setPosition — no clamp on the drag/tween path. */
   private setDragPositionY(y: number) {
     this.scrollPositionAim = -y / this.vh;
@@ -280,7 +308,7 @@ class BeagleEngine {
    * background can't drift apart.
    */
   private emit(step: number) {
-    const whiteTheme = surfaceAt(step) === "dark";
+    const whiteTheme = this.surfaceAt(step) === "dark";
     this.onTheme(whiteTheme, step < this.endStep);
     this.onIndex(limit(Math.round(step), 0, this.endStep));
   }
@@ -321,21 +349,21 @@ class BeagleEngine {
     this.setDragPositionY(y);
   };
 
-  private setAndStoreWheelY = (y: number) => {
-    this._y = y;
-    this.setWheelPositionY(y);
-  };
+  /** One wheel gesture = one resting beat. Groups the burst of wheel events
+   *  between idles so a single flick can never sail through several sections. */
+  private wheelBurstStart: number | null = null;
+  private wheelBurstDir = 0;
 
   /* ─────────── pass-through ─────────── */
 
   /** MainScene's `dragHandlerObject.onActivityEnd`. */
   private onActivityEnd = () => {
     const i = this.currentIndex();
-    if (PASS_THROUGH.has(i)) {
+    if (this.passThrough.has(i)) {
       this.moveTo(this.movementDirection === 1 ? i + 1 : i - 1);
       return;
     }
-    if (this.vw > BREAKPOINT_2COLUMN && i === this.endStep - 1) {
+    if (this.edgePassThrough && this.vw > BREAKPOINT_2COLUMN && i === this.endStep - 1) {
       this.moveTo(this.movementDirection === 1 ? this.endStep : this.endStep - 2);
     }
   };
@@ -351,7 +379,7 @@ class BeagleEngine {
     this.clearWheelIdle();
     this.wheelIdleTimer = setTimeout(() => {
       this.wheelIdleTimer = null;
-      this.onDragEndY();
+      this.endWheelBurst();
     }, WHEEL_IDLE_MS);
   }
 
@@ -369,48 +397,61 @@ class BeagleEngine {
 
     if (d === 0) {
       this.clearWheelIdle();
-      this.onDragEndY();
+      this.endWheelBurst();
       return;
     }
 
     d = limit(d, -1, 1);
     if (this.trackpad) {
-      // Framework.LimitCall(onWheelY, 100) — trailing-edge throttle.
+      // Framework.LimitCall(onWheelStep, 100) — trailing-edge throttle.
       if (!this.trackpadBlocked) {
         this.trackpadBlocked = true;
         const delta = d;
         setTimeout(() => {
           this.trackpadBlocked = false;
-          this.onWheelY(delta);
+          this.onWheelStep(delta);
         }, TRACKPAD_THROTTLE_MS);
       }
     } else {
-      this.onWheelY(d);
+      this.onWheelStep(d);
     }
     this.armWheelIdle();
   };
 
-  /** DragHandlerObject.onWheelY */
-  private onWheelY(delta: number) {
-    this.stopTween();
-    this._y = this.getWheelPositionY();
-    const target = handlePositionOnMove(
+  /**
+   * A burst of wheel events only LEANS the aim — capped at 0.6 steps from
+   * where the burst began — so the content answers immediately but can never
+   * run away. The render-loop lerp turns that lean into smooth motion; when
+   * the wheel goes idle, `endWheelBurst` glides exactly one resting step in
+   * the dominant direction. Pass-through chapters (1, 3, 5) still
+   * auto-continue via `onActivityEnd`, so one gesture is one chapter.
+   */
+  private onWheelStep(delta: number) {
+    if (this.wheelBurstStart == null) {
+      this.stopTween();
+      this.wheelBurstStart = limit(Math.round(this.scrollPositionAim), 0, this.endStep);
+      this._y = this.getWheelPositionY();
+    }
+    // Negative deltas travel toward higher steps.
+    this.wheelBurstDir = delta > 0 ? -1 : 1;
+    const yStart = -this.wheelBurstStart * this.vh;
+    const maxLean = 0.6 * this.vh;
+    this._y = limit(
       this._y + WHEEL_STEP_PX * delta * this.movementAspect,
-      this.yLimit,
+      yStart - maxLean,
+      yStart + maxLean,
     );
-    this._lastDistY = target - this._y;
-    this.emit(-target / this.vh);
-    const dur = 1200 * Math.abs((target - this._y) / this.vh);
-    const extendsDirection =
-      Math.abs(target - this._y + this._lastDistY) > Math.abs(target - this._y);
-    this.startTween(
-      this._y,
-      target,
-      dur,
-      extendsDirection ? linear : easeInOut,
-      this.setAndStoreWheelY,
-    );
-    this.lastMoveTime = Date.now();
+    this.setDragPositionY(this._y);
+    this.emit(-this._y / this.vh);
+  }
+
+  /** The wheel went idle: settle exactly one step from where the burst began. */
+  private endWheelBurst() {
+    if (this.wheelBurstStart == null) return;
+    const target = limit(this.wheelBurstStart + this.wheelBurstDir, 0, this.endStep);
+    this.wheelBurstStart = null;
+    this.wheelBurstDir = 0;
+    this.moveTo(target);
   }
 
   /* ─────────── drag ─────────── */
@@ -422,6 +463,11 @@ class BeagleEngine {
     if (t?.closest("a,button,input,textarea,select,[data-no-drag]")) return;
 
     this.stopTween();
+    // A grab cancels any pending wheel burst, or its idle timer would settle
+    // a step from under the drag a moment later.
+    this.clearWheelIdle();
+    this.wheelBurstStart = null;
+    this.wheelBurstDir = 0;
     this._y = this.getDragPositionY();
     this.lastMoveTime = Date.now();
     this.drag = {
@@ -537,10 +583,12 @@ class BeagleEngine {
     this.glide(to, 1600 * Math.abs((to - this.getDragPositionY()) / this.vh), quadInOut);
   }
 
-  /** Dot nav. The distance terms cancel in the original: a flat 3200ms easeOut. */
+  /** Direct section navigation: quick nearby moves, capped long-distance travel. */
   moveTo(step: number) {
     if (this.isLocked()) return;
-    this.glide(-this.vh * step, 3200, easeOut);
+    const distance = Math.abs(step - this.scrollPosition);
+    const duration = Math.min(1150, Math.max(550, 500 + distance * 90));
+    this.glide(-this.vh * step, duration, easeOut);
   }
 
   /** Intro reveal + logo/CTA jumps. */
@@ -579,6 +627,12 @@ class BeagleEngine {
     return this.scrollPositionAim;
   }
 
+  /** See `EngineHandle.parkAt`. Screenshot harnesses only. */
+  parkAt(step: number) {
+    this.stopTween();
+    this.jumpTo(step);
+  }
+
   /** Called once the preloader clears: MainScene.onLoadingAnimationIsDoneHandler. */
   reveal() {
     this.slideTo(0);
@@ -599,6 +653,7 @@ export function useSnapScroll(
   endStep: number,
   locked: boolean,
   stageRef: RefObject<HTMLElement | null>,
+  story?: StoryOptions,
 ): UseSnapScrollResult {
   const pos = useMotionValue(-1);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -607,6 +662,11 @@ export function useSnapScroll(
   const engineRef = useRef<BeagleEngine | null>(null);
   const lockedRef = useRef(locked);
   const wasLocked = useRef(locked);
+
+  // The story config is read once per engine; keep it off the effect's dep list
+  // so an inline object literal at the call site cannot thrash the engine.
+  const storyRef = useRef(story);
+  storyRef.current = story;
 
   useEffect(() => {
     lockedRef.current = locked;
@@ -624,6 +684,7 @@ export function useSnapScroll(
         setNavVisible((cur) => (cur === nav ? cur : nav));
       },
       () => lockedRef.current,
+      storyRef.current,
     );
     engineRef.current = engine;
     engine.attach(el);

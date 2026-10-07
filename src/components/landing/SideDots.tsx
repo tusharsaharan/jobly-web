@@ -2,18 +2,18 @@ import { motion, useTransform, type MotionValue } from "framer-motion";
 import { DOT_STEPS } from "./sceneManifest";
 
 /** Accessible names only — the reference renders bare dots with no visible text. */
-const LABELS: Record<(typeof DOT_STEPS)[number], string> = {
-  0: "Intro",
+const LABELS: Record<number, string> = {
+  0: "Your desk",
   2: "Why Jobly",
-  4: "Import content",
-  5: "Edit and improve",
-  10: "Re-use sections",
-  6: "Re-use sections",
-  7: "Collaborate",
-  12: "Comments",
-  8: "Comments",
-  9: "Done",
-  11: "Sign up",
+  4: "One resume",
+  6: "Resume parsing",
+  8: "ATS score",
+  9: "Apply where you fit",
+  11: "Live interview",
+  12: "Interview feedback",
+  13: "What to fix",
+  15: "A better score",
+  18: "Sign up",
 };
 
 interface SideDotsProps {
@@ -21,6 +21,10 @@ interface SideDotsProps {
   activeIndex: number;
   light: boolean;
   onGo: (step: number) => void;
+  /** Which steps get a dot. Defaults to the long `sceneManifest` story. */
+  steps?: readonly number[];
+  /** `step -> aria-label`. Defaults to the long story's labels. */
+  labels?: Record<number, string>;
 }
 
 /**
@@ -34,7 +38,14 @@ interface SideDotsProps {
  * Visible text labels are deliberately absent, as in the reference; the names
  * above are exposed via `aria-label` so the nav remains usable.
  */
-export function SideDots({ pos, activeIndex, light, onGo }: SideDotsProps) {
+export function SideDots({
+  pos,
+  activeIndex,
+  light,
+  onGo,
+  steps = DOT_STEPS,
+  labels = LABELS,
+}: SideDotsProps) {
   return (
     <nav
       aria-label="Landing sections"
@@ -42,10 +53,12 @@ export function SideDots({ pos, activeIndex, light, onGo }: SideDotsProps) {
       style={{ right: "6vh" }}
     >
       <ol className="flex flex-col items-end">
-        {DOT_STEPS.map((step) => (
+        {steps.map((step) => (
           <Dot
             key={step}
             step={step}
+            steps={steps}
+            label={labels[step] ?? `Section ${step}`}
             pos={pos}
             light={light}
             activeIndex={activeIndex}
@@ -59,12 +72,16 @@ export function SideDots({ pos, activeIndex, light, onGo }: SideDotsProps) {
 
 function Dot({
   step,
+  steps,
+  label,
   pos,
   light,
   activeIndex,
   onGo,
 }: {
-  step: (typeof DOT_STEPS)[number];
+  step: number;
+  steps: readonly number[];
+  label: string;
   pos: MotionValue<number>;
   light: boolean;
   activeIndex: number;
@@ -72,8 +89,8 @@ function Dot({
 }) {
   // SideNavigation.selectItemForStep: the first item whose step >= position wins.
   const selected = useTransform(pos, (v) => {
-    let winner: number = DOT_STEPS[DOT_STEPS.length - 1];
-    for (const s of DOT_STEPS) {
+    let winner: number = steps[steps.length - 1];
+    for (const s of steps) {
       if (s >= v) {
         winner = s;
         break;
@@ -82,8 +99,17 @@ function Dot({
     return winner === step ? 1 : 0;
   });
 
+  // The reference is always-dark, so it hardcodes a white selected dot. Once a
+  // beat rests on a LIGHT surface (the mint import band) that dot is invisible,
+  // so the selected colour has to follow the surface too.
   const backgroundColor = useTransform(selected, (on) =>
-    on ? "#ffffff" : light ? "var(--lp-ink)" : "#606060",
+    on
+      ? light
+        ? "var(--lp-ink)"
+        : "#ffffff"
+      : light
+        ? "rgb(47 48 45 / 0.32)"
+        : "#606060",
   );
   const boxShadow = useTransform(selected, (on) =>
     on ? "0 1px 1px rgba(0,0,0,.2)" : "0 0 0 rgba(0,0,0,0)",
@@ -93,7 +119,7 @@ function Dot({
     <li>
       <button
         type="button"
-        aria-label={LABELS[step]}
+        aria-label={label}
         aria-current={activeIndex === step ? "true" : undefined}
         onClick={() => onGo(step)}
         className="block cursor-pointer p-2"

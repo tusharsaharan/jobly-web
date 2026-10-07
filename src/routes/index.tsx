@@ -1,86 +1,125 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useReducedMotion, useTransform } from "framer-motion";
+import { motion, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { LandingNav } from "@/components/Nav";
 import { Preloader } from "@/components/landing/Preloader";
 import { SideDots } from "@/components/landing/SideDots";
+import { SignupMorph } from "@/components/landing/SignupMorph";
 import { useSnapScroll } from "@/components/landing/useSnapScroll";
-import { PanelElement, SwipeElement, FooterPanel } from "@/components/landing/SwipeElement";
-import { TitleCard } from "@/components/landing/scenes/TitleCard";
-import { ResumeSheet } from "@/components/landing/scenes/ResumeSheet";
-import { Laptop } from "@/components/landing/scenes/Laptop";
-import {
-  InterviewRoom,
-  RoleCards,
-  Scorecard,
-  StudyTopics,
-} from "@/components/landing/scenes/storyPieces";
-import {
-  FieldChips,
-  FooterSignup,
-  LoopDiagram,
-  ScrollHint,
-} from "@/components/landing/scenes/pieces";
+import { FooterPanel, PanelElement } from "@/components/landing/SwipeElement";
+import { ramp } from "@/components/landing/scenes/choreography";
+import { HeroTriptych } from "@/components/landing/intro/HeroTriptych";
+import { ThesisPanel } from "@/components/landing/intro/ThesisPanel";
+import { ShapeField } from "@/components/landing/intro/ShapeField";
+import { ImportStage } from "@/components/landing/intro/ImportStage";
+import { ResumePage } from "@/components/landing/intro/ResumePage";
+import { ScoreColumn } from "@/components/landing/intro/ScoreColumn";
+import { KeywordFlight } from "@/components/landing/intro/KeywordFlight";
+import { IntroFallback } from "@/components/landing/intro/IntroFallback";
 import {
   ANCHORS,
-  ATS_CATEGORIES,
-  CANDIDATES,
   COPY,
+  DOT_LABELS,
+  DOT_STEPS,
+  EDGE_PASS_THROUGH,
   END_STEP,
-  FOOTER_CTA,
-  PALETTE,
-  PILLARS,
-  STUDY_TOPICS,
-} from "@/components/landing/sceneManifest";
-import { collaborateImg, introImg, step1, step2 } from "@/components/landing/sceneAssets";
-import { PAPER_SHADOW } from "@/components/landing/scenes/paper";
+  PASS_THROUGH_STEPS,
+  SHAPES_WARM,
+  surfaceAt,
+} from "@/components/landing/intro/manifest";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Jobly | Your resume is evidence, not a formality" },
+      { title: "Jobly | A tool for proving what you can actually do" },
       {
         name: "description",
         content:
-          "Upload your resume, get a deterministic ATS score with every point traced to a quote, interview live, and leave with evidence-backed feedback and a study plan.",
+          "Start from the CV you already have. Jobly reads every line, scores it against the role, and traces every point back to a quote from your own resume.",
       },
     ],
   }),
   component: Landing,
 });
 
-/** Canvas experience for fine-pointer desktop; static story otherwise. */
+/**
+ * Canvas experience for fine-pointer desktop; static story otherwise.
+ *
+ * Returns `null` until mounted, so the server and the client's FIRST render
+ * agree. That is not belt-and-braces. This used to be two separate reads — this
+ * hook for the layout query and framer's `useReducedMotion()` for the motion one
+ * — and `useReducedMotion` resolves its query synchronously DURING render. So
+ * with `prefers-reduced-motion: reduce` the server rendered the canvas, the
+ * client rendered the fallback on its very first pass, and React threw the whole
+ * tree away with a hydration error. Reading both queries in one effect is what
+ * keeps them consistent.
+ */
 function useStaticLayout() {
   const [isStatic, setIsStatic] = useState<boolean | null>(null);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px), (pointer: coarse)");
-    const apply = () => setIsStatic(mq.matches);
+    const layout = window.matchMedia("(max-width: 1023px), (pointer: coarse)");
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setIsStatic(layout.matches || motion.matches);
     apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    layout.addEventListener("change", apply);
+    motion.addEventListener("change", apply);
+    return () => {
+      layout.removeEventListener("change", apply);
+      motion.removeEventListener("change", apply);
+    };
   }, []);
   return isStatic;
 }
 
+/**
+ * THE INTRO SECTION — nine steps.
+ *
+ *   0   hero      hero.jpg full-bleed, "Introducing Jobly", scroll cue
+ *   1  ·through·  the frame closes to a triptych, the backdrop washes to cream,
+ *                 the ink panel rises carrying "Because we believe"
+ *   2   thesis    the five-line stack, outlined glyphs drifting behind it
+ *   3  ·through·  ink leaves, mint wipes open, the page rises
+ *   4   import    the page types itself, five siblings arrive, headline wipes
+ *   5  ·through·  mint retracts, siblings scatter, and the page GROWS — its
+ *                 skeleton resolving into real, readable text
+ *   6   calc      "Step two / ATS Calculation", warm glyphs behind the sheet
+ *   7   scan      a band reads the document section by section; phrases get
+ *                 painted, skill chips fly into the seven weighted categories,
+ *                 the ring counts to 82
+ *   8   seam      temporary CTA cap
+ *
+ * Steps 1, 3 and 5 are pass-through: the engine will not rest there and
+ * continues in the direction of travel, so each chapter change is ONE gesture
+ * rather than two scrolls. That is the whole difference between film and a
+ * slideshow.
+ *
+ * `EDGE_PASS_THROUGH` is off. The reference also auto-advances from
+ * `endStep - 1`, because its own penultimate step is transitional; ours is the
+ * scan — the payoff of the section — and leaving that rule on would make it
+ * unreachable on any viewport wider than 1023px.
+ *
+ * LAYER ORDER, bottom to top: ink floor 0, hero 5, thesis 15, mint 16, thesis
+ * glyphs 20, warm glyphs 22, siblings 26, the sheet 30, score column 36, chips
+ * in flight 40, titles 42, footer 46. The warm glyphs sit UNDER the sheet on
+ * purpose — the paper occluding them is what puts the document in front of a
+ * world instead of on top of a pattern.
+ */
 function Landing() {
   const [preloaded, setPreloaded] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
-  const shouldReduceMotion = Boolean(useReducedMotion());
   const isStatic = useStaticLayout();
 
   const { pos, activeIndex, whiteTheme, navVisible, moveTo, engineRef } = useSnapScroll(
     END_STEP,
     !preloaded,
     stageRef,
+    {
+      passThrough: PASS_THROUGH_STEPS,
+      surfaceAt,
+      edgePassThrough: EDGE_PASS_THROUGH,
+    },
   );
-
-  // One candidate carried across all nine beats, picked per load.
-  const [candidateIndex, setCandidateIndex] = useState(0);
-  useEffect(() => {
-    setCandidateIndex(Math.floor(Math.random() * CANDIDATES.length));
-  }, []);
-  const candidate = CANDIDATES[candidateIndex];
 
   const onGo = useCallback((step: number) => moveTo(step), [moveTo]);
 
@@ -93,6 +132,8 @@ function Landing() {
       getAim: () => engineRef.current?.getAim() ?? pos.get(),
       getWhiteTheme: () => document.body.classList.contains("landing-white-theme"),
       getActiveIndex: () => activeIndex,
+      /** Screenshot harness: park at a fractional step without snapping. */
+      parkAt: (step: number) => engineRef.current?.parkAt(step),
     };
     (window as unknown as Record<string, unknown>).__joblyLanding = hook;
     return () => {
@@ -105,14 +146,11 @@ function Landing() {
     return () => document.body.classList.remove("landing-white-theme");
   }, [whiteTheme]);
 
-  // hero photo fades as the thesis takes over
-  const heroPhotoOpacity = useTransform(pos, (p) => (p <= 1 ? 1 : Math.max(0, 1 - (p - 1) / 1.2)));
-
-  if (shouldReduceMotion || isStatic) {
+  if (isStatic) {
     return (
-      <main className="landing-fallback bg-cream text-ink">
+      <main className="landing-fallback landing-intro-fb">
         <LandingNav light revealed />
-        <LandingFallback />
+        <IntroFallback />
       </main>
     );
   }
@@ -125,382 +163,132 @@ function Landing() {
 
       <div
         ref={stageRef}
-        className="landing-stage relative h-screen w-full cursor-grab touch-none select-none overflow-hidden"
+        className="landing-stage landing-intro relative h-screen w-full cursor-grab touch-none select-none overflow-hidden"
         data-active-step={activeIndex}
       >
-        {/* ══ chapter 1 · the resume you already have ══ */}
+        {/* A dark floor for pos < 0, so the preloader's slide-in never shows cream. */}
         <PanelElement
           pos={pos}
-          anchor={ANCHORS.inkPanel.anchor}
-          visibleLength={ANCHORS.inkPanel.length}
-          color={PALETTE.ink}
+          anchor={ANCHORS.inkFloor.anchor}
+          visibleLength={ANCHORS.inkFloor.length}
+          color="var(--lp-ink)"
           introOffset={0}
           outro={false}
           zIndex={0}
         />
 
-        <motion.div
-          aria-hidden="true"
-          className="absolute inset-0 z-[5]"
-          style={{ opacity: heroPhotoOpacity }}
-        >
-          <img src={introImg} alt="" className="h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-[var(--lp-ink)]/55" />
-        </motion.div>
+        {/* ══ steps 0-1 · the hero becomes a triptych ══ */}
+        <HeroTriptych pos={pos} onHintClick={() => moveTo(2)} zIndex={5} />
 
-        <SwipeElement
-          pos={pos}
-          anchor={ANCHORS.heroSideLeft.anchor}
-          visibleLength={ANCHORS.heroSideLeft.length}
-          zIndex={8}
-          props={{
-            x: { from: -0.92, middle: -0.36, to: -0.92 },
-            y: { from: 0.3, middle: 0.04, to: -0.5 },
-            s: { from: 0.9, middle: 1, to: 0.9 },
-            r: { from: -0.05, middle: -0.03, to: -0.08 },
-            o: { from: 0, middle: 1, to: 0 },
-          }}
-        >
-          <img
-            src={step1}
-            alt=""
-            className="h-[24vh] w-[16vw] -translate-x-1/2 -translate-y-1/2 object-cover"
-            style={{ boxShadow: PAPER_SHADOW }}
-          />
-        </SwipeElement>
+        {/* ══ step 2 · the thesis ══ */}
+        <ThesisPanel pos={pos} zIndex={15} />
+        <ShapeField pos={pos} zIndex={20} />
 
-        <SwipeElement
-          pos={pos}
-          anchor={ANCHORS.heroSideRight.anchor}
-          visibleLength={ANCHORS.heroSideRight.length}
-          zIndex={8}
-          props={{
-            x: { from: 0.92, middle: 0.36, to: 0.92 },
-            y: { from: 0.34, middle: 0.08, to: -0.46 },
-            s: { from: 0.9, middle: 1, to: 0.9 },
-            r: { from: 0.05, middle: 0.03, to: 0.08 },
-            o: { from: 0, middle: 1, to: 0 },
-          }}
-        >
-          <img
-            src={step2}
-            alt=""
-            className="h-[21vh] w-[14vw] -translate-x-1/2 -translate-y-1/2 object-cover"
-            style={{ boxShadow: PAPER_SHADOW }}
-          />
-        </SwipeElement>
+        {/* ══ steps 3-7 · the mint surface, the clutter, the two titles ══ */}
+        <ImportStage pos={pos} />
 
-        <TitleCard
+        {/* ══ steps 6-7 · the warm field, behind the sheet ══
+            Its beat spans two rests, which the one-step `stepIndex` envelope
+            cannot express — so it supplies explicit fade windows instead. */}
+        <ShapeField
           pos={pos}
-          anchor={ANCHORS.heroTitle.anchor}
-          visibleLength={ANCHORS.heroTitle.length}
-          title={COPY.hero.title}
-          subheader={COPY.hero.subheader}
-          color="#FFFFFF"
-          zIndex={45}
+          anchor={ANCHORS.warmShapes.anchor}
+          visibleLength={ANCHORS.warmShapes.length}
+          zIndex={22}
+          shapes={SHAPES_WARM}
+          color="var(--lp-marker-edge)"
+          strokeWidth={4}
+          envelope={{ enterAt: 5.2, enterLen: 0.5, exitAt: 7.42, exitLen: 0.4 }}
         />
 
-        <ScrollHint
+        {/* ══ steps 3-8 · the protagonist ══ */}
+        <ResumePage pos={pos} zIndex={30} />
+
+        {/* ══ step 7 · the score, and the phrases that pay for it ══ */}
+        <ScoreColumn pos={pos} zIndex={36} />
+        <KeywordFlight pos={pos} zIndex={40} />
+
+        {/* ══ step 8 · temporary cap, until the next section is written ══ */}
+        <SeamFooter pos={pos} />
+
+        <SideDots
           pos={pos}
-          anchor={ANCHORS.scrollHint.anchor}
-          visibleLength={ANCHORS.scrollHint.length}
-          onClick={() => moveTo(2)}
+          activeIndex={activeIndex}
+          light={!whiteTheme}
+          onGo={onGo}
+          steps={DOT_STEPS}
+          labels={DOT_LABELS}
         />
-
-        {/* ══ chapter 2 · the thesis ══ */}
-        <PanelElement
-          pos={pos}
-          anchor={ANCHORS.particleBg.anchor}
-          visibleLength={ANCHORS.particleBg.length}
-          color={PALETTE.ink}
-          zIndex={15}
-        >
-          <div className="landing-particles absolute inset-0" aria-hidden="true" />
-        </PanelElement>
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.thesisTitle.anchor}
-          visibleLength={ANCHORS.thesisTitle.length}
-          kicker={COPY.thesis.uppertitle}
-          title={COPY.thesis.title}
-          subheader={COPY.thesis.subheader}
-          subtitle={COPY.thesis.subtitle}
-          footnote={COPY.thesis.bottomtitle}
-          color="#FFFFFF"
-          zIndex={46}
-        />
-
-        {/* ══ chapter 3 · upload, parse, score ══ */}
-        <PanelElement
-          pos={pos}
-          anchor={ANCHORS.mintPanel.anchor}
-          visibleLength={ANCHORS.mintPanel.length}
-          color={PALETTE.mint}
-          zIndex={16}
-        />
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.uploadTitle.anchor}
-          visibleLength={ANCHORS.uploadTitle.length}
-          title={COPY.upload.title}
-          subheader={COPY.upload.subheader}
-          color={PALETTE.ink}
-          zIndex={44}
-        />
-
-        <FieldChips
-          pos={pos}
-          anchor={ANCHORS.fieldChips.anchor}
-          visibleLength={ANCHORS.fieldChips.length}
-          candidate={candidate}
-        />
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.scoreTitle.anchor}
-          visibleLength={ANCHORS.scoreTitle.length}
-          title={COPY.score.title}
-          subheader={COPY.score.subheader}
-          color={PALETTE.ink}
-          zIndex={44}
-        />
-
-        <Laptop
-          pos={pos}
-          anchor={ANCHORS.laptop.anchor}
-          visibleLength={ANCHORS.laptop.length}
-          candidate={candidate}
-        />
-
-        {/* ══ THE PROTAGONIST — alive across every beat ══ */}
-        <ResumeSheet
-          pos={pos}
-          anchor={ANCHORS.resume.anchor}
-          visibleLength={ANCHORS.resume.length}
-          candidate={candidate}
-        />
-
-        {/* ══ chapter 4 · apply where you fit ══ */}
-        <PanelElement
-          pos={pos}
-          anchor={ANCHORS.deepPanel.anchor}
-          visibleLength={ANCHORS.deepPanel.length}
-          color={PALETTE.deep}
-          zIndex={18}
-        />
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.matchTitle.anchor}
-          visibleLength={ANCHORS.matchTitle.length}
-          title={COPY.match.title}
-          subheader={COPY.match.subheader}
-          color="#FFFFFF"
-          zIndex={44}
-        />
-
-        <RoleCards
-          pos={pos}
-          anchor={ANCHORS.roleCards.anchor}
-          visibleLength={ANCHORS.roleCards.length}
-        />
-
-        {/* ══ chapter 5 · the room, then the verdict ══ */}
-        <PanelElement
-          pos={pos}
-          anchor={ANCHORS.roomPanel.anchor}
-          visibleLength={ANCHORS.roomPanel.length}
-          color={PALETTE.room}
-          zIndex={19}
-        >
-          <img
-            src={collaborateImg}
-            alt=""
-            className="h-full w-full object-cover object-center opacity-20"
-          />
-        </PanelElement>
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.roomTitle.anchor}
-          visibleLength={ANCHORS.roomTitle.length}
-          title={COPY.room.title}
-          subheader={COPY.room.subheader}
-          color="#FFFFFF"
-          zIndex={44}
-          className="whitespace-pre-line"
-        />
-
-        <InterviewRoom
-          pos={pos}
-          anchor={ANCHORS.interviewRoom.anchor}
-          visibleLength={ANCHORS.interviewRoom.length}
-        />
-
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.verdictTitle.anchor}
-          visibleLength={ANCHORS.verdictTitle.length}
-          title={COPY.verdict.title}
-          subheader={COPY.verdict.subheader}
-          color="#FFFFFF"
-          zIndex={44}
-        />
-
-        <Scorecard
-          pos={pos}
-          anchor={ANCHORS.scorecard.anchor}
-          visibleLength={ANCHORS.scorecard.length}
-        />
-
-        {/* ══ chapter 6 · what to study ══ */}
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.studyTitle.anchor}
-          visibleLength={ANCHORS.studyTitle.length}
-          title={COPY.study.title}
-          subheader={COPY.study.subheader}
-          color={PALETTE.ink}
-          zIndex={44}
-        />
-
-        <StudyTopics
-          pos={pos}
-          anchor={ANCHORS.studyTopics.anchor}
-          visibleLength={ANCHORS.studyTopics.length}
-        />
-
-        {/* ══ chapter 7 · the loop closes ══ */}
-        <TitleCard
-          pos={pos}
-          anchor={ANCHORS.loopTitle.anchor}
-          visibleLength={ANCHORS.loopTitle.length}
-          title={COPY.loop.title}
-          subheader={COPY.loop.subheader}
-          color={PALETTE.ink}
-          top="11%"
-          zIndex={44}
-        />
-
-        <LoopDiagram
-          pos={pos}
-          anchor={ANCHORS.loopDiagram.anchor}
-          visibleLength={ANCHORS.loopDiagram.length}
-          candidate={candidate}
-        />
-
-        <FooterPanel
-          pos={pos}
-          anchor={ANCHORS.footerColor.anchor}
-          visibleLength={ANCHORS.footerColor.length}
-          color={PALETTE.ink}
-          zIndex={42}
-        >
-          <FooterSignup />
-        </FooterPanel>
-
-        <SideDots pos={pos} activeIndex={activeIndex} light={!whiteTheme} onGo={onGo} />
       </div>
     </main>
   );
 }
 
-/* ─── Reduced-motion / mobile fallback — same manifest, same story ─── */
-
-function LandingFallback() {
-  const candidate = CANDIDATES[0];
-  const sections = [
-    { ...COPY.upload, tone: "bg-mint text-ink", n: "01" },
-    { ...COPY.score, tone: "bg-[#f5f5f3] text-ink", n: "02" },
-    { ...COPY.match, tone: "bg-[var(--lp-deep)] text-white", n: "03" },
-    { ...COPY.room, tone: "bg-ink text-white", n: "04" },
-    { ...COPY.verdict, tone: "bg-[#26302c] text-white", n: "05" },
-    { ...COPY.study, tone: "bg-[#f5f5f3] text-ink", n: "06" },
-  ];
+/**
+ * `FooterColorPixiElement` — a bottom-anchored ink band carrying the signup.
+ *
+ * This is a CAP, not a designed ending: it gives the page somewhere to stop
+ * while the sections after the scan beat are still unwritten. Moving it is a
+ * one-line change to `END_STEP` and this anchor.
+ */
+function SeamFooter({ pos }: { pos: MotionValue<number> }) {
+  const opacity = useTransform(pos, (p) => ramp(p, 7.5, 0.45));
 
   return (
-    <>
-      <section className="relative flex min-h-[600px] items-center justify-center overflow-hidden bg-ink px-6 text-center text-white">
-        <img
-          src={introImg}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-45"
-        />
-        <div className="relative z-10 max-w-3xl">
-          <p className="marker-num text-mint-light">{COPY.hero.title}</p>
-          <h1 className="font-display mt-5 text-5xl leading-[1.02] sm:text-6xl">
-            {COPY.thesis.title} {COPY.thesis.subheader} {COPY.thesis.subtitle}
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-lg text-white/85">{COPY.hero.subheader}</p>
-          <Link to="/auth" search={{ mode: "signup" }} className="pill-mint-lg mt-10 gap-2">
-            Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      <section aria-label="How Jobly works">
-        {sections.map((card) => (
-          <article key={card.n} className={`px-6 py-16 sm:px-10 ${card.tone}`}>
-            <div className="mx-auto max-w-2xl">
-              <p className="marker-num opacity-60">{card.n}</p>
-              <h2 className="font-display mt-3 text-4xl leading-none">{card.title}</h2>
-              <p className="font-serif mt-3 whitespace-pre-line text-lg opacity-80">
-                {card.subheader}
-              </p>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="bg-cream px-6 py-16">
-        <div className="mx-auto max-w-2xl">
-          <h3 className="font-display text-2xl">Seven weighted categories</h3>
-          <ul className="mt-5 space-y-2">
-            {ATS_CATEGORIES.map((c) => (
-              <li key={c.id} className="flex justify-between border-b border-ink/10 pb-2 text-sm">
-                <span>{c.label}</span>
-                <span className="font-mono opacity-60">{c.max} pts</span>
-              </li>
-            ))}
-          </ul>
-
-          <h3 className="font-display mt-10 text-2xl">Four competencies</h3>
-          <ul className="mt-5 space-y-2">
-            {PILLARS.map((p) => (
-              <li key={p.id} className="border-b border-ink/10 pb-2 text-sm">
-                {p.label}
-              </li>
-            ))}
-          </ul>
-
-          <h3 className="font-display mt-10 text-2xl">Then a study plan</h3>
-          <ul className="mt-5 space-y-2">
-            {STUDY_TOPICS.map((t) => (
-              <li key={t.id} className="border-b border-ink/10 pb-2 text-sm">
-                <span className="font-semibold">{t.topic}</span>
-                <span className="opacity-60"> — from “{t.from}”</span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="mt-10 font-serif text-lg italic opacity-75">
-            {candidate.scoreBefore} → {candidate.scoreAfter} on the second pass.
+    <FooterPanel
+      pos={pos}
+      anchor={ANCHORS.seamFooter.anchor}
+      visibleLength={ANCHORS.seamFooter.length}
+      color="var(--lp-ink)"
+      zIndex={46}
+    >
+      <motion.div className="flex h-full flex-col justify-center px-8 sm:px-14" style={{ opacity }}>
+        <div className="mx-auto w-full max-w-5xl">
+          <h2 className="landing-fb-h2 text-white">
+            {COPY.seam.lead}{" "}
+            <span className="font-serif italic text-[var(--lp-mint)]">{COPY.seam.em}</span>{" "}
+            {COPY.seam.trail}
+          </h2>
+          <p className="landing-import-label mt-3 text-[var(--lp-mint)] opacity-100">
+            {COPY.seam.kicker}
           </p>
+          <div className="mt-6 max-w-md" data-no-drag>
+            <SignupMorph />
+          </div>
+          <Link
+            to="/auth"
+            search={{ mode: "signup" }}
+            className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--lp-mint)] underline-offset-4 hover:underline"
+            data-no-drag
+          >
+            Or create your profile <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+          {/* The canvas owns the page ending, so the site footer lives here —
+              inside the final ink band — and nowhere else on this route. */}
+          <nav
+            aria-label="Footer"
+            data-no-drag
+            className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/10 pt-4 text-[11px] font-medium tracking-wide text-white/45"
+          >
+            <Link to="/" className="transition-colors hover:text-white/80">
+              How it works
+            </Link>
+            <Link to="/jobs" className="transition-colors hover:text-white/80">
+              Jobs
+            </Link>
+            <Link to="/dashboard" className="transition-colors hover:text-white/80">
+              Dashboard
+            </Link>
+            <Link to="/" className="transition-colors hover:text-white/80">
+              About
+            </Link>
+            <Link to="/" className="transition-colors hover:text-white/80">
+              Privacy
+            </Link>
+            <span className="ml-auto text-white/30">© {new Date().getFullYear()} Jobly</span>
+          </nav>
         </div>
-      </section>
-
-      <section className="bg-ink px-6 py-20 text-center text-white">
-        <h2 className="font-display text-4xl">
-          {FOOTER_CTA.lead} <span className="font-serif italic">{FOOTER_CTA.em}</span>{" "}
-          {FOOTER_CTA.trail}
-        </h2>
-        <p className="marker-num mt-3 text-mint-light">{FOOTER_CTA.kicker}</p>
-        <Link to="/auth" search={{ mode: "signup" }} className="pill-mint mt-8 gap-2">
-          Create your profile <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </section>
-    </>
+      </motion.div>
+    </FooterPanel>
   );
 }

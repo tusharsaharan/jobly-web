@@ -1,0 +1,1199 @@
+/**
+ * THE INTRO SECTION — hero triptych, thesis, import.
+ *
+ * Loaded after `landing-story.css` and scoped to `.landing-intro`, so none of it
+ * can reach the long story or the rest of the app.
+ *
+ * Rules of the road, same as the story file:
+ *   · animate transform / opacity / clip-path only — never layout, never filter
+ *   · all vertical rhythm in vh, never %, because percentage block margins
+ *     resolve against WIDTH
+ *   · blurs are STATIC filters faded by opacity, so the compositor never
+ *     re-rasterises them mid-scroll
+ */
+
+.landing-intro,
+.landing-intro-fb {
+  /* The reference's geometric bold. Bricolage Grotesque is an experimental
+     grotesque with idiosyncratic proportions and does not read like it. Scoped
+     here only — the rest of the app keeps Bricolage. */
+  --font-display: "Montserrat Variable", "Inter Variable", "Helvetica Neue", system-ui, sans-serif;
+  /* `--mint` (#b8ddd2) is noticeably paler than the reference's band. This is
+     the same hue with the saturation the reference actually uses. */
+  --lp-mint-deep: #a8d5c4;
+  /* `--lp-marker` (#f7f5a3) is tuned to sit on dark surfaces, where it is the
+     brightest thing in frame. Against the cream stage (#f5f5f3) it is almost the
+     same luminance, so the warm glyphs drew as barely-there smudges. This is the
+     same hue carried far enough down to hold a 3-4px outline on cream. */
+  --lp-marker-edge: #e0d44f;
+}
+
+/* ══════════════════════ steps 0-1 · the triptych ══════════════════════ */
+
+.landing-tri-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: opacity;
+}
+
+.landing-tri-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* The blurred backdrop. The filter never changes — only this layer's opacity
+   does — and the slight overscale hides the soft edge the blur leaves. */
+.landing-tri-blur {
+  position: absolute;
+  inset: 0;
+  filter: blur(14px) saturate(0.42);
+  transform: scale(1.09);
+  will-change: opacity;
+}
+
+/* The wash toward the cream stage. */
+.landing-tri-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--lp-cream);
+  will-change: opacity;
+}
+
+/* The sharp photograph. Only `clip-path` animates. */
+.landing-tri-centre {
+  position: absolute;
+  inset: 0;
+  will-change: clip-path;
+}
+
+/* hero.jpg blows out around the window, dead centre, which is exactly where the
+   title sits — so the scrim is weighted to the middle rather than the edges. */
+.landing-tri-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 72% 58% at 50% 46%, rgb(31 32 29 / 0.6), rgb(31 32 29 / 0.26) 72%),
+    linear-gradient(to top, rgb(31 32 29 / 0.6) 0%, rgb(31 32 29 / 0.1) 46%, transparent 78%);
+  pointer-events: none;
+}
+
+.landing-tri-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background-repeat: no-repeat;
+  border-radius: 3px;
+  box-shadow:
+    0 34px 74px -22px rgb(0 0 0 / 0.58),
+    0 2px 10px rgb(0 0 0 / 0.26);
+  will-change: transform, opacity;
+}
+
+.landing-intro-herotitle {
+  position: absolute;
+  inset-inline: 0;
+  /* Nudged down toward the true optical centre of the frame. */
+  top: 46%;
+  box-sizing: border-box;
+  padding-inline: clamp(1.5rem, 5vw, 5rem);
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.landing-intro-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 8.2vh, 5.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.landing-intro-sub {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1rem, 2.9vh, 1.7rem);
+  line-height: 1.3;
+  margin-top: 1.5vh;
+  opacity: 0.84;
+  text-wrap: balance;
+}
+
+/* `NextPagePixiElement` — the ring at 90% height. */
+.landing-intro-hint {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(90% - 60px);
+  z-index: 44;
+  display: flex;
+  justify-content: center;
+}
+.landing-intro-hint button {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border: 2px solid rgb(255 255 255 / 0.8);
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.24s ease;
+}
+.landing-intro-hint button:hover {
+  background-color: rgb(255 255 255 / 0.12);
+}
+
+/* ══════════════════════ step 2 · the thesis ══════════════════════ */
+
+/* A hard edge travelling up the frame, not a centre-line wipe — which is why
+   this is a plain sliding div and not a `PanelElement`. */
+.landing-thesis-panel {
+  position: absolute;
+  inset: 0;
+  background: var(--lp-ink);
+  will-change: transform;
+}
+
+/* The centre card's footprint, held at a level you are not meant to notice. */
+.landing-thesis-ghost {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgb(255 255 255 / 0.035);
+  border-radius: 3px;
+}
+
+.landing-thesis-type {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+  pointer-events: none;
+}
+
+.landing-thesis-row {
+  position: absolute;
+  inset-inline: 0;
+  box-sizing: border-box;
+  padding-inline: clamp(1.5rem, 5vw, 5rem);
+  text-align: center;
+  transform: translateY(-50%);
+}
+
+/* The mask reveal: the outer box clips, the inner span rises through it. */
+.landing-thesis-mask {
+  display: block;
+  overflow: hidden;
+  /* room for descenders and the serif's italic overshoot */
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+}
+.landing-thesis-mask > span {
+  display: block;
+  will-change: transform;
+}
+
+.landing-thesis-serif {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1.1rem, 3.4vh, 2.1rem);
+  line-height: 1.1;
+  opacity: 0.8;
+}
+
+.landing-thesis-bold {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.3rem, 8vh, 5.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.024em;
+}
+
+.landing-thesis-foot {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(0.95rem, 2.4vh, 1.35rem);
+  opacity: 0.56;
+}
+
+/* ── the drifting glyphs ── */
+
+.landing-glyph-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.landing-glyph {
+  position: absolute;
+  will-change: transform;
+}
+
+/**
+ * The idle drift. A CSS animation on purpose: it runs on the compositor and
+ * keeps going while the user is standing still, which is when it is noticed.
+ * Each glyph supplies its own duration, a negative delay (so it is already
+ * mid-cycle on first paint) and its own start/end rotation, so the field never
+ * synchronises. The opacity fade at both ends is what hides the loop reset — a
+ * pure upward rise would otherwise snap back visibly.
+ */
+.landing-glyph-drift {
+  width: 100%;
+  height: 100%;
+  animation-name: landing-glyph-rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes landing-glyph-rise {
+  0% {
+    transform: translate3d(0, 17vh, 0) rotate(var(--glyph-r0));
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, -17vh, 0) rotate(var(--glyph-r1));
+    opacity: 0;
+  }
+}
+
+/* ══════════════════════ steps 3-8 · the import and the scan ══════════════════════ */
+
+/* ── the sibling documents ── */
+
+.landing-sib-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.landing-sib {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  padding: 1.6vh 1.1vh;
+  background: var(--lp-paper);
+  border-radius: 2px;
+  box-shadow:
+    0 24px 50px -18px rgb(31 32 29 / 0.3),
+    0 1px 4px rgb(31 32 29 / 0.14);
+  will-change: transform, opacity;
+}
+
+.landing-sib-title {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(0.6rem, 1.5vh, 0.86rem);
+  letter-spacing: -0.01em;
+  color: var(--lp-ink);
+}
+/* The reference turns two of them on their side, title and all. */
+.landing-sib-title--v {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Body text, suggested rather than drawn. */
+.landing-sib-rules {
+  display: block;
+  margin-top: 1.4vh;
+  height: 62%;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgb(47 48 45 / 0.16) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* ── the sheet ───────────────────────────────────────────────────────────────
+   `--page-h`, `--page-w` and every `--doc-*` measure are INJECTED by `PAGE_VARS`
+   in `intro/manifest.ts`. That is deliberate rather than fussy: `bulletPoint`
+   walks the same table to aim the keyword chips at the phrases they came from,
+   so a rhythm value hardcoded here would silently drift the flight paths. Add
+   measures to `DOC`, not to this file.
+
+   Vertical measures are fractions of the page HEIGHT and horizontal ones of its
+   WIDTH, so the sheet holds its proportions at any viewport. A document that
+   stretches is the fastest way to stop looking like paper.                    */
+
+.landing-page,
+.landing-fb-page {
+  --doc-fs-tag: clamp(7px, calc(var(--page-h) * 0.0126), 11px);
+  --doc-fs-name: clamp(15px, calc(var(--page-h) * 0.0335), 31px);
+  --doc-fs-role: clamp(10px, calc(var(--page-h) * 0.0188), 17px);
+  --doc-fs-head: clamp(8px, calc(var(--page-h) * 0.0131), 12px);
+  --doc-fs-body: clamp(9px, calc(var(--page-h) * 0.0147), 13px);
+}
+
+.landing-page {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  height: var(--page-h);
+  width: var(--page-w);
+  padding: var(--doc-pad-y) var(--doc-pad-x);
+  /* how far the idle sweep travels: the content spans ~0.65 of the page */
+  --scan-travel: calc(var(--page-h) * 0.62);
+  background: #fff;
+  color: var(--lp-ink);
+  box-shadow:
+    0 50px 90px -30px rgb(31 32 29 / 0.34),
+    0 2px 10px rgb(31 32 29 / 0.12);
+  /* `will-change` is driven from `ResumePage` and dropped at every rest — see
+     the soft-text note there. Pinning it here would make that guard pointless. */
+}
+
+/* The focus pull for the step-6 title beat. Washes the INK back while the paper
+   stays solid, so a full page of sentences can sit behind a 9.4vh headline
+   without fighting it. See the `Veil` note in ResumePage. */
+.landing-page-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #fff;
+  pointer-events: none;
+}
+
+/* The little diagonal corner fold. */
+.landing-page-fold {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(135deg, rgb(47 48 45 / 0.1) 0 50%, transparent 50%);
+}
+
+/* The header is typed at step 4 and then simply STAYS — it is the continuity
+   between the mocked sheet and the readable one, which is why the cross-fade
+   underneath it is invisible. Heights come from `line-height` rather than
+   `height` so a line that wraps at an odd aspect grows instead of clipping. */
+.landing-page-tag {
+  font-family: var(--font-mono);
+  font-size: var(--doc-fs-tag);
+  line-height: var(--doc-tag-h);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: rgb(47 48 45 / 0.42);
+}
+
+.landing-page-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--doc-fs-name);
+  line-height: var(--doc-name-h);
+  letter-spacing: -0.02em;
+  margin-top: var(--doc-name-top);
+}
+
+.landing-page-role {
+  font-family: var(--font-serif);
+  font-size: var(--doc-fs-role);
+  line-height: var(--doc-role-h);
+  color: rgb(47 48 45 / 0.68);
+}
+
+.landing-page-rule {
+  display: block;
+  height: 1px;
+  margin-top: var(--doc-rule-top);
+  background: rgb(47 48 45 / 0.16);
+  transform-origin: left center;
+}
+
+/* ── skeleton and real text, in the same slot ──
+   Both are absolute so the cross-fade has nowhere to jump to. The page's height
+   is fixed, so neither needs to contribute any. */
+.landing-page-stack {
+  position: relative;
+}
+.landing-page-skel,
+.landing-page-real {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+}
+
+.landing-page-section {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--doc-fs-head);
+  line-height: var(--doc-sec-head-h);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(47 48 45 / 0.5);
+  margin-top: var(--doc-sec-top);
+}
+
+.landing-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--doc-bullet-gap);
+  margin-top: var(--doc-bullet-gap);
+}
+
+.landing-page-line {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(47 48 45 / 0.9);
+  transform-origin: left center;
+  will-change: transform, opacity;
+}
+
+/* The caret parks at the end of whatever is being typed, then vanishes. */
+.landing-page-caret {
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  margin-left: 2px;
+  vertical-align: -0.08em;
+  background: currentColor;
+  animation: landing-caret-blink 1s steps(2, start) infinite;
+}
+@keyframes landing-caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* ══════════════════════ the readable document ══════════════════════ */
+
+.landing-doc-head {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--doc-fs-head);
+  line-height: var(--doc-sec-head-h);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: var(--doc-sec-top);
+}
+.landing-doc-head--tight {
+  margin-top: 0;
+  line-height: var(--doc-skills-head-h);
+}
+
+/* Draws itself as the band arrives at the section's first line — the smallest
+   possible signal that this block is the one being read. */
+.landing-doc-head-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0.12em;
+  width: 2.4em;
+  height: 1.5px;
+  background: var(--lp-deep);
+  transform-origin: left center;
+}
+
+.landing-doc-line {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--doc-bullet-indent);
+  margin-top: var(--doc-bullet-gap);
+  font-family: var(--font-sans);
+  font-size: var(--doc-fs-body);
+  line-height: var(--doc-bullet-h);
+  color: rgb(47 48 45 / 0.76);
+}
+
+.landing-doc-dot {
+  flex: none;
+  width: 0.34em;
+  height: 0.34em;
+  border-radius: 999px;
+  background: var(--lp-deep);
+  /* sits on the text's optical centre rather than its baseline */
+  translate: 0 -0.32em;
+}
+
+.landing-doc-text {
+  min-width: 0;
+}
+
+.landing-doc-skills {
+  margin-top: var(--doc-skills-top);
+}
+.landing-doc-rule {
+  display: block;
+  height: 1px;
+  margin-bottom: calc(var(--doc-skills-top) * 0.45);
+  background: rgb(47 48 45 / 0.14);
+}
+.landing-doc-skills-line {
+  font-family: var(--font-sans);
+  font-size: var(--doc-fs-body);
+  line-height: var(--doc-skills-line-h);
+  color: rgb(47 48 45 / 0.72);
+}
+
+/* ══════════════════════ the scan ══════════════════════ */
+
+/* The read-head. Yellow on `multiply`, so it TINTS the sentence it is over
+   instead of hiding it — the whole point is that you can read what is being
+   read. The hairline at its centre is what makes it a head rather than a haze. */
+.landing-scan-band,
+.landing-scan-idle {
+  position: absolute;
+  left: calc(var(--doc-pad-x) * -0.5);
+  right: calc(var(--doc-pad-x) * -0.5);
+  top: 0;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.landing-scan-band {
+  height: calc(var(--doc-bullet-h) * 1.9);
+  border-radius: 3px;
+  /* Kept well down. Together with seven persisting blooms the first cut turned
+     the sheet into a highlighter accident; the band only has to say "here", and
+     the marker underneath it is already saying "this phrase". */
+  background: linear-gradient(
+    to bottom,
+    rgb(247 245 163 / 0) 0%,
+    rgb(247 245 163 / 0.3) 42%,
+    rgb(240 234 122 / 0.4) 58%,
+    rgb(247 245 163 / 0) 100%
+  );
+}
+.landing-scan-band::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(30 112 88 / 0.22);
+}
+
+/**
+ * At rest, a faint continuous sweep. A CSS animation for exactly the same reason
+ * the glyphs drift that way: it keeps moving while the user is stationary, which
+ * is when a still frame starts to look like a screenshot. Low enough to read as
+ * "live document" rather than "still loading".
+ *
+ * THE FADE LIVES ON THE PSEUDO-ELEMENT, and that is not a style choice. A CSS
+ * animation beats inline style in the cascade, so an `opacity` keyframe here
+ * would silently override the `opacity` Framer writes — the sweep would be fully
+ * visible at every step, including step 4, which is exactly what it did. Keeping
+ * the travel on the host and the loop fade on `::before` means the two multiply
+ * instead of fighting. Same reason `.landing-glyph` and `.landing-glyph-drift`
+ * are two elements.
+ */
+.landing-scan-idle {
+  height: calc(var(--doc-bullet-h) * 2.4);
+  animation: landing-scan-sweep 7.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.landing-scan-idle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, rgb(247 245 163 / 0.32), transparent);
+  animation: landing-scan-fade 7.5s linear infinite;
+}
+@keyframes landing-scan-sweep {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--scan-travel));
+  }
+}
+@keyframes landing-scan-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  14%,
+  86% {
+    opacity: 1;
+  }
+}
+
+/* Focus blooms — warm radials that PERSIST where the band has already looked, so
+   the page ends up carrying a record of how it was read. Static gradients faded
+   by opacity; never an animated filter. */
+.landing-bloom-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.landing-bloom {
+  position: absolute;
+  left: calc(var(--doc-pad-x) * -0.35);
+  translate: 0 -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 18% 50%,
+    rgb(247 245 163 / 0.6) 0%,
+    rgb(247 245 163 / 0.26) 38%,
+    rgb(247 245 163 / 0) 76%
+  );
+  mix-blend-mode: multiply;
+}
+
+/* The retired headline. "ATS Calculation" cannot be a 9.4vh display line and let
+   you read the sheet at the same time, so at step 7 it comes back as this. */
+.landing-scan-chip {
+  position: absolute;
+  right: var(--doc-pad-x);
+  top: var(--doc-pad-y);
+  /* above the veil, so the title's replacement is never washed out with the ink
+     it is replacing */
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.3em 0.7em;
+  border: 1px solid rgb(30 112 88 / 0.22);
+  border-radius: 999px;
+  background: rgb(30 112 88 / 0.06);
+  color: var(--lp-deep);
+  font-family: var(--font-mono);
+  font-size: var(--doc-fs-tag);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform-origin: right center;
+}
+.landing-scan-chip-pulse {
+  width: 0.46em;
+  height: 0.46em;
+  border-radius: 999px;
+  background: var(--lp-deep);
+  animation: landing-chip-pulse 1.6s ease-in-out infinite;
+}
+@keyframes landing-chip-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+.landing-scan-chip-sep {
+  opacity: 0.4;
+}
+.landing-scan-chip-sec {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── the keyword flight ── */
+
+.landing-chip-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.landing-chip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  will-change: transform;
+}
+.landing-chip-body {
+  display: block;
+  padding: 0.34em 0.72em;
+  border: 1px solid rgb(47 48 45 / 0.16);
+  border-radius: 999px;
+  background: var(--lp-marker);
+  box-shadow: 0 10px 22px -10px rgb(31 32 29 / 0.42);
+  color: var(--lp-ink);
+  font-family: var(--font-sans);
+  font-size: clamp(9px, 1.35vh, 13px);
+  font-weight: 650;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+/* ══════════════════════ the score column ══════════════════════ */
+
+/* Right margin only; the left stays empty. Every box is sized from `SCORE` in
+   the manifest, because `scoreRowY` has to be able to tell `KeywordFlight` where
+   a row is without measuring it. */
+.landing-score {
+  position: absolute;
+  top: 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  translate: 0 -50%;
+  color: var(--lp-ink);
+  pointer-events: none;
+}
+
+.landing-score-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.landing-score-ring svg {
+  height: 100%;
+  width: auto;
+}
+.landing-score-mid {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.landing-score-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: clamp(22px, 4.4vh, 44px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.landing-score-cap {
+  margin-top: 0.34em;
+  font-family: var(--font-sans);
+  font-size: clamp(7px, 1.05vh, 10px);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.landing-score-rows {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+.landing-score-row {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.42vh;
+  padding: 0 0.7vw;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.landing-score-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6em;
+}
+.landing-score-row-label {
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: clamp(8px, 1.3vh, 12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.landing-score-row-pts {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: clamp(8px, 1.2vh, 11px);
+  font-variant-numeric: tabular-nums;
+}
+.landing-score-row-max {
+  opacity: 0.4;
+}
+.landing-score-row-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5vw;
+}
+.landing-score-row-track {
+  flex: 1;
+  min-width: 0;
+  height: clamp(3px, 0.5vh, 5px);
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(47 48 45 / 0.1);
+}
+.landing-score-row-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lp-deep), #2a9d7b);
+}
+.landing-score-row-cited {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: clamp(6px, 0.85vh, 8px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lp-deep);
+}
+.landing-score-foot {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: clamp(9px, 1.25vh, 12px);
+  opacity: 0.5;
+}
+
+/* ── the headline, opening out of its own midline ── */
+
+.landing-import-head {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  box-sizing: border-box;
+  padding-inline: clamp(1.5rem, 5vw, 5rem);
+  text-align: center;
+  color: var(--lp-ink);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.landing-import-label {
+  font-family: var(--font-sans);
+  font-size: clamp(0.66rem, 1.4vh, 0.84rem);
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  opacity: 0.56;
+  margin-bottom: 1.6vh;
+}
+
+.landing-import-titlewrap {
+  position: relative;
+}
+
+/* Scales out from the centre, slightly ahead of the type — then dissolves
+   (see BeatHead `ruleOpacity`) so it never rests through the glyphs. Painted
+   BEHIND the type: positioned elements win over static ones, so the title gets
+   its own positioning + z-index to stay on top even mid-wipe. */
+.landing-import-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 0;
+  height: 1px;
+  background: rgb(47 48 45 / 0.34);
+  transform-origin: center center;
+}
+
+.landing-import-title {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 9.4vh, 6.2rem);
+  line-height: 0.94;
+  letter-spacing: -0.026em;
+  will-change: clip-path;
+}
+
+.landing-import-sub {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1rem, 2.8vh, 1.6rem);
+  margin-top: 1.8vh;
+  opacity: 0.74;
+  text-wrap: balance;
+}
+
+/* ══════════════════════ shorter viewports ══════════════════════ */
+
+@media (max-height: 760px) {
+  /* The sheet needs no override any more — it is locked to height, so it scales
+     itself down and keeps its proportions. That is the whole point of `PAGE_BOX`. */
+  .landing-thesis-row {
+    padding-inline: 1.2rem;
+  }
+}
+
+/* ══════════════════════ the static fallback ══════════════════════ */
+
+.landing-intro-fb {
+  background: var(--lp-cream);
+  color: var(--lp-ink);
+}
+
+.landing-fb-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 560px;
+  padding: 6rem 1.5rem;
+  background: var(--lp-ink);
+  text-align: center;
+  overflow: hidden;
+}
+.landing-fb-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.5;
+}
+.landing-fb-hero-body {
+  position: relative;
+  z-index: 1;
+  max-width: 48rem;
+  color: #fff;
+}
+
+.landing-fb-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 7vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.022em;
+}
+.landing-fb-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 6vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+}
+.landing-fb-sub {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1rem, 3.4vw, 1.3rem);
+  margin-top: 1rem;
+  opacity: 0.85;
+}
+.landing-fb-sub--ink {
+  opacity: 0.7;
+}
+.landing-fb-label {
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.landing-fb-em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--lp-mint);
+}
+
+.landing-fb-tri {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--lp-ink);
+}
+.landing-fb-tri-card {
+  display: block;
+  background-repeat: no-repeat;
+  border-radius: 2px;
+}
+.landing-fb-tri-card--left {
+  aspect-ratio: 1;
+  align-self: center;
+}
+.landing-fb-tri-card--centre {
+  aspect-ratio: 3 / 4;
+}
+.landing-fb-tri-card--right {
+  aspect-ratio: 4 / 7;
+  align-self: center;
+}
+
+.landing-fb-thesis {
+  padding: 5rem 1.5rem;
+  background: var(--lp-ink);
+  color: #fff;
+  text-align: center;
+}
+.landing-fb-thesis .landing-fb-serif {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  font-size: clamp(1rem, 3.6vw, 1.4rem);
+  opacity: 0.8;
+  margin-block: 0.7rem;
+}
+.landing-fb-thesis .landing-fb-bold {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  line-height: 1;
+  letter-spacing: -0.024em;
+}
+.landing-fb-thesis .landing-fb-foot {
+  font-family: var(--font-serif);
+  font-style: italic;
+  margin-top: 2rem;
+  opacity: 0.56;
+}
+
+.landing-fb-import {
+  padding: 5rem 1.5rem;
+  background: var(--lp-mint-deep);
+  text-align: center;
+}
+.landing-fb-sibs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+.landing-fb-sibs li {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgb(47 48 45 / 0.2);
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+/* ── step two, static ── */
+
+.landing-fb-ats {
+  padding: 5rem 1.5rem;
+  background: var(--lp-cream);
+  text-align: center;
+}
+.landing-fb-ats-grid {
+  display: grid;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 2.5rem;
+  text-align: left;
+}
+@media (min-width: 880px) {
+  .landing-fb-ats-grid {
+    grid-template-columns: minmax(0, 26rem) minmax(0, 20rem);
+  }
+}
+
+/* The sheet. Bullets here WRAP — it is a scrolling document, not a scaled
+   plate — so the fixed line boxes the canvas relies on are released. */
+.landing-fb-page {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 2rem 1.6rem;
+  background: #fff;
+  box-shadow: 0 24px 50px -22px rgb(31 32 29 / 0.3);
+}
+.landing-fb-page .landing-doc-line,
+.landing-fb-page .landing-doc-skills-line {
+  line-height: 1.55;
+}
+.landing-fb-page .landing-page-name {
+  line-height: 1.1;
+}
+.landing-fb-mark {
+  border-radius: 2px 5px 3px 4px;
+  background: linear-gradient(96deg, var(--lp-marker), var(--lp-marker-deep) 46%, var(--lp-marker));
+  color: #1b2c23;
+  font-weight: 700;
+}
+
+.landing-fb-score {
+  align-self: start;
+}
+.landing-fb-score-total {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.landing-fb-score-cap {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+.landing-fb-score-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+  list-style: none;
+}
+.landing-fb-score-rows li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.38rem 0.6rem;
+}
+.landing-fb-score-label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.landing-fb-score-pts {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.landing-fb-score-max {
+  opacity: 0.4;
+}
+.landing-fb-score-track {
+  grid-column: 1 / -1;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(47 48 45 / 0.1);
+}
+.landing-fb-score-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lp-deep), #2a9d7b);
+}
+.landing-fb-score-foot {
+  margin-top: 1.2rem;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  opacity: 0.55;
+}
+
+.landing-fb-cap {
+  padding: 5rem 1.5rem;
+  background: var(--lp-ink);
+  color: #fff;
+  text-align: center;
+}
+
+/* ══════════════════════ reduced motion ══════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-glyph-drift,
+  .landing-page-caret,
+  .landing-scan-idle,
+  .landing-scan-chip-pulse {
+    animation: none;
+  }
+  .landing-glyph-drift {
+    opacity: 1;
+  }
+  .landing-scan-idle {
+    display: none;
+  }
+}

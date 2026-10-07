@@ -72,7 +72,10 @@ export function TitleCard({
   );
   // Stand-in for the reference's particle dissolve.
   const opacity = useTransform(stepIndex, (si) =>
-    si < 1 ? limit(si / 0.35, 0, 1) : limit(1 - (si - outroStart) / 0.85, 0, 1),
+    si < 1 ? limit(si / 0.35, 0, 1) : limit(1 - (si - outroStart) / 0.4, 0, 1),
+  );
+  const exitY = useTransform(stepIndex, (si) =>
+    si < outroStart ? 0 : -Math.min((si - outroStart) / 0.4, 1) * 18,
   );
   const visibility = useTransform(pos, (v) =>
     Math.abs(anchor - v) < visibleLength ? "visible" : "hidden",
@@ -92,12 +95,13 @@ export function TitleCard({
     <motion.div
       className={`pointer-events-none absolute inset-x-0 ${
         align === "center" ? "text-center" : "text-left"
-      } ${className ?? ""}`}
+      } landing-titlecard ${className ?? ""}`}
       style={{
         top,
         zIndex,
         color,
         scale,
+        y: exitY,
         opacity,
         visibility,
         transformOrigin: "center center",

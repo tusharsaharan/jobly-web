@@ -155,7 +155,14 @@ function RootComponent() {
   const router = useRouter();
   const pathname = router.state.location.pathname;
   const isAuthPage = pathname === "/auth";
-  const cursorEnabled = pathname === "/" || pathname.startsWith("/auth") === false && pathname === "/";
+  // The landing route ("/") is a full-viewport snap-scroll canvas (`h-screen
+  // overflow-hidden`). Rendering the global footer below it would add native
+  // page height, so the columns footer peeks through mid-animation and shows
+  // up in full-page captures. The canvas owns its ending (the step-8 CTA
+  // band, which carries its own footer links); the static fallback renders
+  // <Footer /> itself at the end of its scrolling story.
+  const isLanding = pathname === "/";
+  const cursorEnabled = pathname === "/";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -166,7 +173,7 @@ function RootComponent() {
               <main id="main" className="flex-1">
                 <Outlet />
              </main>
-              {!isAuthPage && <Footer />}
+              {!isAuthPage && !isLanding && <Footer />}
            </div>
             <ToasterWrapper />
             <Cursor enabled={pathname === "/"} />

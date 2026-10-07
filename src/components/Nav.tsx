@@ -168,27 +168,15 @@ export function LandingNav({ light, revealed }: LandingNavProps) {
       animate={{ y: revealed ? 0 : -96 }}
       transition={{ duration: 0.8, ease: [0.5, 0, 0.5, 1] }}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
-        <span className="relative inline-flex items-center gap-2.5" aria-hidden="true">
-          <span
-            className={cn(
-              "absolute inset-0 flex items-center transition-opacity duration-500",
-              light ? "opacity-100" : "opacity-0",
-            )}
-          >
-            <Logo size="sm" />
-          </span>
-          <span
-            className={cn(
-              "absolute inset-0 flex items-center transition-opacity duration-500",
-              light ? "opacity-0" : "opacity-100",
-            )}
-          >
-            <Logo size="sm" variant="inverse" />
-          </span>
-          <span className="invisible flex items-center gap-2.5">
-            <Logo size="sm" />
-          </span>
+      {/* Full-bleed row (no max-w-7xl): the mark sits near the viewport's
+          left edge and the auth cluster near its right edge, instead of both
+          being pulled toward the centered content column. */}
+      <div className="mx-auto flex w-full max-w-none items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
+        {/* Single logo, variant-driven. The previous dual absolute-layer
+            crossfade stacked two links atop an invisible spacer, which is what
+            produced the clipped "J"-only ghost frames mid-transition. */}
+        <span className="inline-flex items-center">
+          <Logo size="sm" variant={light ? "default" : "inverse"} />
         </span>
 
         <div className="flex items-center gap-3 sm:gap-5">

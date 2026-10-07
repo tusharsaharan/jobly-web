@@ -1,33 +1,32 @@
 import { motion, useTransform, type MotionValue } from "framer-motion";
-import { cubicInOut, limit } from "../beagleEase";
+import { cubicInOut, cubicOut, limit } from "../beagleEase";
+import { ramp, settle } from "./choreography";
 import { PAPER_SHADOW } from "./paper";
-import type { Candidate } from "../sceneManifest";
+import { EVIDENCE, type Candidate, type Evidence } from "../sceneManifest";
 
 /**
  * THE PROTAGONIST.
  *
  * One resume sheet, mounted exactly once, alive across the whole story. It is
- * the thread that makes the nine beats a narrative instead of nine slides —
- * the same object is uploaded, parsed, scored, applied with, set aside for the
- * interview, annotated by the feedback, and finally handed back improved.
+ * the thread that makes the beats a narrative instead of a slide deck — the
+ * same object is chosen off the desk, flown into the laptop, posted to three
+ * mailboxes, set aside for the interview, broken by the feedback, repaired by
+ * the marker, and finally filed.
  *
- * Driven directly off `pos` (the scroll step) rather than `stepIndex`, because
- * the beats are the step numbers and that keeps the branches readable:
+ *   pos  4-5     chosen     lifts out of the gathered stack
+ *   pos  5-6     ingested   flies into the laptop screen and is absorbed
+ *   pos  6-8     (hidden)   the laptop's parse page is the resume now
+ *   pos  9       posted     returns, triplicates, flies into the mailboxes
+ *   pos 11-12    aside      the candidate is in the room; the sheet waits
+ *   pos 13       broken     the two weak lines fracture and shed shards
+ *   pos 14       repaired   marker rewrites the headline and the weak lines
+ *   pos 15+      filed      hands over to FolderStage
  *
- *   pos  0-2   raw        a plain resume, the thing you already have
- *   pos  3-4   parsed     fields light up as the AI extracts them
- *   pos  5     ingested   shrinks into the laptop screen to be scored
- *   pos  6     scored     returns carrying its 82, docks right to apply
- *   pos  7-8   aside      the candidate is in the room; the sheet waits
- *   pos  9     annotated  feedback pins attach to the weak lines
- *   pos 11     v2         rewritten headline, filled gaps, 94
- *
- * Because every state is a function of one scroll value, the transitions
- * between them are continuous by construction — there is no state machine to
- * fall out of sync.
+ * Every state is a function of one scroll value, so the transitions between
+ * them are continuous by construction and scrubbing backwards is exact.
  */
 
-export type ResumeState = "raw" | "parsed" | "ingested" | "scored" | "aside" | "annotated" | "v2";
+const WEAK_IDS = EVIDENCE.filter((e) => e.weak).map((e) => e.id);
 
 interface ResumeSheetProps {
   pos: MotionValue<number>;
@@ -37,68 +36,80 @@ interface ResumeSheetProps {
 }
 
 export function ResumeSheet({ pos, anchor, visibleLength, candidate }: ResumeSheetProps) {
-  /* ── position track ───────────────────────────────────────────────
-     Hard constraint: title cards own the top 25-48% of the viewport, so every
-     rest pose sits below that band. The sheet also vacates the stage entirely
-     for the three beats that have their own centrepiece (room, scorecard,
-     study cards) and returns as v2 for the payoff. */
+  /* ── position ─────────────────────────────────────────────────────
+     Title cards own the top ~25-48% of the viewport, so every rest pose
+     sits below that band. The sheet vacates entirely for the beats that
+     have their own centrepiece (laptop interior, room, verdict, folder). */
   const x = useTransform(pos, (p) => {
-    if (p < 5) return 0;
-    // 5 -> 6: slides right so the role cards own the left
-    if (p < 6) return cubicInOut(p - 5, 0, 0.26, 1);
-    // 6 -> 7: exits right while the interview runs
-    if (p < 7) return cubicInOut(p - 6, 0.26, 0.5, 1);
-    if (p < 10) return 0.76;
-    // returns on the left for the loop payoff
-    return cubicInOut(limit(p - 10, 0, 1), -0.12, -0.14, 1);
+    // lifts out of the stack, centre-left
+    if (p < 4.4) return 0;
+    // 4.4 -> 5.5 drifts toward the laptop screen
+    if (p < 5.5) return cubicInOut((p - 4.4) / 1.1, 0, 0.02, 1);
+    if (p < 8.9) return 0.02;
+    // 8.9 -> 9.3 returns to centre to be copied
+    if (p < 9.3) return cubicInOut((p - 8.9) / 0.4, 0.02, -0.04, 1);
+    // 9.3 -> 10.4 slides left as the mailboxes take the stage
+    if (p < 10.4) return cubicInOut((p - 9.3) / 1.1, -0.02, -0.38, 1);
+    if (p < 12.9) return -0.4;
+    // 12.9 -> 13.4 returns for the fix beat
+    if (p < 13.4) return cubicInOut((p - 12.9) / 0.5, -0.4, 0.26, 1);
+    if (p < 14.9) return -0.14;
+    // hands over to the folder
+    return cubicInOut(limit((p - 14.9) / 0.6, 0, 1), -0.14, 0.04, 1);
   });
 
   const y = useTransform(pos, (p) => {
-    // hero: resting below the title
-    if (p < 1.3) return 0.2;
-    // 1.3 -> 2: drops away for the thesis
-    if (p < 2) return cubicInOut((p - 1.3) / 0.7, 0.2, 0.95, 1);
-    if (p < 3.2) return 1.15;
-    // 3.2 -> 4: rises back for the upload beat
-    if (p < 4) return cubicInOut((p - 3.2) / 0.8, 1.15, -0.88, 1);
-    // 4 -> 5: travels up into the laptop screen
-    if (p < 5) return cubicInOut(p - 4, 0.27, -0.29, 1);
-    // 5 -> 6: comes back out carrying a score
-    if (p < 6) return cubicInOut(p - 5, -0.02, 0.24, 1);
-    // 6 -> 7: lifts out with the exit
-    if (p < 7) return cubicInOut(p - 6, 0.22, -0.5, 1);
-    if (p < 10) return -0.28;
-    // the loop payoff
-    return cubicInOut(limit(p - 10, 0, 1), -0.28, 0.21, 1);
+    if (p < 4.0) return 1.2;
+    // 4.0 -> 4.7 rises out of the stack
+    if (p < 4.7) return cubicInOut((p - 4.0) / 0.7, 1.2, -1.02, 1);
+    // 4.7 -> 5.6 travels up into the laptop screen
+    if (p < 5.6) return cubicInOut((p - 4.7) / 0.9, 0.18, -0.34, 1);
+    if (p < 8.9) return -0.16;
+    // 8.9 -> 9.3 drops back to centre, carrying its score
+    if (p < 9.3) return cubicInOut((p - 8.9) / 0.4, -0.16, 0.2, 1);
+    // 9.3 -> 10.4 lifts away with the exit
+    if (p < 10.4) return cubicInOut((p - 9.3) / 1.1, 0.04, -0.46, 1);
+    if (p < 12.9) return -0.42;
+    // 12.9 -> 13.4 comes back for the repair
+    if (p < 13.4) return cubicInOut((p - 12.9) / 0.5, -0.42, 0.4, 1);
+    if (p < 14.9) return -0.02;
+    return cubicInOut(limit((p - 14.9) / 0.6, 0, 1), -0.02, -0.3, 1);
   });
 
   const scale = useTransform(pos, (p) => {
-    if (p < 2) return 0.78;
-    if (p < 4) return 0.72;
+    if (p < 4.0) return 0.6;
+    // readable while it is the hero of the gather beat
+    if (p < 4.7) return cubicInOut((p - 4.0) / 0.7, 0.6, 0.34, 1);
     // shrinks into the laptop screen
-    if (p < 5) return cubicInOut(p - 4, 0.72, -0.48, 1);
-    // returns smaller, carrying its score
-    if (p < 6) return cubicInOut(p - 5, 0.24, 0.42, 1);
-    if (p < 10) return 0.66;
-    return cubicInOut(limit(p - 10, 0, 1), 0.66, -0.2, 1);
+    if (p < 5.6) return cubicInOut((p - 4.7) / 0.9, 0.94, -0.72, 1);
+    if (p < 8.9) return 0.22;
+    // returns at a legible size to be posted
+    if (p < 9.3) return cubicInOut((p - 8.9) / 0.4, 0.22, 0.34, 1);
+    if (p < 12.9) return 0.56;
+    // the fix beat needs the text readable again
+    if (p < 13.4) return cubicInOut((p - 12.9) / 0.5, 0.56, 0.34, 1);
+    if (p < 14.9) return 0.9;
+    return cubicInOut(limit((p - 14.9) / 0.6, 0, 1), 0.9, -0.3, 1);
   });
 
   const rotate = useTransform(pos, (p) => {
-    if (p < 1.3) return -0.035;
-    if (p < 2) return cubicInOut((p - 1.3) / 0.7, -0.035, 0.07, 1);
-    if (p < 5) return 0;
-    if (p < 6) return 0.03 * Math.sin((p - 5) * Math.PI);
-    if (p < 10) return 0;
-    return cubicInOut(limit(p - 10, 0, 1), 0.05, -0.05, 1);
+    if (p < 4.7) return cubicInOut(limit((p - 4.0) / 0.7, 0, 1), -0.06, 0.06, 1);
+    if (p < 9.3) return 0;
+    if (p < 10.4) return 0.04 * Math.sin((p - 9.3) * Math.PI);
+    if (p < 13.4) return 0;
+    if (p < 14.9) return -0.012;
+    return cubicInOut(limit((p - 14.9) / 0.6, 0, 1), -0.012, 0.05, 1);
   });
 
-  /* Hidden inside the laptop, and while the room / verdict / study beats own
-     the stage. Visible at steps 0, 4, 6 and 11. */
+  /* Hidden while the laptop interior, the room, the verdict and the folder
+     own the stage. Visible at the gather, apply, fix and rewrite beats. */
   const opacity = useTransform(pos, (p) => {
-    if (p < 0.2) return limit(p / 0.2, 0, 1);
-    if (p > 4.62 && p < 5.42) return 0; // absorbed by the laptop
-    if (p > 6.75 && p < 10.1) return 0; // room, verdict, study own the stage
-    return 1;
+    if (p < 4.0) return 0;
+    const born = ramp(p, 4.0, 0.3);
+    if (p > 5.62 && p < 8.86) return 0; // absorbed by the laptop
+    if (p > 10.5 && p < 12.95) return 0; // room + verdict own the stage
+    const filed = ramp(p, 15.3, 0.4); // folder takes over
+    return born * (1 - filed);
   });
 
   const transform = useTransform(
@@ -113,36 +124,33 @@ export function ResumeSheet({ pos, anchor, visibleLength, candidate }: ResumeShe
     Math.abs(anchor - p) < visibleLength ? "visible" : "hidden",
   );
 
-  /* ── state tracks ─────────────────────────────────────────────────
-     Each visual change is its own transform over `pos`, so states blend
-     rather than switch. */
+  /* ── state tracks ─────────────────────────────────────────────── */
 
-  /** Extraction: field rows light up mint as the parser finds them, 3.3 -> 4. */
-  const parseFill = useTransform(pos, (p) => limit((p - 3.3) / 0.55, 0, 1));
+  /** Score badge: appears as the sheet leaves the laptop, 8.9 -> 9.3. */
+  const scoreBadge = useTransform(pos, (p) => ramp(p, 8.9, 0.35));
 
-  /** Score badge: appears as the sheet leaves the laptop, 5.45 -> 6. */
-  const scoreBadge = useTransform(pos, (p) => limit((p - 5.45) / 0.45, 0, 1));
+  /** Applied stamp, once the copies are posted. */
+  const appliedStamp = useTransform(pos, (p) => ramp(p, 9.95, 0.35) * (1 - ramp(p, 10.3, 0.3)));
 
-  /** Applied stamp, 6.05 -> 6.45. */
-  const appliedStamp = useTransform(pos, (p) => limit((p - 6.05) / 0.4, 0, 1));
+  /** The fracture, 13.4 -> 13.85, and the repair, 14.1 -> 14.55. */
+  const fracture = useTransform(pos, (p) => ramp(p, 13.4, 0.45));
+  const repair = useTransform(pos, (p) => ramp(p, 14.1, 0.45));
 
-  /**
-   * The payoff, compressed into the 10 -> 11 return. The feedback pins land
-   * first so you see what the interview flagged, then the marker rewrites the
-   * headline and the flagged rows fill out — cause, then effect.
-   */
-  const annotations = useTransform(pos, (p) => limit((p - 10.15) / 0.3, 0, 1));
-  const upgrade = useTransform(pos, (p) => limit((p - 10.5) / 0.45, 0, 1));
-
+  /** The marker rewriting the headline, 14.2 -> 14.6. */
+  const upgrade = useTransform(pos, (p) => ramp(p, 14.2, 0.4));
   const markerWidth = useTransform(upgrade, (u) => `${u * candidate.markerLength}ch`);
-  const headlineOld = useTransform(upgrade, [0.45, 0.72], [1, 0]);
-  const headlineNew = useTransform(upgrade, [0.45, 0.72], [0, 1]);
-  const scoreNow = useTransform(upgrade, (u) =>
-    Math.round(candidate.scoreBefore + (candidate.scoreAfter - candidate.scoreBefore) * u),
+  const headlineOld = useTransform(upgrade, [0.4, 0.68], [1, 0]);
+  const headlineNew = useTransform(upgrade, [0.4, 0.68], [0, 1]);
+  const scoreNow = useTransform([scoreBadge, upgrade] as const, ([s, u]: number[]) =>
+    Math.round(
+      candidate.scoreBefore + (candidate.scoreAfter - candidate.scoreBefore) * (s > 0 ? u : 0),
+    ),
   );
-  const badgeOpacity = useTransform([scoreBadge, upgrade] as const, ([s, u]: number[]) =>
-    Math.max(s, u),
+  const badgeOpacity = useTransform(
+    [scoreBadge, fracture] as const,
+    ([s, f]: number[]) => Math.max(s, f),
   );
+  const badgeScale = useTransform(badgeOpacity, (v) => settle(v, 0.08, 1));
 
   return (
     <motion.article
@@ -159,8 +167,7 @@ export function ResumeSheet({ pos, anchor, visibleLength, candidate }: ResumeShe
         willChange: "transform, opacity",
       }}
     >
-      <div className="flex h-full flex-col p-[7%]">
-        {/* header */}
+      <div className="flex h-full flex-col p-[6%]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="landing-resume-name">{candidate.name}</p>
@@ -188,42 +195,38 @@ export function ResumeSheet({ pos, anchor, visibleLength, candidate }: ResumeShe
             </h3>
           </div>
 
-          {/* the score it is carrying */}
           <motion.div
             className="landing-resume-badge shrink-0"
-            style={{ opacity: badgeOpacity, scale: badgeOpacity }}
+            style={{ opacity: badgeOpacity, scale: badgeScale }}
           >
             <motion.span className="landing-resume-badge-num">{scoreNow}</motion.span>
             <span className="landing-resume-badge-cap">fit</span>
           </motion.div>
         </div>
 
-        <div className="mt-[6%] h-px bg-[var(--lp-ink)]/12" />
+        <div className="mt-[5%] h-px bg-[var(--lp-ink)]/12" />
 
-        {/* body — rows light up as they are parsed, then fill in on v2 */}
-        <div className="mt-[6%] space-y-[4.5%]">
-          {RESUME_ROWS.map((row, i) => (
-            <ResumeRow
-              key={i}
-              index={i}
-              width={row.w}
-              weak={row.weak}
-              parseFill={parseFill}
-              annotations={annotations}
-              upgrade={upgrade}
+        {/* Real sentences. The weak ones fracture in beat 13 and are rewritten
+            in beat 14, so the text itself carries the story. */}
+        <div className="landing-resume-content mt-[4%]">
+          {EVIDENCE.map((atom) => (
+            <ResumeTextLine
+              key={atom.id}
+              atom={atom}
+              fracture={fracture}
+              repair={repair}
             />
           ))}
         </div>
 
-        {/* applied stamp */}
         <motion.div
-          className="landing-resume-stamp mt-[6%]"
+          className="landing-resume-stamp mt-[5%]"
           style={{ opacity: appliedStamp, scale: appliedStamp }}
         >
-          Applied · {candidate.company}
+          Applied · 3 roles
         </motion.div>
 
-        <div className="mt-auto flex items-center justify-between border-t border-[var(--lp-ink)]/10 pt-[5%]">
+        <div className="mt-auto flex items-center justify-between border-t border-[var(--lp-ink)]/10 pt-[4%]">
           <span className="h-2.5 w-2.5 rounded-full bg-[var(--lp-mint)]" />
           <span className="landing-resume-foot">Jobly</span>
         </div>
@@ -232,54 +235,66 @@ export function ResumeSheet({ pos, anchor, visibleLength, candidate }: ResumeShe
   );
 }
 
-/** `weak` rows are the ones the interview feedback later pins. */
-const RESUME_ROWS = [
-  { w: 100, weak: false },
-  { w: 92, weak: false },
-  { w: 84, weak: true },
-  { w: 96, weak: false },
-  { w: 70, weak: true },
-  { w: 58, weak: false },
-];
-
-function ResumeRow({
-  index,
-  width,
-  weak,
-  parseFill,
-  annotations,
-  upgrade,
+/**
+ * One line of the resume.
+ *
+ * Strong lines keep their mint highlight from the parse. Weak lines grow a
+ * fracture across them, dim, and shed their shards; then the repair closes
+ * the crack and swaps the text for the rewritten version.
+ */
+function ResumeTextLine({
+  atom,
+  fracture,
+  repair,
 }: {
-  index: number;
-  width: number;
-  weak: boolean;
-  parseFill: MotionValue<number>;
-  annotations: MotionValue<number>;
-  upgrade: MotionValue<number>;
+  atom: Evidence;
+  fracture: MotionValue<number>;
+  repair: MotionValue<number>;
 }) {
-  const start = index / RESUME_ROWS.length;
-  // parse sweep, staggered row by row
-  const parsed = useTransform(parseFill, (f) => limit((f - start * 0.6) / 0.4, 0, 1));
-  const parsedWidth = useTransform(parsed, (v) => `${v * 100}%`);
-  // weak rows get a pin at step 9, then are repaired on v2
-  const pin = useTransform([annotations, upgrade] as const, ([a, u]: number[]) =>
-    weak ? a * (1 - u) : 0,
+  const isWeak = WEAK_IDS.includes(atom.id);
+  const weakIndex = WEAK_IDS.indexOf(atom.id);
+
+  // Crack opens, then heals.
+  const crack = useTransform([fracture, repair] as const, ([f, r]: number[]) =>
+    isWeak ? limit((f - weakIndex * 0.12) / 0.5, 0, 1) * (1 - r) : 0,
   );
-  // v2 extends the short rows — the gaps literally fill in
-  const grown = useTransform(upgrade, (u) => `${width + (weak ? u * (98 - width) : 0)}%`);
+  const crackWidth = useTransform(crack, (v) => `${v * 100}%`);
+  const crackOpacity = useTransform(crack, (v) => limit(v / 0.3, 0, 1));
+  // The line dims while broken.
+  const dim = useTransform(crack, (v) => 1 - v * 0.45);
+  const shiftX = useTransform(crack, (v) => `${Math.sin(v * Math.PI) * 3}px`);
+
+  // Rewritten text swaps in on repair.
+  const oldText = useTransform(repair, (r) => (isWeak ? 1 - limit((r - 0.3) / 0.3, 0, 1) : 1));
+  const newText = useTransform(repair, (r) => (isWeak ? limit((r - 0.3) / 0.3, 0, 1) : 0));
+
+  const { text, mark } = atom;
+  const before = text.slice(0, mark[0]);
+  const phrase = text.slice(mark[0], mark[1]);
+  const after = text.slice(mark[1]);
 
   return (
-    <div className="relative flex items-center gap-2">
-      <motion.div className="relative h-[0.9vh] min-h-[4px]" style={{ width: grown }}>
-        <div className="absolute inset-0 bg-[var(--lp-ink)]/10" />
-        <motion.div
-          className="absolute inset-y-0 left-0 bg-[var(--lp-mint)]"
-          style={{ width: parsedWidth }}
-        />
-      </motion.div>
-      {weak ? (
-        <motion.span className="landing-resume-pin" style={{ opacity: pin, scale: pin }} />
+    <motion.p
+      className={`landing-resume-text-line${isWeak ? " is-weak" : ""}`}
+      style={{ opacity: dim, x: shiftX }}
+    >
+      <motion.span style={{ opacity: oldText }}>
+        {before}
+        <mark className="landing-resume-hl">{phrase}</mark>
+        {after}
+      </motion.span>
+      {isWeak && atom.rewrite ? (
+        <motion.span className="landing-resume-rewrite" style={{ opacity: newText }}>
+          {atom.rewrite}
+        </motion.span>
       ) : null}
-    </div>
+      {isWeak ? (
+        <motion.span
+          aria-hidden="true"
+          className="landing-resume-crack"
+          style={{ width: crackWidth, opacity: crackOpacity }}
+        />
+      ) : null}
+    </motion.p>
   );
 }

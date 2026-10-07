@@ -2,9 +2,19 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* ─── The connected landing story: scenes, surfaces, highlighter, folder ─── */
+@import "./landing-story.css";
+
+/* ─── The intro + import sections (Beagle-grade). Loaded after the story so
+       its scoped `.landing-intro` rules win on the shared class names. ─── */
+@import "./landing-intro.css";
+
 /* ─── Self-hosted fonts (no Google Fonts blocking request) ─── */
 @import "@fontsource-variable/bricolage-grotesque/wght.css";
 @import "@fontsource-variable/inter/wght.css";
+/* Stand-in for the reference's geometric bold (Brandon/Gotham family).
+   Scoped to `.landing-intro` only — Bricolage stays the app-wide display face. */
+@import "@fontsource-variable/montserrat/wght.css";
 @import "@fontsource-variable/source-serif-4/wght.css";
 @import "@fontsource-variable/source-serif-4/wght-italic.css";
 @import "@fontsource/jetbrains-mono/400.css";
@@ -530,8 +540,14 @@
   --lp-cream: var(--cream);
   --lp-deep: var(--accent-strong);
   --lp-room: #111513;
+  /* feedback surface — deliberately NOT the room's black, so beat 12 does
+     not read as a reskin of beat 11 */
+  --lp-verdict: #16302a;
   --lp-marker: #f7f5a3;
+  --lp-marker-deep: #f0ea7a;
   --lp-particle: #292525;
+  --lp-paper: #fdfdfb;
+  --lp-crack: #c8603f;
 }
 
 .landing-stage {
@@ -638,14 +654,7 @@
   letter-spacing: 0.1em;
   transform-origin: left center;
 }
-.landing-resume-pin {
-  width: clamp(6px, 1vh, 9px);
-  height: clamp(6px, 1vh, 9px);
-  border-radius: 999px;
-  background: #e8b04b;
-  box-shadow: 0 0 0 3px rgb(232 176 75 / 0.22);
-  flex-shrink: 0;
-}
+
 .landing-resume-foot {
   font-size: clamp(7px, 1.05vh, 10px);
   font-weight: 500;
@@ -654,230 +663,6 @@
   color: rgb(47 48 45 / 0.4);
 }
 
-/* ─── Step 4: extracted field chips ─── */
-.landing-chip {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  white-space: nowrap;
-  background: #ffffff;
-  color: var(--lp-ink);
-  border-radius: 999px;
-  padding: 0.5em 1em;
-  font-size: clamp(10px, 1.55vh, 14px);
-  font-weight: 600;
-  box-shadow: 0 10px 26px -14px rgb(35 42 38 / 0.45);
-  will-change: transform, opacity;
-}
-
-/* --- Step 5: the laptop ---
-   Sized so the whole assembly (lid + base + proof row) clears the title band
-   above and the viewport floor below. All vertical rhythm in vh, never %,
-   because percentage block margins resolve against WIDTH. */
-.landing-laptop-wrap {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  translate: -50% 0;
-  z-index: 20;
-}
-.landing-laptop {
-  perspective: 1400px;
-  width: min(52vw, 720px);
-}
-.landing-laptop-lid {
-  height: 30vh;
-  border-radius: 10px 10px 3px 3px;
-  background: #1c1f1e;
-  padding: 8px;
-  box-shadow: 0 38px 76px -38px rgb(20 26 23 / 0.55);
-  transform-style: preserve-3d;
-}
-.landing-laptop-screen {
-  height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(158deg, #11211c 0%, #0a1411 100%);
-  overflow: hidden;
-}
-.landing-laptop-inner {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.9rem, 2vw, 1.8rem);
-  height: 100%;
-  padding: 0 clamp(1rem, 2.4vw, 2rem);
-}
-.landing-laptop-ring {
-  position: relative;
-  flex-shrink: 0;
-  width: clamp(76px, 13vh, 118px);
-  height: clamp(76px, 13vh, 118px);
-}
-.landing-laptop-ring svg { width: 100%; height: 100%; }
-.landing-laptop-ring-mid {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.landing-laptop-score {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: clamp(20px, 3.4vh, 32px);
-  color: #ffffff;
-  line-height: 1;
-}
-.landing-laptop-score-cap {
-  margin-top: 2px;
-  font-size: clamp(6px, 0.95vh, 9px);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  color: rgb(255 255 255 / 0.5);
-}
-.landing-cats {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: clamp(2px, 0.55vh, 6px);
-}
-.landing-cat-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.landing-cat-label {
-  font-size: clamp(7px, 1.15vh, 11px);
-  color: rgb(255 255 255 / 0.72);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.landing-cat-pts {
-  font-family: var(--font-mono);
-  font-size: clamp(7px, 1.05vh, 10px);
-  color: rgb(255 255 255 / 0.9);
-  flex-shrink: 0;
-}
-.landing-cat-max { opacity: 0.45; }
-.landing-cat-track {
-  margin-top: 2px;
-  height: 3px;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.12);
-}
-.landing-cat-fill { height: 100%; border-radius: 999px; }
-.landing-laptop-base {
-  height: 11px;
-  border-radius: 0 0 13px 13px;
-  background: linear-gradient(180deg, #2a2e2c 0%, #161a18 100%);
-  position: relative;
-  box-shadow: 0 14px 28px -16px rgb(20 26 23 / 0.65);
-}
-.landing-laptop-notch {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 78px;
-  height: 4px;
-  border-radius: 0 0 6px 6px;
-  background: rgb(255 255 255 / 0.1);
-  transform: translateX(-50%);
-}
-.landing-laptop-proof {
-  margin-top: 1.8vh;
-  display: flex;
-  gap: clamp(0.7rem, 1.8vw, 1.6rem);
-  justify-content: center;
-  flex-wrap: wrap;
-  font-size: clamp(9px, 1.4vh, 12px);
-  color: rgb(47 48 45 / 0.6);
-}
-.landing-laptop-proof li::before {
-  content: "";
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-right: 0.5em;
-  border-radius: 999px;
-  background: var(--lp-deep);
-  vertical-align: middle;
-}
-
-/* ─── Step 6: role cards ─── */
-.landing-role-card {
-  position: absolute;
-  left: 50%;
-  translate: -50% 0;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: min(34vw, 440px);
-  padding: 1.1rem 1.3rem;
-  background: #ffffff;
-  border-radius: 4px;
-}
-.landing-role-mark {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: clamp(30px, 5vh, 42px);
-  height: clamp(30px, 5vh, 42px);
-  border-radius: 8px;
-  background: var(--lp-deep);
-  color: #ffffff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(13px, 2.1vh, 18px);
-}
-.landing-role-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(13px, 2vh, 18px);
-  color: var(--lp-ink);
-  line-height: 1.15;
-}
-.landing-role-co {
-  margin-top: 1px;
-  font-size: clamp(10px, 1.45vh, 13px);
-  color: rgb(47 48 45 / 0.55);
-}
-.landing-role-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
-  font-size: clamp(9px, 1.3vh, 11px);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgb(47 48 45 / 0.42);
-}
-.landing-role-state--sched {
-  color: var(--lp-deep);
-}
-.landing-role-fit {
-  display: block;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: clamp(18px, 3.2vh, 30px);
-  line-height: 1;
-}
-.landing-role-fit-pct {
-  font-size: 0.55em;
-  opacity: 0.6;
-}
-.landing-role-fit-cap {
-  display: block;
-  margin-top: 2px;
-  font-size: clamp(7px, 1.05vh, 10px);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgb(47 48 45 / 0.42);
-}
 
 /* ─── Step 7: the interview room ─── */
 .landing-room {
@@ -1069,51 +854,7 @@
   50%      { opacity: 0.25; }
 }
 
-/* ─── Step 8: the scorecard ─── */
-.landing-scorecard {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  /* `translate`, not `transform`: Framer owns `transform` on these nodes. */
-  translate: -50% -50%;
-  width: min(52vw, 700px);
-  background: #ffffff;
-  border-radius: 8px;
-  padding: clamp(1rem, 2.6vh, 1.8rem);
-  box-shadow: 0 44px 86px -44px rgb(0 0 0 / 0.6);
-  color: var(--lp-ink);
-}
-.landing-scorecard-head {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-}
-.landing-scorecard-overall {
-  display: flex;
-  align-items: baseline;
-  background: var(--lp-ink);
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 0.4em 0.7em;
-}
-.landing-scorecard-num {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: clamp(20px, 3.4vh, 32px);
-  line-height: 1;
-}
-.landing-scorecard-den {
-  font-size: clamp(10px, 1.5vh, 13px);
-  opacity: 0.55;
-}
-.landing-scorecard-kicker {
-  font-weight: 700;
-  font-size: clamp(12px, 1.9vh, 16px);
-}
-.landing-scorecard-sub {
-  font-size: clamp(10px, 1.45vh, 13px);
-  color: rgb(47 48 45 / 0.55);
-}
+
 .landing-pillars {
   margin-top: clamp(0.7rem, 1.8vh, 1.2rem);
   display: grid;
@@ -1257,88 +998,6 @@
   color: rgb(47 48 45 / 0.6);
 }
 
-/* ─── Step 11: the loop closes ───
-   Two-column payoff: the improved resume on the left, the loop it just ran
-   on the right, signup band below. */
-.landing-loop {
-  position: absolute;
-  right: 7vw;
-  top: 20%;
-  z-index: 38;
-  width: min(40vw, 490px);
-}
-.landing-loop-ring {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: clamp(0.28rem, 0.85vh, 0.55rem);
-}
-.landing-loop-node:nth-child(2) { margin-left: 1.1rem; }
-.landing-loop-node:nth-child(3) { margin-left: 2.2rem; }
-.landing-loop-node:nth-child(4) { margin-left: 1.1rem; }
-.landing-loop-node {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55em;
-  background: #ffffff;
-  border: 1px solid rgb(47 48 45 / 0.12);
-  border-radius: 999px;
-  padding: 0.45em 1em;
-  font-size: clamp(10px, 1.45vh, 13px);
-  font-weight: 600;
-  color: var(--lp-ink);
-  box-shadow: 0 10px 24px -16px rgb(35 42 38 / 0.4);
-}
-.landing-loop-node:not(:last-child)::after {
-  content: "↓";
-  margin-left: 0.25em;
-  opacity: 0.28;
-}
-.landing-loop-node:last-child::after {
-  content: "↻ a better resume";
-  margin-left: 0.45em;
-  font-size: 0.82em;
-  font-weight: 500;
-  color: var(--lp-deep);
-}
-.landing-loop-idx {
-  display: grid;
-  place-items: center;
-  width: 1.55em;
-  height: 1.55em;
-  border-radius: 999px;
-  background: var(--lp-mint);
-  font-family: var(--font-mono);
-  font-size: 0.78em;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.landing-loop-delta {
-  margin-top: clamp(0.7rem, 1.8vh, 1.3rem);
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.landing-loop-from {
-  font-family: var(--font-mono);
-  font-size: clamp(16px, 2.6vh, 24px);
-  color: rgb(47 48 45 / 0.35);
-  text-decoration: line-through;
-}
-.landing-loop-to {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: clamp(24px, 4.4vh, 44px);
-  color: var(--lp-deep);
-  line-height: 1;
-}
-.landing-loop-cap {
-  font-size: clamp(9px, 1.35vh, 12px);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgb(47 48 45 / 0.45);
-}
 
 .landing-footer-title {
   font-family: var(--font-display);
@@ -2414,8 +2073,7 @@
   }
 }
 
-/* Landing page spacing polish. These are layout-only rules: scroll anchors,
-   motion values, transforms, and animation windows remain untouched. */
+/* Landing page composition polish for the desktop canvas. */
 .landing-stage .landing-titlecard {
   box-sizing: border-box;
   max-width: 90rem;
@@ -2435,11 +2093,7 @@
 .landing-stage .landing-titlecard .landing-footnote {
   margin-top: clamp(1.5rem, 3vh, 2.2rem);
 }
-.landing-role-card {
-  gap: 1.15rem;
-  padding: 1.15rem 1.5rem;
-  border: 1px solid rgb(47 48 45 / 0.06);
-}
+
 .landing-room-bar {
   height: 34px;
   padding-inline: 16px;
@@ -2457,37 +2111,8 @@
   padding: 16px 18px;
   line-height: 1.8;
 }
-.landing-laptop-inner {
-  gap: clamp(1rem, 2.2vw, 1.9rem);
-  padding-inline: clamp(1.25rem, 2.4vw, 2rem);
-}
-.landing-cats {
-  gap: clamp(3px, 0.7vh, 7px);
-}
-.landing-cat-label {
-  font-size: clamp(8px, 1.25vh, 11px);
-}
-.landing-cat-pts {
-  font-size: clamp(8px, 1.15vh, 10px);
-}
-.landing-cat-track {
-  height: 4px;
-  margin-top: 3px;
-}
-.landing-laptop-proof {
-  row-gap: clamp(0.5rem, 1vh, 0.75rem);
-  column-gap: clamp(0.85rem, 1.8vw, 1.5rem);
-  font-size: clamp(10px, 1.4vh, 12px);
-}
-.landing-portal .landing-cat-label {
-  font-size: calc(clamp(9px, 1.35vh, 12px) * (1 + var(--cam) * 0.9));
-}
-.landing-portal .landing-cat-pts {
-  font-size: calc(clamp(9px, 1.2vh, 10px) * (1 + var(--cam) * 0.9));
-}
-.landing-scorecard {
-  padding: clamp(1.15rem, 2.8vh, 1.9rem);
-}
+
+
 .landing-pillars,
 .landing-verdict-cols {
   column-gap: clamp(1.2rem, 2.4vw, 2rem);
@@ -2497,6 +2122,245 @@
   width: min(22vw, 280px);
   padding: clamp(0.95rem, 2.1vh, 1.3rem);
 }
-.landing-loop {
-  width: min(38vw, 470px);
+
+
+@media (min-width: 1024px) and (pointer: fine) {
+  .landing-hero-actions {
+    position: absolute;
+    left: 50%;
+    top: 38%;
+    z-index: 46;
+    display: flex;
+    translate: -50% 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .landing-hero-cta {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    border: 1px solid rgb(255 255 255 / 0.62);
+    border-radius: 999px;
+    background: var(--lp-mint);
+    padding: 0 1.35rem;
+    color: var(--lp-ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow: 0 12px 28px rgb(20 26 23 / 0.2);
+    transition:
+      background-color 180ms ease,
+      box-shadow 180ms ease,
+      color 180ms ease;
+  }
+
+  .landing-hero-cta:hover {
+    background: #dcf1ea;
+    box-shadow: 0 16px 32px rgb(20 26 23 / 0.27);
+  }
+
+  .landing-hero-cta:focus-visible {
+    outline: 3px solid #ffffff;
+    outline-offset: 4px;
+  }
+
+  .landing-hero-actions > p {
+    color: rgb(255 255 255 / 0.78);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.35);
+  }
+
+  .landing-stage .landing-titlecard .landing-kicker + .landing-title {
+    margin-top: clamp(0.7rem, 1.3vh, 1.1rem);
+  }
+
+  .landing-stage .landing-titlecard .landing-title + .landing-subtitle {
+    margin-top: clamp(0.85rem, 1.6vh, 1.25rem);
+  }
+
+  .landing-stage .landing-titlecard .landing-subtitle {
+    max-width: 62ch;
+    margin-inline: auto;
+    text-wrap: balance;
+  }
+
+  .landing-stage .landing-title {
+    text-wrap: balance;
+  }
+
+  
+
+  .landing-stage .landing-room {
+    border-radius: 14px;
+    box-shadow: 0 38px 84px -42px rgb(0 0 0 / 0.68);
+  }
+
+  .landing-stage .landing-room-ai {
+    left: -24%;
+    width: 22%;
+  }
+
+  .landing-stage .landing-room-feats {
+    top: -34px;
+    right: 0;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  
+
+  .landing-stage .landing-study-card {
+    border: 1px solid rgb(47 48 45 / 0.08);
+    border-radius: 14px;
+    box-shadow:
+      0 26px 52px -34px rgb(35 42 38 / 0.38),
+      0 2px 10px rgb(35 42 38 / 0.07) !important;
+  }
+
+  
+
+  .landing-stage .landing-resume {
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow:
+      0 42px 82px -38px rgb(30 45 38 / 0.34),
+      0 4px 14px rgb(30 45 38 / 0.12) !important;
+  }
+
+  .landing-stage .landing-resume-content {
+    flex: 1;
+    min-height: 0;
+  }
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+  
+  
+
+  
+
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 }
+
+@keyframes landing-live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 3px rgb(71 167 127 / 0.14); }
+  50% { opacity: 0.58; box-shadow: 0 0 0 6px rgb(71 167 127 / 0.04); }
+}
+
+@media (min-width: 1024px) and (pointer: fine) and (max-height: 760px) {
+  .landing-hero-actions {
+    top: 37%;
+  }
+
+  .landing-stage .landing-titlecard {
+    padding-inline: clamp(1rem, 4vw, 3.5rem);
+  }
+
+  .landing-stage .landing-title {
+    font-size: clamp(2.15rem, 8vh, 4.8rem);
+  }
+
+  
+
+  
+  
+  
+  
+  
+  
+}
+
+

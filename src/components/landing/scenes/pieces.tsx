@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { motion, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { cubicOut, limit } from "../beagleEase";
+import { limit } from "../beagleEase";
 import { useStepIndex } from "../SwipeElement";
 import { SignupMorph } from "../SignupMorph";
-import { FOOTER_CTA, LOOP_STEPS, type Candidate } from "../sceneManifest";
+import { FOOTER_CTA } from "../sceneManifest";
 
 /* ────────────────────────── scroll hint ────────────────────────── */
 
@@ -52,153 +52,6 @@ export function ScrollHint({
   );
 }
 
-/* ────────────────────────── step 4 · extracted fields ────────────────────────── */
-
-/**
- * The structured fields the parser pulls out of the PDF — skills, experience,
- * education, CGPA. They fly out of the resume sheet, which is exactly what
- * `processResumeJob()` does to the document.
- */
-export function FieldChips({
-  pos,
-  anchor,
-  visibleLength,
-  candidate,
-}: {
-  pos: MotionValue<number>;
-  anchor: number;
-  visibleLength: number;
-  candidate: Candidate;
-}) {
-  const visibility = useTransform(pos, (p) =>
-    Math.abs(anchor - p) < visibleLength ? "visible" : "hidden",
-  );
-
-  // alternating left / right slots, biased away from the centre sheet
-  const slots = [
-    { x: -0.3, y: -0.16 },
-    { x: 0.31, y: -0.2 },
-    { x: -0.35, y: 0.02 },
-    { x: 0.34, y: 0.04 },
-    { x: -0.29, y: 0.2 },
-    { x: 0.3, y: 0.22 },
-  ];
-
-  return (
-    <motion.div className="absolute inset-0 z-40" style={{ visibility }}>
-      {candidate.fields.map((field, i) => (
-        <FieldChip key={field} pos={pos} index={i} label={field} slot={slots[i % slots.length]} />
-      ))}
-    </motion.div>
-  );
-}
-
-function FieldChip({
-  pos,
-  index,
-  label,
-  slot,
-}: {
-  pos: MotionValue<number>;
-  index: number;
-  label: string;
-  slot: { x: number; y: number };
-}) {
-  const start = 3.5 + index * 0.07;
-  const t = useTransform(pos, (p) => limit((p - start) / 0.45, 0, 1));
-  const out = useTransform(pos, (p) => limit((p - 4.4) / 0.45, 0, 1));
-
-  // fly out from the sheet's centre to the slot
-  const x = useTransform([t, out] as const, ([v, o]: number[]) => {
-    const travel = cubicOut(v, 0, slot.x, 1);
-    return `calc(-50% + ${(travel + o * slot.x * 0.4) * 100}vw)`;
-  });
-  const y = useTransform([t, out] as const, ([v, o]: number[]) => {
-    const travel = cubicOut(v, 0.08, slot.y - 0.08, 1);
-    return `calc(-50% + ${(travel - o * 0.3) * 100}vh)`;
-  });
-  const opacity = useTransform(
-    [t, out] as const,
-    ([v, o]: number[]) => limit(v / 0.3, 0, 1) * (1 - o),
-  );
-  const scale = useTransform(t, (v) => cubicOut(v, 0.75, 0.25, 1));
-
-  return (
-    <motion.span className="landing-chip" style={{ x, y, opacity, scale }}>
-      {label}
-    </motion.span>
-  );
-}
-
-/* ────────────────────────── step 11 · the loop closes ────────────────────────── */
-
-/**
- * The payoff. The five stages the candidate just scrolled through, drawn as a
- * ring that returns to its start — with the score delta that makes going
- * round again worth it.
- */
-export function LoopDiagram({
-  pos,
-  anchor,
-  visibleLength,
-  candidate,
-}: {
-  pos: MotionValue<number>;
-  anchor: number;
-  visibleLength: number;
-} & { candidate: Candidate }) {
-  const visibility = useTransform(pos, (p) =>
-    Math.abs(anchor - p) < visibleLength ? "visible" : "hidden",
-  );
-  const t = useTransform(pos, (p) => limit((p - 10.2) / 0.7, 0, 1));
-  const opacity = useTransform(t, (v) => limit(v / 0.4, 0, 1));
-  const y = useTransform(t, (v) => `${(1 - v) * 5}vh`);
-
-  const delta = useTransform(pos, (p) => limit((p - 10.55) / 0.45, 0, 1));
-  const score = useTransform(delta, (d) =>
-    Math.round(candidate.scoreBefore + (candidate.scoreAfter - candidate.scoreBefore) * d),
-  );
-
-  return (
-    <motion.div className="landing-loop" style={{ opacity, y, visibility }}>
-      <ol className="landing-loop-ring">
-        {LOOP_STEPS.map((label, i) => (
-          <LoopNode key={label} pos={pos} index={i} label={label} />
-        ))}
-      </ol>
-
-      <div className="landing-loop-delta">
-        <span className="landing-loop-from">{candidate.scoreBefore}</span>
-        <ArrowRight className="h-4 w-4 opacity-40" aria-hidden="true" />
-        <motion.span className="landing-loop-to">{score}</motion.span>
-        <span className="landing-loop-cap">ATS score, second pass</span>
-      </div>
-    </motion.div>
-  );
-}
-
-function LoopNode({
-  pos,
-  index,
-  label,
-}: {
-  pos: MotionValue<number>;
-  index: number;
-  label: string;
-}) {
-  const start = 10.3 + index * 0.07;
-  const t = useTransform(pos, (p) => limit((p - start) / 0.3, 0, 1));
-  const opacity = useTransform(t, (v) => limit(v / 0.4, 0, 1));
-  const scale = useTransform(t, (v) => cubicOut(v, 0.8, 0.2, 1));
-
-  return (
-    <motion.li className="landing-loop-node" style={{ opacity, scale }}>
-      <span className="landing-loop-idx">{index + 1}</span>
-      {label}
-    </motion.li>
-  );
-}
-
 /* ────────────────────────── footer ────────────────────────── */
 
 export function FooterSignup() {
@@ -227,7 +80,7 @@ export function FooterSignup() {
   );
 }
 
-/* ────────────────────────── thesis particles ────────────────────────── */
+/* ────────────────────────── misc ────────────────────────── */
 
 export function useDeferredDate() {
   const [date, setDate] = useState("");
